@@ -36,7 +36,7 @@ class WorkflowSmokeReport:
 
     @property
     def ok(self) -> bool:
-        return self.status == "pass"
+        return self.status != "fail"
 
     @property
     def has_warnings(self) -> bool:

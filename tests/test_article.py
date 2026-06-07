@@ -173,6 +173,8 @@ from auto_note.workflow import (
     update_article_metadata,
 )
 from auto_note.workflow_smoke import (
+    WorkflowSmokeItem,
+    WorkflowSmokeReport,
     format_workflow_smoke_report,
     has_workflow_smoke_blockers,
     run_workflow_smoke,
@@ -973,6 +975,7 @@ tags: note
             (project / "scripts" / "ensure-env.bat").write_text("@echo off\n", encoding="utf-8")
             (project / "scripts" / "install-auto-note.ps1").write_text("Write-Host install\n", encoding="utf-8")
             (project / "scripts" / "uninstall-auto-note.ps1").write_text("Write-Host uninstall\n", encoding="utf-8")
+            (project / "scripts" / "check-release.ps1").write_text("Write-Host check\n", encoding="utf-8")
             (project / "scripts" / "smoke-install.ps1").write_text("Write-Host smoke\n", encoding="utf-8")
             (project / "shortcuts" / "install-auto-note.bat").write_text("@echo off\n", encoding="utf-8")
             (project / "shortcuts" / "uninstall-auto-note.bat").write_text("@echo off\n", encoding="utf-8")
@@ -1076,6 +1079,7 @@ tags: note
             (project / "scripts" / "ensure-env.bat").write_text("@echo off\n", encoding="utf-8")
             (project / "scripts" / "install-auto-note.ps1").write_text("Write-Host install\n", encoding="utf-8")
             (project / "scripts" / "uninstall-auto-note.ps1").write_text("Write-Host uninstall\n", encoding="utf-8")
+            (project / "scripts" / "check-release.ps1").write_text("Write-Host check\n", encoding="utf-8")
             (project / "scripts" / "smoke-install.ps1").write_text("Write-Host smoke\n", encoding="utf-8")
             (project / "shortcuts" / "install-auto-note.bat").write_text("@echo off\n", encoding="utf-8")
             (project / "shortcuts" / "uninstall-auto-note.bat").write_text("@echo off\n", encoding="utf-8")
@@ -1936,6 +1940,20 @@ tags: note
         self.assertGreaterEqual(len(saved_reports), 2)
         self.assertIn("workflow smoke report created:", cli_output.getvalue())
 
+    def test_workflow_smoke_warning_is_not_blocking_by_default(self) -> None:
+        report = WorkflowSmokeReport(
+            status="warn",
+            generated_at=datetime(2026, 1, 1),
+            project_dir=Path("project"),
+            temp_project_dir=Path("temp"),
+            kept=False,
+            items=[WorkflowSmokeItem("setup", "warn", "optional dependency missing")],
+        )
+
+        self.assertTrue(report.ok)
+        self.assertFalse(has_workflow_smoke_blockers(report))
+        self.assertTrue(has_workflow_smoke_blockers(report, strict=True))
+
     def test_action_plan_surfaces_privacy_cleanup(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -2426,6 +2444,13 @@ tags:
                 "exitCode = shell.Run(command, 0, True)\n",
                 encoding="utf-8",
             )
+            (project / "scripts" / "check-release.ps1").write_text(
+                "python -m unittest discover -s tests\n"
+                "auto_note quality --project-dir\n"
+                "AUTO_NOTE_LAUNCHER_CHECK\n"
+                "smoke-install.ps1\n",
+                encoding="utf-8",
+            )
             (project / ".github" / "workflows").mkdir(parents=True)
             (project / ".github" / "workflows" / "ci.yml").write_text(
                 "windows-latest\n"
@@ -2517,6 +2542,11 @@ tags:
         self.assertIn("GUI launcher smoke check:fail", product_details)
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
+        self.assertIn("release check script:fail", product_details)
+        self.assertIn("release check unit tests:fail", product_details)
+        self.assertIn("release check product quality:fail", product_details)
+        self.assertIn("release check launcher syntax:fail", product_details)
+        self.assertIn("release check full install smoke:fail", product_details)
         self.assertIn("version consistency:fail", product_details)
         self.assertIn("GitHub Actions CI:fail", product_details)
         self.assertIn("CI Windows runner:fail", product_details)
@@ -2701,6 +2731,11 @@ tags:
         self.assertIn("CI product quality gate:pass", launcher_details)
         self.assertIn("CI hidden launcher syntax check:pass", launcher_details)
         self.assertIn("CI GUI smoke:pass", launcher_details)
+        self.assertIn("release check script:pass", launcher_details)
+        self.assertIn("release check unit tests:pass", launcher_details)
+        self.assertIn("release check product quality:pass", launcher_details)
+        self.assertIn("release check launcher syntax:pass", launcher_details)
+        self.assertIn("release check full install smoke:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)
         self.assertIn("CLI starter cleanup command:pass", launcher_details)
@@ -3725,6 +3760,7 @@ publish: false
             (project / "scripts" / "ensure-env.bat").write_text("@echo off\n", encoding="utf-8")
             (project / "scripts" / "install-auto-note.ps1").write_text("Write-Host install\n", encoding="utf-8")
             (project / "scripts" / "uninstall-auto-note.ps1").write_text("Write-Host uninstall\n", encoding="utf-8")
+            (project / "scripts" / "check-release.ps1").write_text("Write-Host check\n", encoding="utf-8")
             (project / "scripts" / "smoke-install.ps1").write_text("Write-Host smoke\n", encoding="utf-8")
             (project / "shortcuts" / "install-auto-note.bat").write_text("@echo off\n", encoding="utf-8")
             (project / "shortcuts" / "uninstall-auto-note.bat").write_text("@echo off\n", encoding="utf-8")
@@ -3749,6 +3785,7 @@ publish: false
             self.assertIn("scripts/ensure-env.bat", names)
             self.assertIn("scripts/install-auto-note.ps1", names)
             self.assertIn("scripts/uninstall-auto-note.ps1", names)
+            self.assertIn("scripts/check-release.ps1", names)
             self.assertIn("scripts/smoke-install.ps1", names)
             self.assertIn("shortcuts/install-auto-note.bat", names)
             self.assertIn("shortcuts/uninstall-auto-note.bat", names)

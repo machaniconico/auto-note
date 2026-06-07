@@ -5,6 +5,8 @@
 ## 自動チェック
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release.ps1 -Full
 python -m compileall src tests
 $env:PYTHONPATH='src'; python -m unittest discover -s tests
 $env:PYTHONPATH='src'; python -m auto_note setup --project-dir . --create

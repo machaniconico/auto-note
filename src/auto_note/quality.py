@@ -136,6 +136,35 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(_path_check(project_dir / "shortcuts" / "install-auto-note.bat", "installer launcher"))
     checks.append(_path_check(project_dir / "scripts" / "uninstall-auto-note.ps1", "uninstaller script"))
     checks.append(_path_check(project_dir / "shortcuts" / "uninstall-auto-note.bat", "uninstaller launcher"))
+    checks.append(_path_check(project_dir / "scripts" / "check-release.ps1", "release check script"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check unit tests",
+            "python -m unittest discover -s tests",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check product quality",
+            "auto_note quality --project-dir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check launcher syntax",
+            "AUTO_NOTE_LAUNCHER_CHECK",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check full install smoke",
+            "smoke-install.ps1",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "smoke-install.ps1", "install smoke test"))
     checks.append(
         _text_contains_check(
