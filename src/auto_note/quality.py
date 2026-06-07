@@ -1,0 +1,1765 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+import re
+
+from .article import ArticleError
+from .diagnostics import run_diagnostics
+from .images import inspect_images_path, missing_images
+from .inspect import inspect_path
+from .review import review_path
+from .settings import load_settings
+
+
+VALID_STATUSES = {"draft", "ready", "scheduled", "published"}
+
+
+@dataclass(frozen=True)
+class QualityCheck:
+    name: str
+    status: str
+    detail: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "fail"
+
+
+def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> list[QualityCheck]:
+    settings = load_settings(project_dir)
+    checks: list[QualityCheck] = []
+
+    checks.append(_path_check(project_dir / "README.md", "README"))
+    checks.append(_path_check(project_dir / "docs" / "QUICKSTART.md", "quickstart guide"))
+    checks.append(_path_check(project_dir / "docs" / "PRODUCT_READINESS.md", "product readiness memo"))
+    checks.append(_path_check(project_dir / "docs" / "INSTALL.md", "install guide"))
+    checks.append(_path_check(project_dir / "docs" / "UPDATE.md", "update guide"))
+    checks.append(_path_check(project_dir / "docs" / "SUPPORT.md", "support guide"))
+    checks.append(_path_check(project_dir / "docs" / "PRIVACY.md", "privacy guide"))
+    checks.append(_path_check(project_dir / "docs" / "TERMS_DRAFT.md", "terms draft"))
+    checks.append(_path_check(project_dir / "docs" / "COMMERCIAL_POLICY_DRAFT.md", "commercial policy draft"))
+    checks.append(_path_check(project_dir / "docs" / "THIRD_PARTY_NOTICES.md", "third-party notices"))
+    checks.append(_path_check(project_dir / "docs" / "CHANGELOG.md", "changelog"))
+    checks.append(_path_check(project_dir / "docs" / "RELEASE_CHECKLIST.md", "release checklist"))
+    checks.append(_version_consistency_check(project_dir / "pyproject.toml", project_dir / "src" / "auto_note" / "__init__.py"))
+    checks.append(_path_check(project_dir / "auto-note-gui.bat", "GUI launcher"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "auto-note-gui.bat",
+            "GUI launcher smoke check",
+            "--smoke",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "auto-note-gui.bat",
+            "GUI launcher support bundle guidance",
+            "support --project-dir",
+        )
+    )
+    checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "launch-gui.vbs",
+            "hidden GUI launcher target",
+            "auto-note-gui.bat",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "launch-gui.vbs",
+            "hidden GUI launcher no console",
+            "shell.Run(command, 0, True)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "launch-gui.vbs",
+            "hidden GUI launcher check mode",
+            "AUTO_NOTE_LAUNCHER_CHECK",
+        )
+    )
+    checks.append(_path_check(project_dir / "shortcuts" / "create-gui-shortcut.bat", "shortcut helper"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "create-gui-shortcut.ps1",
+            "shortcut uses hidden launcher",
+            "launch-gui.vbs",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "create-gui-shortcut.ps1",
+            "shortcut icon",
+            "IconLocation",
+        )
+    )
+    checks.append(_path_check(project_dir / "scripts" / "install-auto-note.ps1", "installer script"))
+    checks.append(_path_check(project_dir / "shortcuts" / "install-auto-note.bat", "installer launcher"))
+    checks.append(_path_check(project_dir / "scripts" / "uninstall-auto-note.ps1", "uninstaller script"))
+    checks.append(_path_check(project_dir / "shortcuts" / "uninstall-auto-note.bat", "uninstaller launcher"))
+    checks.append(_path_check(project_dir / "scripts" / "smoke-install.ps1", "install smoke test"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release first-run checklist",
+            "FIRST_RUN_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI starter pack command",
+            "starter-pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI starter cleanup command",
+            "starter-clean",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI repair command",
+            "repair",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI troubleshoot command",
+            "troubleshoot",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI acceptance command",
+            "acceptance",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI acceptance full command",
+            "--full",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial readiness command",
+            "commercial-readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial policy review command",
+            "--policy-review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial policy review writer",
+            "write_commercial_policy_review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial policy review lister",
+            "list_commercial_policy_reviews",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial setup command",
+            "commercial-setup",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial setup template command",
+            "Create a seller profile fill-in template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial setup template apply command",
+            "--apply-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup URL/contact warnings",
+            "commercial_setup_warnings",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup next actions",
+            "commercial_setup_next_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup completion progress",
+            "commercial_setup_completion",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup next field helper",
+            "commercial_setup_next_field",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup safe template apply",
+            "Safe Apply / 編集後の保存",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup sales finalize followup",
+            "sales-finalize --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup sales plan followup",
+            "auto-note sales-plan --project-dir .",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan commercial setup guidance",
+            "commercial_setup_missing_fields",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan commercial setup next missing GUI guidance",
+            "設定 > 次の不足へ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales handoff command",
+            "sales-handoff",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales materials command",
+            "sales-materials",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales materials verify command",
+            "Verify a sales materials markdown file.",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_materials.py",
+            "sales materials commercial setup warnings",
+            "commercial setup warning:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_materials.py",
+            "sales materials buyer first 10 minutes",
+            "Buyer First 10 Minutes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer first 10 minutes",
+            "購入者の最初の10分",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff delivery checklist",
+            "DELIVERY_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff seller delivery receipt",
+            "SELLER_DELIVERY_RECEIPT.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales handoff buyer extract command",
+            "--extract-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales handoff buyer verify command",
+            "--verify-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales handoff buyer package command",
+            "--package-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales handoff buyer package verify command",
+            "--verify-buyer-package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery extractor",
+            "extract_buyer_delivery",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery verifier",
+            "verify_buyer_delivery",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery checksums",
+            "SHA256SUMS.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer support guide",
+            "BUYER_SUPPORT_GUIDE.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer start guide",
+            "START_HERE_FOR_BUYER.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery manifest",
+            "BUYER_DELIVERY_MANIFEST.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery manifest verifier",
+            "_verify_buyer_delivery_manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery package",
+            "package_buyer_delivery",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery package verifier",
+            "verify_buyer_delivery_package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery package SHA-256",
+            "Package SHA-256",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales finalize command",
+            "sales-finalize",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales finalize template apply command",
+            "Apply the latest seller profile template before finalizing sales artifacts.",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI buyer send readiness command",
+            "--send-check",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI buyer send readiness report command",
+            "--send-check-report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI seller delivery receipt command",
+            "--delivery-receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize ignores stale handoffs during preflight",
+            "include_sales_handoffs=False",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize creates acceptance evidence",
+            "write_acceptance_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize creates buyer delivery",
+            "extract_buyer_delivery",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize verifies buyer delivery",
+            "verify_buyer_delivery",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize verifies buyer delivery zip",
+            "verify_buyer_delivery_package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize buyer delivery message",
+            "_write_buyer_delivery_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize buyer delivery message lister",
+            "list_buyer_delivery_messages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness runner",
+            "run_buyer_send_readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness formatter",
+            "format_buyer_send_readiness_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness report writer",
+            "write_buyer_send_readiness_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness report lister",
+            "list_buyer_send_readiness_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt writer",
+            "write_seller_delivery_receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt formatter",
+            "format_seller_delivery_receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt lister",
+            "list_seller_delivery_receipts",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer delivery message package matcher",
+            "find_buyer_delivery_package_for_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize seller send checklist",
+            "_write_seller_send_checklist",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit seller send checklist",
+            "seller send checklist privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit buyer delivery message",
+            "buyer delivery message privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit buyer delivery message lister",
+            "list_buyer_delivery_messages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit buyer send readiness report",
+            "buyer send readiness report privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit commercial policy review",
+            "commercial policy review privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit seller delivery receipt",
+            "seller delivery receipt privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic seller send checklist",
+            "seller-send-checklist.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic buyer delivery message summary",
+            "buyer_delivery_messages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic buyer send readiness report summary",
+            "buyer_send_readiness_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic seller delivery receipt summary",
+            "seller_delivery_receipts",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup seller send checklist",
+            "seller-send-checklist-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup buyer delivery message",
+            "buyer-delivery-message-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup buyer send readiness report",
+            "buyer-send-readiness-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup seller delivery receipt",
+            "seller-delivery-receipt-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup commercial policy review",
+            "commercial-policy-review-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize delivery verification SHA-256",
+            "_delivery_verification_lines",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales plan command",
+            "sales-plan",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales plan report command",
+            "sales plan report created",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan buyer delivery package list",
+            "list_buyer_delivery_packages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan buyer delivery package verifier",
+            "verify_buyer_delivery_package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan buyer delivery package summary",
+            "Latest buyer delivery zip",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan buyer delivery readiness summary",
+            "Buyer delivery readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan seller setup remaining summary",
+            "Seller setup remaining",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan tool artifact remaining summary",
+            "Tool/artifact actions remaining",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan upload guidance",
+            "Upload guidance",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan buyer delivery package freshness",
+            "_buyer_delivery_package_release_name",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan report writer",
+            "write_sales_plan_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan report lister",
+            "list_sales_plan_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan relative verify command",
+            "_project_relative_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit sales plan report",
+            "sales plan report privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup sales plan report",
+            "sales-plan-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "maintenance sales plan report summary",
+            "sales_plan_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic sales evidence manifest",
+            "sales-evidence-manifest.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic commercial setup summary",
+            "_commercial_setup_item",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic commercial policy review summary",
+            "commercial_policy_reviews",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "maintenance sales evidence manifest summary",
+            "sales_evidence_manifests",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize creates sales plan report",
+            "write_sales_plan_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize artifacts sales plan report",
+            "sales plan report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize seller checklist sales plan evidence",
+            "Sales plan evidence",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales evidence manifest writer",
+            "_write_sales_evidence_manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales evidence manifest lister",
+            "list_sales_evidence_manifests",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize artifacts sales evidence manifest",
+            "sales evidence manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller checklist sales evidence manifest",
+            "Sales evidence manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit sales evidence manifest",
+            "sales evidence manifest privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup sales evidence manifest",
+            "sales-evidence-manifest-*.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI starter pack action",
+            "スターター一式",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI starter cleanup action",
+            "スターター整理",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI repair action",
+            "自動修復",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI troubleshoot action",
+            "トラブル診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI acceptance action",
+            "受入チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI acceptance full action",
+            "受入フル保存",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial readiness action",
+            "販売準備",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial policy review action",
+            "create_commercial_policy_review_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup fields",
+            "販売者/屋号",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup template action",
+            "販売者テンプレ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup template apply action",
+            "テンプレ適用",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup status action",
+            "販売者情報確認",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup save feedback",
+            "_notify_settings_saved",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup progress panel",
+            "commercial_progress_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup next missing action",
+            "focus_next_commercial_missing_field",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup command palette action",
+            "販売者情報へ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales summary panel",
+            "home_sales_status_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales next action",
+            "run_home_sales_next_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales lightweight summary",
+            "_home_sales_lightweight_next_step",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales buyer delivery message summary",
+            "buyer_messages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales seller delivery receipt summary",
+            "seller_receipts",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales handoff action",
+            "販売一式作成",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales handoff buyer extract action",
+            "購入者ZIP抽出",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales handoff buyer verify action",
+            "購入者ZIP検証",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales materials action",
+            "販売素材作成",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales materials verify action",
+            "販売素材検証",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize action",
+            "販売一括作成",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens buyer delivery",
+            "buyer_delivery_dir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens buyer delivery zip",
+            "buyer_delivery_package_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens buyer delivery message",
+            "buyer_delivery_message_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery message copy action",
+            "copy_latest_buyer_delivery_message_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer send readiness action",
+            "run_buyer_send_readiness_to_tab",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer send readiness report action",
+            "create_buyer_send_readiness_report_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller delivery receipt action",
+            "create_seller_delivery_receipt_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens sales plan report",
+            "sales_plan_report_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens seller send checklist",
+            "seller_send_checklist_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens sales evidence manifest",
+            "sales_evidence_manifest_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize template apply action",
+            "テンプレ取込一括",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales plan action",
+            "販売ナビ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales plan report action",
+            "販売ナビ保存",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README starter pack guidance",
+            "starter-pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README repair guidance",
+            "auto-note repair",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README troubleshoot guidance",
+            "auto-note troubleshoot",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README acceptance guidance",
+            "auto-note acceptance",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README acceptance full guidance",
+            "auto-note acceptance --project-dir . --full",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial readiness guidance",
+            "auto-note commercial-readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial policy review guidance",
+            "commercial-readiness --project-dir . --policy-review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial setup guidance",
+            "auto-note commercial-setup",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home sales summary guidance",
+            "販売準備サマリー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial setup template guidance",
+            "commercial-setup --project-dir . --template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial setup template apply guidance",
+            "commercial-setup --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial setup safe template guidance",
+            "未入力のプレースホルダー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README commercial setup GUI next missing guidance",
+            "次の不足へ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README privacy audit commercial setup template guidance",
+            "販売者テンプレート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales handoff guidance",
+            "auto-note sales-handoff",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales handoff buyer extract guidance",
+            "sales-handoff --project-dir . --extract-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales handoff buyer verify guidance",
+            "sales-handoff --project-dir . --verify-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales handoff buyer package guidance",
+            "sales-handoff --project-dir . --package-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales handoff buyer package verify guidance",
+            "sales-handoff --project-dir . --verify-buyer-package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales materials guidance",
+            "auto-note sales-materials",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales materials verify guidance",
+            "sales-materials --project-dir . --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales finalize guidance",
+            "auto-note sales-finalize",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales finalize template apply guidance",
+            "sales-finalize --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README buyer delivery message copy guidance",
+            "送付文コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README buyer send readiness guidance",
+            "送付前チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README buyer send readiness CLI report guidance",
+            "sales-finalize --project-dir . --send-check --send-check-report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README seller delivery receipt guidance",
+            "sales-finalize --project-dir . --delivery-receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales plan guidance",
+            "auto-note sales-plan",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales plan upload guidance",
+            "Upload guidance",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales plan report guidance",
+            "sales-plan --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales evidence manifest guidance",
+            "sales-evidence-manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness acceptance full command",
+            "auto-note acceptance --project-dir . --full",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial command",
+            "commercial-readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial policy review command",
+            "commercial-readiness --project-dir . --policy-review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial setup command",
+            "commercial-setup",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home sales summary guidance",
+            "販売準備サマリー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home sales lightweight guidance",
+            "軽量判定",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home sales buyer message guidance",
+            "送付文有無",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial setup template command",
+            "commercial-setup --project-dir . --template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial setup template apply command",
+            "commercial-setup --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial setup safe template guidance",
+            "未入力プレースホルダー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness commercial setup GUI next missing guidance",
+            "次の不足へ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales handoff command",
+            "sales-handoff",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales handoff buyer extract command",
+            "--extract-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales handoff buyer verify command",
+            "--verify-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales handoff buyer package command",
+            "--package-buyer",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales handoff buyer package verify command",
+            "--verify-buyer-package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales materials command",
+            "sales-materials",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales materials verify command",
+            "sales-materials --project-dir . --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales finalize command",
+            "sales-finalize",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales finalize template apply command",
+            "sales-finalize --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness buyer delivery message copy guidance",
+            "送付文コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness buyer send readiness guidance",
+            "送付前チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness buyer send readiness CLI report guidance",
+            "sales-finalize --project-dir . --send-check --send-check-report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness seller delivery receipt guidance",
+            "sales-finalize --project-dir . --delivery-receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales plan command",
+            "sales-plan",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales plan upload guidance",
+            "Upload guidance",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales plan report guidance",
+            "sales-plan --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales evidence manifest guidance",
+            "sales-evidence-manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release starter pack guidance",
+            "starter-pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release repair guidance",
+            "auto-note repair",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release troubleshoot guidance",
+            "auto-note troubleshoot",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release buyer acceptance checklist",
+            "BUYER_ACCEPTANCE_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release buyer acceptance full guidance",
+            "auto-note acceptance --project-dir . --full",
+        )
+    )
+
+    for item in run_diagnostics(project_dir):
+        checks.append(QualityCheck(f"diagnostic: {item.name}", "pass" if item.ok else "fail", item.detail))
+
+    if not include_articles:
+        return checks
+
+    try:
+        reports = inspect_path(project_dir / "articles", pattern=settings.article_glob, append_tags=settings.append_tags_by_default)
+    except ArticleError as exc:
+        checks.append(QualityCheck("article check", "warn", str(exc)))
+    else:
+        errors = sum(1 for report in reports if not report.ok)
+        warnings = sum(len([issue for issue in report.issues if issue.level == "warn"]) for report in reports)
+        if errors:
+            checks.append(QualityCheck("article check", "fail", f"{errors} article(s) have errors"))
+        elif warnings:
+            checks.append(QualityCheck("article check", "warn", f"{warnings} warning(s)"))
+        else:
+            checks.append(QualityCheck("article check", "pass", f"{len(reports)} article(s) OK"))
+        checks.extend(_workflow_checks(reports))
+
+    try:
+        refs = inspect_images_path(project_dir / "articles", pattern=settings.article_glob)
+    except ArticleError as exc:
+        checks.append(QualityCheck("image check", "warn", str(exc)))
+    else:
+        missing = missing_images(refs)
+        large = [ref for ref in refs if ref.large]
+        if missing:
+            checks.append(QualityCheck("image check", "fail", f"{len(missing)} missing image(s)"))
+        elif large:
+            checks.append(QualityCheck("image check", "warn", f"{len(large)} large image(s)"))
+        else:
+            checks.append(QualityCheck("image check", "pass", f"{len(refs)} image reference(s) OK"))
+
+    try:
+        reviews = review_path(
+            project_dir / "articles",
+            pattern=settings.article_glob,
+            append_tags=settings.append_tags_by_default,
+        )
+    except ArticleError as exc:
+        checks.append(QualityCheck("article review", "warn", str(exc)))
+    else:
+        average = round(sum(review.score for review in reviews) / len(reviews)) if reviews else 0
+        blockers = sum(1 for review in reviews if review.needs_fix)
+        ready = sum(1 for review in reviews if review.ready)
+        if blockers:
+            status = "warn"
+            detail = f"average {average}/100, {blockers} article(s) need fixes, {ready} ready"
+        elif ready == len(reviews):
+            status = "pass"
+            detail = f"average {average}/100, all {len(reviews)} article(s) ready"
+        else:
+            status = "warn"
+            detail = f"average {average}/100, no blockers, {ready}/{len(reviews)} ready"
+        checks.append(QualityCheck("article review", status, detail))
+
+    return checks
+
+
+def format_quality_report(checks: list[QualityCheck]) -> str:
+    lines = []
+    for check in checks:
+        label = {"pass": "OK", "warn": "WARN", "fail": "NG"}.get(check.status, check.status.upper())
+        lines.append(f"[{label}] {check.name}: {check.detail}")
+    return "\n".join(lines)
+
+
+def has_failures(checks: list[QualityCheck], *, strict: bool = False) -> bool:
+    if any(check.status == "fail" for check in checks):
+        return True
+    return strict and any(check.status == "warn" for check in checks)
+
+
+def _path_check(path: Path, name: str) -> QualityCheck:
+    return QualityCheck(name, "pass" if path.exists() else "fail", str(path))
+
+
+def _text_contains_check(path: Path, name: str, needle: str) -> QualityCheck:
+    if not path.exists():
+        return QualityCheck(name, "fail", f"file not found: {path}")
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return QualityCheck(name, "fail", str(exc))
+    if needle not in text:
+        return QualityCheck(name, "fail", f"missing text: {needle}")
+    return QualityCheck(name, "pass", "present")
+
+
+def _version_consistency_check(pyproject: Path, init_file: Path) -> QualityCheck:
+    try:
+        pyproject_text = pyproject.read_text(encoding="utf-8", errors="replace")
+        init_text = init_file.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return QualityCheck("version consistency", "fail", str(exc))
+    pyproject_version = _first_match(pyproject_text, r'(?m)^\s*version\s*=\s*["\']([^"\']+)["\']')
+    package_version = _first_match(init_text, r'(?m)^\s*__version__\s*=\s*["\']([^"\']+)["\']')
+    if not pyproject_version or not package_version:
+        return QualityCheck("version consistency", "fail", "version value missing")
+    if pyproject_version != package_version:
+        return QualityCheck(
+            "version consistency",
+            "fail",
+            f"pyproject={pyproject_version}, package={package_version}",
+        )
+    return QualityCheck("version consistency", "pass", pyproject_version)
+
+
+def _first_match(text: str, pattern: str) -> str:
+    match = re.search(pattern, text)
+    return match.group(1).strip() if match else ""
+
+
+def _workflow_checks(reports) -> list[QualityCheck]:
+    checks: list[QualityCheck] = []
+    titles: dict[str, int] = {}
+    invalid_statuses: list[str] = []
+    invalid_schedules: list[str] = []
+    for report in reports:
+        article = report.article
+        normalized_title = article.title.strip().lower()
+        titles[normalized_title] = titles.get(normalized_title, 0) + 1
+        if article.status and article.status not in VALID_STATUSES:
+            invalid_statuses.append(article.source.name)
+        if article.scheduled and not _valid_schedule(article.scheduled):
+            invalid_schedules.append(article.source.name)
+
+    duplicates = [title for title, count in titles.items() if title and count > 1]
+    if duplicates:
+        checks.append(QualityCheck("duplicate titles", "warn", f"{len(duplicates)} duplicate title(s)"))
+    else:
+        checks.append(QualityCheck("duplicate titles", "pass", "none"))
+
+    if invalid_statuses:
+        checks.append(QualityCheck("workflow status", "fail", f"{len(invalid_statuses)} invalid status value(s)"))
+    else:
+        checks.append(QualityCheck("workflow status", "pass", "all status values are known"))
+
+    if invalid_schedules:
+        checks.append(QualityCheck("schedule format", "fail", f"{len(invalid_schedules)} invalid schedule value(s)"))
+    else:
+        checks.append(QualityCheck("schedule format", "pass", "all schedule values are parseable"))
+    return checks
+
+
+def _valid_schedule(value: str) -> bool:
+    normalized = value.strip().replace("T", " ")
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M", "%Y/%m/%d %H:%M:%S"):
+        try:
+            datetime.strptime(normalized, fmt)
+            return True
+        except ValueError:
+            pass
+    return False

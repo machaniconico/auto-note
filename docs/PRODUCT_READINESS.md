@@ -1,0 +1,157 @@
+# Product Readiness
+
+auto-noteを販売できるレベルに近づけるための品質メモです。
+
+## 今できていること
+
+- GUIから記事作成、投稿ヘルパー、チェック、予定、公開済み管理、アイデア管理を操作できる
+- ホーム、診断、ヘルプの主要操作は折り返し可能なボタンバーで整理されている
+- noteの公式公開APIがない前提で、通常ブラウザとコピー用ヘルパーを使う安全な導線にしている
+- 記事一覧は状態別に色分けされ、公開予定や文字数が見える
+- 記事一覧で公開前チェックのOK/警告/NGを確認できる
+- GUIの `チェック` タブと `auto-note review` で記事の仕上がりをスコア化し、記事ごとの修正/改善件数と次に直す項目を一覧できる
+- GUIの記事タブ、チェックタブ、レビュー一覧、コマンド検索と `auto-note improve <file>` で、1記事の必須修正、仕上げ、投稿前確認をおすすめ順と所要時間目安付きで確認できる
+- GUIの記事タブの `投稿準備` パネルと `auto-note publish-ready <file>` で、選択記事のチェック、記事レビュー、工程状態、投稿ヘルパー生成確認を1つのレポートで確認でき、項目別の `次を実行` から該当操作へ進める
+- GUIの記事タブ、診断、ヘルプ、コマンド検索と `auto-note publish-queue` で、全記事を投稿できる順に並べ、`POSTABLE` / `CHECK` / `BLOCKED` / `DONE` と次アクションを一覧できる
+- GUIのホーム、診断、ヘルプ、コマンド検索と `auto-note overview` で、次に投稿する記事、期限超過の公開予定、古い下書き、公開URL未記録、アイデア箱を日々の運用サマリーとして確認できる
+- GUIの予定タブ/コマンド検索と `auto-note calendar-export` で、公開予定をGoogle/Outlook/Apple Calendar向け `.ics` に保存でき、標準CLIでは記事タイトルとファイル名を匿名化できる
+- GUIの投稿ヘルパー起動前に投稿前チェックを挟み、NGや確認項目がある場合は確認ダイアログで誤操作を止められる
+- ホーム、チェック、診断、CLIで、準備度、クイック確認、投稿キュー、販売者情報の不足/公開URL警告、プライバシー監査NG生成物候補を統合したアクションプランを順位付きで確認できる
+- ホームの優先アクションから、投稿キューの対象記事や販売者情報確認を直接開き、次の修正へ進める
+- ホームのおすすめ欄と優先アクション一覧から、アクションプランの上位項目を直接実行でき、選択中のCLIもコピーできる
+- ホームの販売準備サマリーで、起動を重くしない軽量判定、販売者残件、生成物不足、購入者ZIP有無、送付文有無、送付記録有無、販売向けの次アクションを常時確認でき、`次を実行` から該当GUI操作へ進める。生成物がそろった後は送付文、購入者ZIP、チェックリスト、販売証跡JSONを照合する `送付前チェック` へ進める
+- GUIの `初回` タブと `auto-note first-run` で、購入/導入直後のセットアップ、セルフテスト保存、最初の記事、投稿ヘルパー、バックアップ、問い合わせ一式をスコア付きで確認し、項目別に次の操作へ進める。記事の仕上げや販売者情報など投稿/販売前のTODOはINFOとして残し、初回起動確認のWARNと分けて扱える
+- GUIのホーム/初回/診断/ヘルプ/コマンド検索と `auto-note acceptance` で、購入/納品後の受入確認を1枚のレポートにまとめ、`受入保存` / `--report` で証跡として残せる。`受入フル保存` / `--full` では基本セットアップ作成、GUI初期化、投稿ヘルパーHTML生成、レポート保存までまとめて実行できる。記事本文の改善提案は投稿前確認として残しつつ、GUI起動や配布物受入のブロッカーとは分けられる
+- GUIの設定タブと `auto-note commercial-setup` で、販売者/屋号、販売ページURL、返金方針URL、サポート連絡先、利用条件/商用方針レビュー、サポート範囲確認を保存でき、設定タブ上で6項目の完了数、不足件数、確認件数、次に直す内容を入力中に表示できる。GUIの `次の不足へ` とコマンド検索の `販売者情報へ` で未入力または確認が必要な欄へ移動でき、設定保存時にも販売者情報の不足/警告件数を通知し、GUIの `販売者情報確認` では未保存の入力欄も含めて未入力項目、非URL形式、メールアドレス直書き、次に入力するGUI位置、CLIフラグ、販売素材/販売ナビへの次アクションを項目名付きで確認できる
+- GUIの `販売者テンプレ` と `auto-note commercial-setup --project-dir . --template` で、販売者情報と販売前確認のMarkdown下書きを `.auto-note\sales` に作成でき、未入力プレースホルダーが残る場合は直接保存コマンドを出さず、編集後にテンプレート適用する安全な導線を表示できる
+- GUIの `テンプレ適用` と `auto-note commercial-setup --project-dir . --apply-latest-template` / `--apply-template <path>` で、編集済み販売者テンプレートの値を設定へ取り込める。`terms_reviewed` と `support_scope_confirmed` は、利用条件、商用方針、サポート範囲、返金条件を販売ページに合わせて確認してから `yes` として扱える
+- GUIのホーム/初回/診断/ヘルプ/コマンド検索と `auto-note commercial-readiness` で、販売前の配布ZIP、プライバシー監査、受入証跡、販売者プロフィール、販売文書、利用条件/商用方針、販売最終確認、サポート連絡先、インストール導線を1枚のレポートにまとめ、`販売準備保存` / `--report` で証跡として残せる
+- GUIの `方針レビュー` と `auto-note commercial-readiness --project-dir . --policy-review` で、返金/キャンセル条件、ライセンス/利用条件、サポート範囲、送付前証跡の販売者向け最終確認を `.auto-note\sales\commercial-policy-review-*.txt` に保存できる。購入者向けZIPや問い合わせ一式には含めない販売者専用メモとして扱える
+- GUIの `販売ナビ` と `auto-note sales-plan` で、販売前に残るタスクと最新の配布ZIP/販売用一式ZIP/購入者向けZIP/販売素材のそろい具合を優先順、GUI位置、CLIコマンド付きで確認できる。購入者向けZIPは `Buyer delivery readiness` として検証状態、サイズ、SHA-256を販売者TODOとは別に確認でき、`Seller setup remaining`、`Tool/artifact actions remaining`、`Upload guidance` で販売者判断待ちとツール側の再生成残件を分けて見られる。GUIの `販売ナビ保存` と `auto-note sales-plan --project-dir . --report` で、販売ナビを `.auto-note\sales\sales-plan-*.txt` に証跡保存できる
+- GUIの `販売素材作成` / `販売素材検証` と `auto-note sales-materials` / `auto-note sales-materials --project-dir . --verify <path> --strict` で、販売ページ文案、購入者の最初の10分、納品メッセージ、FAQ、サポート範囲、返金方針要約、掲載前チェックリストのMarkdown生成と未設定項目検出ができる
+- GUIの診断/ヘルプ/コマンド検索と `auto-note sales-handoff` で、最新配布ZIP、販売素材Markdown、販売準備、プライバシー監査、配布ZIP検証結果、購入者向け納品文、購入者の最初の10分、購入者へ送るもの/販売者が保管するものを分けた納品チェックリスト、販売者向け納品記録テンプレ、販売者最終チェックリスト、サポート返信テンプレをmanifest/checksum付きの販売用一式ZIPにまとめられる
+- GUIの `購入者ZIP抽出` と `auto-note sales-handoff --extract-buyer <販売一式ZIP>` で、販売者用の証跡ZIPから購入者へ送る配布ZIP、`START_HERE_FOR_BUYER.txt`、納品メモ、購入者向けサポートガイド、`BUYER_DELIVERY_MANIFEST.json`、`SHA256SUMS.txt` だけを別フォルダへ取り出し、同時に購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip` を作成できる。GUIの `購入者ZIP検証`、`auto-note sales-handoff --verify-buyer <抽出フォルダ>`、`auto-note sales-handoff --verify-buyer-package <購入者向けZIP>` で、送付前に余計なファイル混入、最初に読むメモ不足、納品メモのZIP名不一致、配布ZIP破損、manifest不一致、チェックサム不一致を確認できる。既存フォルダから単体ZIPを作り直す場合は `auto-note sales-handoff --package-buyer <抽出フォルダ>` を使える
+- GUIの `販売一括作成` と `auto-note sales-finalize` で、新しい配布ZIP、販売者テンプレート、販売素材Markdown、販売用一式ZIP、チェックサム付き購入者向け抽出フォルダ、購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip`、最新ZIP名/サイズ/SHA-256入りの購入者向け送付文、販売ナビレポート、販売者送付前チェックリスト、販売証跡JSONマニフェスト `sales-evidence-manifest-*.json`、受入チェック証跡、診断ZIP、プライバシー監査、最終出荷前チェック、販売一括レポートを一度に作成できる。購入者向け抽出フォルダと単体ZIPも同時に検証し、販売ナビは `.auto-note\sales\sales-plan-*.txt` に保管され、販売証跡JSONにも送付ZIP名・サイズ・SHA-256・チェック結果を残し、購入者向けZIP/販売者証跡ZIP/配布ZIPのサイズとSHA-256も記録するため、送付物の取り違えを減らせる。GUIの `送付前チェック` では、最新送付文、購入者向けZIP、販売者チェックリスト、販売証跡JSONのZIP名とSHA-256を照合できる。GUIの `送付前保存` と `auto-note sales-finalize --project-dir . --send-check --send-check-report` では、同じ照合結果を `.auto-note\sales\buyer-send-readiness-*.txt` に保存できる。GUIの `送付記録` と `auto-note sales-finalize --project-dir . --delivery-receipt` では、送付前チェック証跡と、注文管理へ控える `seller-delivery-receipt-*.txt` を保存できる。GUIの `送付文コピー` では、最新送付文に書かれた購入者向けZIPを検証してからクリップボードへ入れ、検証NGならコピーせず診断タブに理由を出せる。販売者送付前チェックリストでは、購入者へ送るZIP、販売者が保管するZIP、販売ナビ証跡、販売証跡JSON、通常送ってはいけないファイルを一枚で確認できる。古い販売一式ZIPが残っていても再生成できるため、販売素材の必須項目を追加した後も詰まりにくい。GUIの `テンプレ取込一括` と `auto-note sales-finalize --project-dir . --apply-latest-template` では、編集済み最新販売者テンプレートを設定へ取り込んでから同じ一括作成へ進め、未入力項目や受入チェックのWARN/NGも項目名付きで表示できる
+- GUIと `auto-note self-test` で、導入後のセットアップ、クイック確認、アクションプラン、プライバシー監査、最新配布ZIP検証をまとめて確認でき、記事チェック/レビューだけのWARNは投稿前の磨き込みINFOとして整理し、`セルフテスト保存` / `--report` でテキストレポートを残せる
+- GUIの `E2E確認` と `auto-note workflow-smoke --report` で、一時プロジェクトを使った練習記事作成、公開前チェック、記事レビュー、投稿準備、投稿ヘルパーHTML生成、バックアップまでの簡易E2Eを確認できる
+- ホームとCLIで準備度スコア、警告、次の対応を確認できる。製品品質と記事の仕上がり、プライバシー監査NG生成物候補は別枠で表示される
+- GUIと `auto-note preflight` で販売/配布前の総合チェックを実行でき、トラブル診断も含めて確認できる。アクションプランと記事レビューは通常INFOとして確認でき、`--content-strict` では記事の改善項目も警告扱いにでき、GUIの `出荷ZIP作成` または `--create-release` で新しい配布ZIP作成と検証までまとめられる
+- `auto-note preflight --install-smoke` で、一時フォルダへのインストール、更新、アンインストール導線を確認できる
+- `auto-note gui --smoke` と `auto-note preflight --gui-smoke` で、GUIが初期化途中に落ちないかを出荷前に確認できる
+- 設定、診断、バックアップ、診断レポート、GUI起動ログがある
+- 壊れた `.auto-note/settings.json` でも既定値で起動し、診断とセットアップ確認で検知できる。修復時は破損ファイルを `.auto-note/settings.invalid-*.json` に退避できる
+- 壊れた `.auto-note/ideas.json` でもアイデア箱を空として起動し、診断とセットアップ確認で検知できる。修復時は破損ファイルを `.auto-note/ideas.invalid-*.json` に退避できる
+- GUI操作中の予期しないエラーをログに残し、画面上で案内できる
+- バックアップZIPの内容を復元前に確認でき、危険なZIPは復元前に止められる
+- 準備度と診断レポートの保守一覧で、最新バックアップが読めるか、危険エントリがないか、復元対象があるか、プライバシー監査NG生成物候補があるかを確認できる
+- バックアップZIPから記事、設定、アイデアを復元でき、復元前に安全バックアップを作成できる
+- 初回セットアップウィザードで、環境確認と基本設定をまとめて進められる
+- GUIの `自動修復` と `auto-note repair` で、基本フォルダ、設定、アイデア保存を安全に再作成し、プライバシー監査NG生成物候補も確認できる
+- GUIの `トラブル診断` と `auto-note troubleshoot` で、セットアップ、GUIログ、noteログイン詰まり、最新生成物のプライバシー監査、危険生成物候補、最新配布ZIPをまとめて確認できる
+- GUIと `auto-note quickstart` で、初回投稿までの導線、記事チェック、投稿ヘルパー生成可否、バックアップ状態をまとめて確認できる
+- GUIのホーム/初回/診断/ヘルプ/コマンド検索と `auto-note starter-pack` で、サンプル記事、予定、アイデア、匿名ICSを一括作成し、販売デモや購入直後の体験をすぐ作れる。二回目以降は重複作成せず、`auto-note starter-clean` とGUI `スターター整理` でサンプル由来の内容だけ安全に片付けられる
+- GUIと `auto-note practice` で、空の環境でも投稿ヘルパーまで試せる練習用記事を作成できる
+- `Ctrl+K` のコマンド検索から主要操作を呼び出せる
+- ユーザー記事を含めない配布ZIPを `auto-note release` またはGUIから作成できる
+- GUI内でMarkdown本文を編集、保存、再読込できる
+- GUIからタイトル、概要、タグ、coverを専用ダイアログで編集できる
+- GUI編集中の未保存Markdownを自動退避し、復元/削除できる
+- GUI保存時にMarkdownの保存履歴を残せる
+- 記事Markdownの新規作成、メタ更新、GUI本文保存、画像挿入は一時ファイル経由で安全に置き換えられる
+- 記事一覧を検索と状態で絞り込める
+- 画像を記事専用フォルダへ取り込み、Markdown画像記法の挿入とcover設定ができる
+- 任意依存のPillowで画像リサイズ/圧縮ができる
+- 画像最適化の既定ON/OFF、最大幅、品質をGUI設定に保存できる
+- セットアップ確認で初回導入状態と任意機能の有無を確認できる
+- 標準、手順・解説、レビュー、告知、日記テンプレートから新規記事を作成できる
+- 初回セットアップ、ヘルプ/サポートタブがある
+- cover画像と本文画像の欠落、大きめ画像をチェックできる
+- 診断レポートは標準でパス、ユーザー名、メール、記事タイトル、記事ファイル名を匿名化する
+- 診断レポートに匿名化済み記事レビュー、改善プラン、運用サマリー、公開予定、初回チェック、受入チェック、販売準備、販売者情報の完了数/不足数/確認数だけの匿名サマリー、セルフテスト、アクションプラン、最新記事の投稿準備レポート、投稿キュー、出荷前チェック、トラブル診断、準備度、製品品質、品質チェック、危険生成物候補を含む保守一覧を同梱できる
+- 診断レポートを作成する前にプレビューできる
+- バージョン/環境概要をGUIと `auto-note version` から確認できる
+- 依存ライブラリの第三者表記をGUIと `auto-note licenses` から確認し、`auto-note licenses --write` で文書更新できる
+- 問い合わせテンプレートMarkdownをGUIと `auto-note support` から作成でき、再現手順、直近の変更、添付物、匿名化済み診断プレビューを含められる
+- GUIの `問い合わせ一式` と `auto-note support --bundle` で、問い合わせMarkdownと診断レポートZIPを1つにまとめられる
+- 問い合わせ一式ZIPにmanifest/checksumを同梱し、GUIの `一式ZIP検証` と `auto-note support --verify <zip>` で検証できる
+- GUIの `プライバシー監査` と `auto-note privacy-audit` で、診断ZIP、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、販売方針レビュー、販売素材、販売一式ZIP、購入者向け単体ZIP、購入者向け送付文、購入者送付前チェックレポート、販売者向け納品記録、販売者送付前チェックリスト、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポート、問い合わせMarkdown、問い合わせ一式ZIP、配布ZIPに生のパス/ユーザー名/記事名/記事タイトル/メールが残っていないか確認できる
+- `auto-note quality` で配布前チェックを実行でき、`--product-only` でユーザー記事を除いた製品品質だけを確認できる
+- 配布ZIPに `START_HERE.txt`, `FIRST_RUN_CHECKLIST.txt`, `BUYER_ACCEPTANCE_CHECKLIST.txt`, `RELEASE_SUMMARY.txt`, `RELEASE_MANIFEST.json`, `CHECKSUMS.txt` を同梱できる
+- `auto-note release --verify` で配布ZIPのchecksum、manifest、プライバシーフラグを検証し、manifest概要を表示できる
+- `shortcuts\install-auto-note.bat` で非管理者ローカルインストールとショートカット作成ができる
+- 既存データを残す更新手順とロールバック手順がある
+- インストール/更新時に更新前バックアップと `install-info.json` を作成できる
+- 既定ではユーザーデータを残すアンインストール導線がある
+- `scripts\smoke-install.ps1` でインストール/アンインストール導線を一時フォルダで検証できる
+- サポート、インストール、更新、プライバシー、利用条件ドラフト、商用方針ドラフト、第三者表記、変更履歴、リリースチェックリストの文書がある
+- 古い投稿ヘルパーHTML、診断ZIP、問い合わせ一式、記事CSV、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、販売方針レビュー、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポートをプレビューして整理できる。配布ZIPは明示した場合だけ対象にでき、プライバシー監査NGの生成物だけを抽出して整理できる
+- 記事一覧CSVを出力できる
+- コンソールを出さない `auto-note.lnk` 起動がある
+
+## 販売前にさらに強化したいこと
+
+- インストール/アンインストール導線のユーザー環境実機検証
+- 自動テストのさらなる拡充
+- 返金/ライセンス方針と利用条件ドラフトを、実際の販売ページ/決済方法/マーケットプレイス表示と照合する最終レビュー
+
+## サポート時に見る場所
+
+- `.auto-note/gui-error.log`
+- `.auto-note/settings.json`
+- `.auto-note/backups`
+- `.auto-note/autosaves`
+- `.auto-note/diagnostics`
+- `.auto-note/releases`
+- `auto-note diagnose`
+- `auto-note diagnose --preview`
+- `auto-note diagnose --report`
+- `auto-note first-run --project-dir . --gui-smoke`
+- `auto-note acceptance --project-dir . --full`
+- `auto-note commercial-setup --project-dir . --seller-name "Your Shop" --sales-url "https://example.com" --refund-url "https://example.com/refund" --support-contact "https://example.com/support" --terms-reviewed --support-scope-confirmed`
+- `auto-note commercial-setup --project-dir . --template`
+- `auto-note commercial-setup --project-dir . --apply-latest-template`
+- `auto-note commercial-readiness --project-dir . --report`
+- `auto-note commercial-readiness --project-dir . --policy-review`
+- `auto-note sales-plan --project-dir .`
+- `auto-note sales-plan --project-dir . --report`
+- `auto-note sales-materials --project-dir .`
+- `auto-note sales-materials --project-dir . --verify ".auto-note\sales\auto-note-sales-materials-YYYYMMDD-HHMMSS.md" --strict`
+- `auto-note sales-handoff --project-dir .`
+- `auto-note sales-handoff --project-dir . --extract-buyer ".auto-note\sales\auto-note-sales-handoff-YYYYMMDD-HHMMSS.zip"`
+- `auto-note sales-handoff --project-dir . --verify-buyer ".auto-note\sales\buyer-delivery-YYYYMMDD-HHMMSS"`
+- `auto-note sales-handoff --project-dir . --package-buyer ".auto-note\sales\buyer-delivery-YYYYMMDD-HHMMSS"`
+- `auto-note sales-handoff --project-dir . --verify-buyer-package ".auto-note\sales\auto-note-buyer-delivery-YYYYMMDD-HHMMSS.zip"`
+- `auto-note sales-finalize --project-dir .`
+- `auto-note sales-finalize --project-dir . --apply-latest-template`
+- `auto-note sales-finalize --project-dir . --send-check --send-check-report`
+- `auto-note sales-finalize --project-dir . --delivery-receipt`
+- `auto-note sales-finalize --project-dir . --strict --gui-smoke`
+- `auto-note self-test --project-dir . --gui-smoke --report`
+- `auto-note action-plan --project-dir .`
+- `auto-note quickstart --project-dir .`
+- `auto-note repair --project-dir .`
+- `auto-note repair --project-dir . --apply`
+- `auto-note troubleshoot --project-dir .`
+- `auto-note starter-pack --project-dir .`
+- `auto-note starter-clean --project-dir .`
+- `auto-note practice --project-dir . --open`
+- `auto-note quickstart --project-dir . --smoke-helper`
+- `auto-note readiness`
+- `auto-note preflight --project-dir .`
+- `auto-note gui --project-dir . --smoke`
+- `auto-note preflight --project-dir . --gui-smoke`
+- `auto-note preflight --project-dir . --content-strict`
+- `auto-note privacy-audit --project-dir .`
+- `auto-note review .\articles`
+- `auto-note publish-ready .\articles\post.md --smoke-helper`
+- `auto-note publish-queue --project-dir . --report`
+- `auto-note calendar-export --project-dir .`
+- `auto-note licenses`
+- `auto-note images .\articles`
+- `auto-note quality`
+- `auto-note quality --product-only`
+- `auto-note backup --inspect .\.auto-note\backups\<backup-file>.zip`
+- `auto-note cleanup --project-dir .`
+- `auto-note export --project-dir .`
+- `auto-note image-import .\articles\post.md .\image.png --insert`
+- `auto-note history .\articles\post.md`

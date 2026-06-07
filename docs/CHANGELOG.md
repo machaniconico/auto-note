@@ -1,0 +1,116 @@
+# Changelog
+
+## 0.1.0
+
+- GUI起動ショートカット `auto-note.lnk`
+- 記事一覧、本文編集、投稿ヘルパー、コピー操作
+- アイデア、予定、公開済み管理
+- 公開前チェック、画像チェック、品質チェック
+- 販売/配布前の総合確認を行う `auto-note preflight`、GUI出荷前チェック、GUI出荷ZIP作成
+- `auto-note preflight` で記事レビューを通常INFO扱いに分離し、`--content-strict` で原稿改善項目も警告扱いにできる判定
+- `auto-note preflight` にアクションプラン状態をINFO/NGとして表示する判定
+- `auto-note preflight --install-smoke` による一時インストール/更新/アンインストール確認
+- `auto-note gui --smoke` と `auto-note preflight --gui-smoke` によるGUI初期化スモーク確認
+- `auto-note-gui.bat` の本起動前GUIスモークと、失敗時のログ/サポート一式作成案内
+- GUI起動失敗時に、可能なら問い合わせ一式ZIPを自動作成するサポート導線
+- 設定、初回セットアップウィザード、ヘルプ/サポートタブ
+- 初回セットアップウィザードからクイック確認、練習記事作成、新規記事作成へ直接進める導線
+- 壊れた `settings.json` でも既定値で起動し、診断/セットアップ確認で検知できる設定読み込みと、修復前の破損設定退避
+- 壊れた `ideas.json` でもアイデア箱を空として起動し、診断/セットアップ確認で検知できるアイデア読み込みと、修復前の破損アイデア退避
+- 基本フォルダ、設定、アイデア保存を安全に再作成し、プライバシー監査NG生成物候補も確認できる `auto-note repair` とGUI `自動修復`
+- `auto-note repair` のプライバシー整理プレビューで、候補数、容量、diagnostic/support/releaseなどのカテゴリ内訳、`--include-releases` 要否を表示
+- セットアップ、GUIログ、noteログイン詰まり、最新生成物のプライバシー監査、危険生成物候補、最新配布ZIPをまとめて確認する `auto-note troubleshoot` とGUI `トラブル診断`
+- 設定とアイデアJSON保存をランダム一時ファイル経由のatomic保存に統一
+- 導入後10分の確認を順番に表示する `auto-note first-run` とGUI初回チェック
+- GUIの `初回` タブで、初回チェックのスコア、OK/INFO/WARN/NG件数、項目別の次アクション、CLIコピーを確認できる導線
+- 購入/納品後の確認を1枚にまとめ、基本セットアップ作成、GUI初期化、投稿ヘルパーHTML生成、レポート保存まで一括実行できる `auto-note acceptance --full`、GUI `受入チェック` / `受入保存` / `受入フル保存`
+- 販売者/屋号、販売ページURL、返金方針URL、サポート連絡先、利用条件/商用方針レビュー、サポート範囲確認を保存し、設定保存時に不足/警告件数を通知し、未入力項目名、非URL形式、メールアドレス直書き、次に入力するGUI位置、CLIフラグ、販売素材/販売ナビへの次アクションを表示し、未保存入力も含めて確認できるGUI `販売者情報確認` と、販売者情報テンプレートも作れる `auto-note commercial-setup --template` / GUI `販売者テンプレ`
+- 編集済み販売者テンプレートを設定へ取り込む `auto-note commercial-setup --apply-latest-template` / `--apply-template` とGUI `テンプレ適用`
+- 販売前の配布ZIP、監査、受入証跡、販売者プロフィール、販売文書、利用条件/商用方針、販売最終確認、サポート連絡先、インストール導線を1枚にまとめる `auto-note commercial-readiness`、GUI `販売準備` / `販売準備保存`
+- 販売前に残るタスクと最新の配布ZIP/販売用一式ZIP/購入者向けZIP/販売素材のそろい具合を優先順、GUI位置、CLIコマンド付きで表示する `auto-note sales-plan` とGUI `販売ナビ`
+- 販売ページ文案、購入者の最初の10分、納品メッセージ、FAQ、サポート範囲、返金方針要約、掲載前チェックリストを作り、未設定項目や古いZIP名も検証できる `auto-note sales-materials` / `--verify --strict` とGUI `販売素材作成` / `販売素材検証`
+- 最新配布ZIP、販売素材Markdown、販売準備、プライバシー監査、配布ZIP検証結果、購入者向け納品文、購入者の最初の10分、購入者へ送るもの/販売者が保管するものを分けた納品チェックリスト、販売者向け納品記録テンプレ、販売者最終チェックリスト、サポート返信テンプレをmanifest/checksum付きでまとめる `auto-note sales-handoff` とGUI `販売一式作成` / `販売一式検証`
+- 販売者用の販売一式ZIPから、購入者へ送る配布ZIP、`START_HERE_FOR_BUYER.txt`、納品メモ、購入者向けサポートガイド、`BUYER_DELIVERY_MANIFEST.json`、`SHA256SUMS.txt` だけを別フォルダへ取り出し、購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip` も作成し、送付前に余計なファイル混入、最初に読むメモ不足、配布ZIP破損、manifest不一致、チェックサム不一致を検証する `auto-note sales-handoff --extract-buyer` / `--package-buyer` / `--verify-buyer` / `--verify-buyer-package` とGUI `購入者ZIP抽出` / `購入者ZIP検証`
+- 新しい配布ZIP、販売者テンプレート、販売素材Markdown、販売一式ZIP、チェックサム付き購入者向け抽出フォルダ、購入者向け単体ZIP、最新ZIP名/サイズ/SHA-256入りの購入者向け送付文、受入チェック証跡、診断ZIP、監査、最終チェック、販売一括レポートをまとめて作成し、購入者向けフォルダと単体ZIPも検証し、購入者向けZIP/販売者証跡ZIP/配布ZIPのサイズとSHA-256も記録し、古い販売一式ZIPが残っていても作り直せ、編集済み最新テンプレートの取込からも始められ、未入力の販売者情報と受入チェックWARN/NGを項目名付きで確認できる `auto-note sales-finalize` / `--apply-latest-template` とGUI `販売一括作成` / `テンプレ取込一括`
+- 初回投稿までの導線を確認する `auto-note quickstart`、GUIクイック確認、投稿ヘルパーHTML生成確認
+- 導入後の基本動作をまとめて確認する `auto-note self-test`、`--report`、GUIセルフテスト保存
+- 一時プロジェクトで練習記事、公開前チェック、記事レビュー、投稿準備、投稿ヘルパーHTML生成、バックアップまで確認する `auto-note workflow-smoke` とGUI `E2E確認`
+- サンプル記事3本、アイデア1件、匿名の予定ICSを作り、記事一覧/予定/投稿キュー/運用サマリーをすぐ体験できる `auto-note starter-pack` とGUI `スターター一式`
+- `auto-note starter-pack` の重複作成防止と、スターター由来の記事/未使用アイデアをプレビュー後に整理できる `auto-note starter-clean` とGUI `スターター整理`
+- 1記事の必須修正、仕上げ、投稿前確認をおすすめ順と所要時間目安で表示する `auto-note improve` とGUI `改善プラン`
+- 全記事を投稿できる順に並べ、`POSTABLE` / `CHECK` / `BLOCKED` / `DONE` と次アクションを表示する `auto-note publish-queue` とGUI `投稿キュー`
+- 次に投稿する記事、期限超過の公開予定、古い下書き、公開URL未記録、アイデア箱をまとめる `auto-note overview` とGUI `運用サマリー`
+- 公開予定をGoogle/Outlook/Apple Calendar向け `.ics` に保存する `auto-note calendar-export` とGUI `予定ICS出力`
+- アクションプランが投稿キューの先頭記事と販売者情報の不足/公開URL警告を優先アクションとして拾い、GUIホームから対象記事、投稿準備パネル、販売者情報確認へ直接移動できる導線
+- 投稿ヘルパー起動前に投稿前チェックを挟み、NG/確認項目がある場合に確認ダイアログで止める安全ゲート
+- 準備度、クイック確認、プライバシー監査NG生成物候補を統合して次の一手を出す `auto-note action-plan` とGUIアクションプラン
+- ホームのおすすめ欄と優先アクション一覧から、アクションプラン上位項目を直接実行/CLIコピーする導線
+- 空の環境でも投稿ヘルパーまで試せる `auto-note practice` とGUI練習記事作成
+- ホーム、診断、ヘルプの折り返し可能な操作ボタンバー
+- ホームの準備OK KPIと、アクションプランから作る優先アクション表示
+- GUI投稿ヘルパーで記事未選択の場合、表示中の記事から準備OK/予定/下書き順に自動選択するフォールバック
+- `Ctrl+K` コマンド検索
+- GUI編集中Markdownの自動退避と復元/削除
+- 記事Markdown保存の一時ファイル経由の安全な置き換え
+- バックアップ、診断レポート、配布ZIP作成
+- バックアップZIPからの記事、設定、アイデア復元
+- バックアップZIPの復元前確認と危険エントリ検出
+- 準備度と診断レポート保守一覧での最新バックアップ健全性確認
+- 診断レポートの標準匿名化
+- 診断レポート内のクイックスタート確認でも記事ファイル名と生成ヘルパー名を匿名化
+- 診断レポートへの匿名化済み記事レビュー、初回チェック、受入チェック、販売準備、セルフテスト、アクションプラン、出荷前チェック、準備度、製品品質、品質チェック、セルフテスト/受入チェック/販売準備保存レポート件数を含む保守一覧の同梱
+- 診断レポートへのクイックスタート確認の同梱
+- 診断レポートへの匿名化済み最新記事投稿準備レポート `publish-ready.txt` の同梱
+- 診断レポートへの匿名化済み改善プラン `improvement-plan.txt` の同梱
+- 診断レポートへの匿名化済み運用サマリー `overview.txt` の同梱
+- 診断レポートへの匿名化済み公開予定 `calendar.txt` の同梱
+- 診断レポートへの匿名化済み投稿キュー `publish-queue.txt` の同梱
+- 診断レポートへの匿名化済みトラブル診断 `troubleshoot.txt` の同梱
+- 診断レポートの保守一覧に問い合わせMarkdownと問い合わせ一式ZIPの件数/最新名を表示
+- 診断ZIP、問い合わせMarkdown、問い合わせ一式ZIP、記事CSV、配布ZIPの同秒生成時の上書き防止
+- インストール/更新前バックアップの同秒生成時の上書き防止とスモークテスト強化
+- GUI操作中エラーのログ保存と画面通知
+- 配布ZIPのmanifest/checksum同梱
+- 配布ZIPへの `FIRST_RUN_CHECKLIST.txt` 同梱
+- 配布ZIPへの `BUYER_ACCEPTANCE_CHECKLIST.txt` 同梱
+- `release --verify` によるmanifest、プライバシーフラグ、ユーザー記事/生成物/仮想環境混入チェックと検証済みmanifest概要表示
+- 配布ZIP直下の `START_HERE.txt` 強化と `RELEASE_SUMMARY.txt` 同梱
+- 診断レポート作成前プレビュー
+- アプリ情報/バージョン表示
+- 再現手順、直近の変更、添付物、匿名化済み診断プレビューを含むサポート問い合わせテンプレート生成
+- 問い合わせMarkdownと診断レポートZIPを1つにまとめる `auto-note support --bundle` とGUI問い合わせ一式
+- 問い合わせMarkdown/問い合わせ一式ZIPの作成直後に、送付前の検証とプライバシー監査を表示
+- 問い合わせ一式ZIPへのmanifest/checksum同梱と `auto-note support --verify`
+- GUIの一式ZIP検証と、診断レポート保守一覧への問い合わせ一式ZIP検証結果表示
+- 最新の診断ZIP、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、販売素材、販売一式ZIP、購入者向け単体ZIP、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポート、問い合わせMarkdown、問い合わせ一式ZIP、配布ZIPを確認する `auto-note privacy-audit` とGUIプライバシー監査
+- 配布ZIPのmanifest/checksumだけでなく、ZIP内テキストの生パス/記事情報も `privacy-audit` で検出
+- 品質チェックで非表示GUI起動VBSとショートカットのアイコン/起動先設定を検査
+- 品質チェックで `pyproject.toml` とアプリ内部 `__version__` の一致を検査
+- `privacy-audit --all` のNG時に、古い生成物整理へ進みやすい次アクションを表示
+- `auto-note cleanup --privacy-failed` とGUIの危険生成物確認/整理で、プライバシー監査NG生成物だけを対象化
+- 準備度と診断レポート保守一覧に、プライバシー監査NG生成物の整理候補数を表示
+- 記事テンプレート選択
+- 記事一覧検索/状態フィルター
+- 記事一覧で公開前チェックのOK/警告/NGを表示
+- 記事のタイトル、概要、構成、導入、締め、タグ、画像、公開状態をスコア化する `auto-note review` と、チェックタブのレビュー一覧/詳細/編集/投稿準備導線
+- 1記事のチェック、レビュー、工程状態、投稿ヘルパー生成確認をまとめる `auto-note publish-ready` と、記事タブのライブ投稿準備パネル/次アクション導線
+- タイトル、概要、タグ、coverのGUIメタ編集
+- GUI保存時のMarkdown履歴とGUI復元
+- 画像取り込み、Markdown挿入、cover設定
+- 任意依存Pillowによる画像リサイズ/圧縮
+- 画像最適化ON/OFF、最大幅、品質のGUI設定保存
+- セットアップ確認
+- 準備度スコアと次の対応を表示する `auto-note readiness`
+- 製品品質とユーザー記事の仕上がりを分ける `auto-note quality --product-only` と準備度表示
+- 記事一覧CSV出力
+- 古い投稿ヘルパーHTML、診断ZIP、問い合わせ一式、記事CSV、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、予定ICS、投稿キューレポート、E2E確認レポートの整理
+- 配布ZIP checksum検証
+- 非管理者ローカルインストール用 `shortcuts\install-auto-note.bat`
+- 更新/ロールバック手順 `docs\UPDATE.md`
+- インストール/更新前バックアップと `.auto-note\install-info.json`
+- ユーザーデータを残すアンインストール用 `shortcuts\uninstall-auto-note.bat`
+- インストール/アンインストール検証用 `scripts\smoke-install.ps1`
+- インストール更新前バックアップ作成時のPowerShell圧縮ライブラリ読み込み修正
+- 利用条件/免責ドラフト `docs\TERMS_DRAFT.md`
+- ライセンス/返金/サポート方針ドラフト `docs\COMMERCIAL_POLICY_DRAFT.md`
+- 依存ライブラリの第三者表記 `docs\THIRD_PARTY_NOTICES.md`、`auto-note licenses`、`auto-note licenses --write`
