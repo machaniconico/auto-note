@@ -2426,6 +2426,15 @@ tags:
                 "exitCode = shell.Run(command, 0, True)\n",
                 encoding="utf-8",
             )
+            (project / ".github" / "workflows").mkdir(parents=True)
+            (project / ".github" / "workflows" / "ci.yml").write_text(
+                "windows-latest\n"
+                "python -m unittest discover -s tests\n"
+                "python -m auto_note quality --project-dir . --product-only\n"
+                "AUTO_NOTE_LAUNCHER_CHECK\n"
+                "python -m auto_note gui --project-dir . --smoke\n",
+                encoding="utf-8",
+            )
             (project / "scripts" / "create-gui-shortcut.ps1").write_text(
                 '$launcher = Join-Path $project "scripts\\launch-gui.vbs"\n'
                 '$shortcut.TargetPath = "$env:SystemRoot\\System32\\wscript.exe"\n'
@@ -2509,6 +2518,12 @@ tags:
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("version consistency:fail", product_details)
+        self.assertIn("GitHub Actions CI:fail", product_details)
+        self.assertIn("CI Windows runner:fail", product_details)
+        self.assertIn("CI unit tests:fail", product_details)
+        self.assertIn("CI product quality gate:fail", product_details)
+        self.assertIn("CI hidden launcher syntax check:fail", product_details)
+        self.assertIn("CI GUI smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
         self.assertIn("CLI starter cleanup command:fail", product_details)
@@ -2680,6 +2695,12 @@ tags:
         self.assertIn("release buyer acceptance checklist:fail", product_details)
         self.assertIn("release buyer acceptance full guidance:fail", product_details)
         self.assertIn("version consistency:pass", launcher_details)
+        self.assertIn("GitHub Actions CI:pass", launcher_details)
+        self.assertIn("CI Windows runner:pass", launcher_details)
+        self.assertIn("CI unit tests:pass", launcher_details)
+        self.assertIn("CI product quality gate:pass", launcher_details)
+        self.assertIn("CI hidden launcher syntax check:pass", launcher_details)
+        self.assertIn("CI GUI smoke:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)
         self.assertIn("CLI starter cleanup command:pass", launcher_details)

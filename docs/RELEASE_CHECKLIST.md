@@ -37,6 +37,7 @@ $env:PYTHONPATH='src'; python -m auto_note backup --project-dir .
 $env:PYTHONPATH='src'; python -m auto_note backup --inspect .\.auto-note\backups\<backup-file>.zip
 $env:PYTHONPATH='src'; python -m auto_note quality --project-dir .
 $env:PYTHONPATH='src'; python -m auto_note quality --project-dir . --product-only
+$env:AUTO_NOTE_LAUNCHER_CHECK='1'; cscript.exe //nologo .\scripts\launch-gui.vbs
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-install.ps1
 $env:PYTHONPATH='src'; python -m auto_note release --project-dir .
 $env:PYTHONPATH='src'; python -m auto_note release --verify .\.auto-note\releases\<release-file>.zip
@@ -47,6 +48,11 @@ $env:PYTHONPATH='src'; python -m auto_note preflight --project-dir . --content-s
 $env:PYTHONPATH='src'; python -m auto_note preflight --project-dir . --create-release
 $env:PYTHONPATH='src'; python -m auto_note preflight --project-dir . --create-release --install-smoke --gui-smoke
 ```
+
+## GitHub Actions
+
+- `CI` が最新の `main` または販売用ブランチで成功している
+- `CI` が Windows runner、全unittest、製品品質ゲート、VBSランチャー構文チェック、GUI smokeを含んでいる
 
 ## GUIチェック
 

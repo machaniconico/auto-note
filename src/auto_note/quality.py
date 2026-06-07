@@ -43,6 +43,42 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(_path_check(project_dir / "docs" / "THIRD_PARTY_NOTICES.md", "third-party notices"))
     checks.append(_path_check(project_dir / "docs" / "CHANGELOG.md", "changelog"))
     checks.append(_path_check(project_dir / "docs" / "RELEASE_CHECKLIST.md", "release checklist"))
+    checks.append(_path_check(project_dir / ".github" / "workflows" / "ci.yml", "GitHub Actions CI"))
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI Windows runner",
+            "windows-latest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI unit tests",
+            "python -m unittest discover -s tests",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI product quality gate",
+            "python -m auto_note quality --project-dir . --product-only",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI hidden launcher syntax check",
+            "AUTO_NOTE_LAUNCHER_CHECK",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI GUI smoke",
+            "python -m auto_note gui --project-dir . --smoke",
+        )
+    )
     checks.append(_version_consistency_check(project_dir / "pyproject.toml", project_dir / "src" / "auto_note" / "__init__.py"))
     checks.append(_path_check(project_dir / "auto-note-gui.bat", "GUI launcher"))
     checks.append(
