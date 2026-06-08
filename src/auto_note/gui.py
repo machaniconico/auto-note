@@ -1559,7 +1559,33 @@ class AutoNoteApp(tk.Tk):
             cell = ttk.Frame(support_summary, style="Surface.TFrame")
             cell.grid(row=0, column=column, sticky=tk.NSEW, padx=(0 if column == 0 else 8, 0))
             ttk.Label(cell, text=label, style="KpiLabel.TLabel").pack(anchor=tk.W)
-            if label == "検証":
+            if label == "連絡先":
+                status_row = ttk.Frame(cell, style="Surface.TFrame")
+                status_row.pack(fill=tk.X, pady=(3, 0))
+                pill_text, bg, fg = _support_contact_indicator_style(variable.get())
+                self.support_contact_status_pill = tk.Label(
+                    status_row,
+                    text=pill_text,
+                    bg=bg,
+                    fg=fg,
+                    font=("Segoe UI", 8, "bold"),
+                    padx=6,
+                    pady=1,
+                    width=8,
+                )
+                self.support_contact_status_pill.pack(side=tk.LEFT)
+                ttk.Label(
+                    status_row,
+                    textvariable=variable,
+                    style="Surface.TLabel",
+                    wraplength=160,
+                ).pack(
+                    side=tk.LEFT,
+                    fill=tk.X,
+                    expand=True,
+                    padx=(6, 0),
+                )
+            elif label == "検証":
                 status_row = ttk.Frame(cell, style="Surface.TFrame")
                 status_row.pack(fill=tk.X, pady=(3, 0))
                 pill_text, bg, fg = _support_bundle_indicator_style(variable.get())
@@ -3439,6 +3465,14 @@ class AutoNoteApp(tk.Tk):
         pill_text, bg, fg = _support_bundle_indicator_style(text)
         pill.configure(text=pill_text, bg=bg, fg=fg)
 
+    def _set_support_contact_status(self, contact: str) -> None:
+        self.support_contact_summary_var.set(contact or "未設定")
+        pill = getattr(self, "support_contact_status_pill", None)
+        if pill is None:
+            return
+        pill_text, bg, fg = _support_contact_indicator_style(contact)
+        pill.configure(text=pill_text, bg=bg, fg=fg)
+
     def _home_sales_lightweight_next_step(
         self,
         *,
@@ -3592,7 +3626,7 @@ class AutoNoteApp(tk.Tk):
         if not hasattr(self, "support_bundle_summary_var"):
             return
         contact = self.settings.support_contact.strip() if self.settings.support_contact else ""
-        self.support_contact_summary_var.set(contact or "未設定")
+        self._set_support_contact_status(contact)
         bundles = list_support_bundles(self.project_dir)
         if not bundles:
             self.support_bundle_summary_var.set("未作成")
@@ -5516,6 +5550,12 @@ def _support_bundle_indicator_style(text: str) -> tuple[str, str, str]:
     if text == "要更新":
         return ("UPDATE", "#b45309", "#ffffff")
     return ("CHECK", "#2563eb", "#ffffff")
+
+
+def _support_contact_indicator_style(contact: str) -> tuple[str, str, str]:
+    if contact.strip() and contact.strip() != "未設定":
+        return ("OK", "#047857", "#ffffff")
+    return ("REQ", "#b45309", "#ffffff")
 
 
 def _publish_ready_counts(report: PublishReadyReport) -> dict[str, int]:
