@@ -1594,9 +1594,10 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ一式", self.create_support_bundle_action, "Primary.TButton"),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
+                ("最新ZIP場所", self.open_latest_support_bundle_location_action),
                 ("問い合わせ作成", self.create_support_request_action),
             ],
-            columns=4,
+            columns=5,
         )
 
         docs = ttk.Frame(self.help_tab, style="Surface.TFrame", padding=12)
@@ -3921,6 +3922,7 @@ class AutoNoteApp(tk.Tk):
             ("問い合わせ一式", "依頼文と診断ZIPを1つにまとめる", self.create_support_bundle_action),
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
+            ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
             ("品質チェック", "販売/配布前チェックを実行", self.run_quality_to_tab),
             ("診断プレビュー", "診断レポートの内容を確認", self.preview_diagnostic_report_action),
             ("診断レポート作成", "匿名化済み診断ZIPを作成", self.create_diagnostic_report_action),
@@ -5220,9 +5222,11 @@ class AutoNoteApp(tk.Tk):
         if not bundles:
             messagebox.showinfo("一式ZIP検証", "問い合わせ一式ZIPがまだありません。")
             self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
             return
         latest = bundles[0]
         errors = verify_support_bundle(latest)
+        self._refresh_support_summary()
         self._set_text(self.help_text, format_support_bundle_verification(latest, errors))
         self.notebook.select(self.help_tab)
         if errors:
@@ -5230,14 +5234,28 @@ class AutoNoteApp(tk.Tk):
         else:
             self.notify(f"問い合わせ一式ZIPを検証しました: {latest.name}", level="success")
 
+    def open_latest_support_bundle_location_action(self) -> None:
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            messagebox.showinfo("最新ZIP場所", "問い合わせ一式ZIPがまだありません。")
+            self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
+            return
+        latest = bundles[0]
+        self._refresh_support_summary()
+        _open_path(latest.parent)
+        self.notify(f"最新問い合わせ一式ZIPの場所を開きました: {latest.name}", level="success")
+
     def show_support_send_checklist_action(self) -> None:
         bundles = list_support_bundles(self.project_dir)
         if not bundles:
             messagebox.showinfo("送付前リスト", "問い合わせ一式ZIPがまだありません。先に 問い合わせ一式 を作成してください。")
             self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
             return
         latest = bundles[0]
         errors = verify_support_bundle(latest)
+        self._refresh_support_summary()
         try:
             send_checklist = read_support_send_checklist(latest)
         except (OSError, ValueError) as exc:

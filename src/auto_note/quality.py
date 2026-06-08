@@ -1185,6 +1185,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send open latest location action",
+            "open_latest_support_bundle_location_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send open latest location feedback",
+            "最新問い合わせ一式ZIPの場所を開きました",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send verify refreshes summary",
+            "self._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send checklist refreshes summary",
+            "self._refresh_support_summary()\n        try:\n            send_checklist",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send checklist reader",
             "read_support_send_checklist",
         )
