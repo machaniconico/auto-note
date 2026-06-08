@@ -2034,6 +2034,7 @@ tags: note
             with zipfile.ZipFile(bundle) as archive:
                 bundle_names = set(archive.namelist())
                 bundle_readme = archive.read("README.txt").decode("utf-8")
+                send_checklist = archive.read("SUPPORT_SEND_CHECKLIST.txt").decode("utf-8")
                 bundled_request = archive.read("support-request.md").decode("utf-8")
                 diagnostic_bytes = archive.read("diagnostic-report.zip")
                 bundle_manifest = json.loads(archive.read("SUPPORT_BUNDLE_MANIFEST.json").decode("utf-8"))
@@ -2066,6 +2067,7 @@ tags: note
             bundle_names,
             {
                 "README.txt",
+                "SUPPORT_SEND_CHECKLIST.txt",
                 "support-request.md",
                 "diagnostic-report.zip",
                 "SUPPORT_BUNDLE_MANIFEST.json",
@@ -2075,12 +2077,17 @@ tags: note
         self.assertEqual(bundle_errors, [])
         self.assertIn("[OK] support bundle verified", bundle_verification_text)
         self.assertIn("privacy-safe", bundle_readme)
+        self.assertIn("問い合わせ一式 送付前チェックリスト", send_checklist)
+        self.assertIn("Send this ZIP only", send_checklist)
+        self.assertIn("auto-note support --verify <this zip>", send_checklist)
+        self.assertIn("auto-note privacy-audit --project-dir .", send_checklist)
         self.assertIn("auto-note support request", bundled_request)
         self.assertNotIn(str(project), bundled_request)
         self.assertNotIn("問い合わせ記事", bundled_request)
-        self.assertEqual(bundle_manifest["file_count"], 3)
+        self.assertEqual(bundle_manifest["file_count"], 4)
         self.assertFalse(bundle_manifest["privacy"]["includes_raw_details"])
         self.assertIn("diagnostic-report.zip", checksums)
+        self.assertIn("SUPPORT_SEND_CHECKLIST.txt", checksums)
         self.assertIn("SUPPORT_BUNDLE_MANIFEST.json", checksums)
         self.assertIn("diagnostics.txt", diagnostic_names)
         self.assertIn("first-run.txt", diagnostic_names)
@@ -2505,6 +2512,10 @@ tags:
                 "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\n",
                 encoding="utf-8",
             )
+            (project / "src" / "auto_note" / "support.py").write_text(
+                "SUPPORT_SEND_CHECKLIST.txt\nSend this ZIP only\n",
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
                 "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n",
                 encoding="utf-8",
@@ -2522,10 +2533,18 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\n",
+                "starter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
+            (project / "docs" / "SUPPORT.md").write_text(
+                "SUPPORT_SEND_CHECKLIST.txt\n",
+                encoding="utf-8",
+            )
+            (project / "docs" / "PRIVACY.md").write_text(
+                "SUPPORT_SEND_CHECKLIST.txt\n",
+                encoding="utf-8",
+            )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
                 "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
@@ -2548,6 +2567,8 @@ tags:
         self.assertTrue(any(check.name == "article review" for check in checks))
         self.assertIn("GUI launcher smoke check:fail", product_details)
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
+        self.assertIn("support bundle send checklist:fail", product_details)
+        self.assertIn("support bundle send-only guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("release check script:fail", product_details)
         self.assertIn("release check unit tests:fail", product_details)
@@ -2723,6 +2744,9 @@ tags:
         self.assertIn("README sales plan report guidance:fail", product_details)
         self.assertIn("README sales evidence manifest guidance:fail", product_details)
         self.assertIn("README RC handoff guidance:fail", product_details)
+        self.assertIn("README support send checklist guidance:fail", product_details)
+        self.assertIn("support guide send checklist guidance:fail", product_details)
+        self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
         self.assertIn("product readiness commercial policy review command:fail", product_details)
@@ -2924,6 +2948,9 @@ tags:
         self.assertIn("README sales plan report guidance:pass", launcher_details)
         self.assertIn("README sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("README RC handoff guidance:pass", launcher_details)
+        self.assertIn("README support send checklist guidance:pass", launcher_details)
+        self.assertIn("support guide send checklist guidance:pass", launcher_details)
+        self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
         self.assertIn("product readiness commercial policy review command:pass", launcher_details)
@@ -2954,6 +2981,8 @@ tags:
         self.assertIn("release buyer acceptance full guidance:pass", launcher_details)
         self.assertIn("GUI launcher smoke check:pass", launcher_details)
         self.assertIn("GUI launcher support bundle guidance:pass", launcher_details)
+        self.assertIn("support bundle send checklist:pass", launcher_details)
+        self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("hidden GUI launcher target:pass", launcher_details)
         self.assertIn("hidden GUI launcher no console:pass", launcher_details)
         self.assertIn("hidden GUI launcher check mode:pass", launcher_details)

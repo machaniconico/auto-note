@@ -124,6 +124,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "support --project-dir",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle send checklist",
+            "SUPPORT_SEND_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle send-only guidance",
+            "Send this ZIP only",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
     checks.append(
         _text_contains_check(
@@ -1572,6 +1586,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README RC handoff guidance",
             "docs\\RC_HANDOFF.md",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README support send checklist guidance",
+            "SUPPORT_SEND_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide send checklist guidance",
+            "SUPPORT_SEND_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRIVACY.md",
+            "privacy guide support send checklist guidance",
+            "SUPPORT_SEND_CHECKLIST.txt",
         )
     )
     checks.append(
