@@ -1595,9 +1595,10 @@ class AutoNoteApp(tk.Tk):
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
+                ("最新ZIPパス", self.copy_latest_support_bundle_path_action),
                 ("問い合わせ作成", self.create_support_request_action),
             ],
-            columns=5,
+            columns=3,
         )
 
         docs = ttk.Frame(self.help_tab, style="Surface.TFrame", padding=12)
@@ -3923,6 +3924,7 @@ class AutoNoteApp(tk.Tk):
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
+            ("最新ZIPパス", "最新問い合わせ一式ZIPの絶対パスをコピー", self.copy_latest_support_bundle_path_action),
             ("品質チェック", "販売/配布前チェックを実行", self.run_quality_to_tab),
             ("診断プレビュー", "診断レポートの内容を確認", self.preview_diagnostic_report_action),
             ("診断レポート作成", "匿名化済み診断ZIPを作成", self.create_diagnostic_report_action),
@@ -5245,6 +5247,25 @@ class AutoNoteApp(tk.Tk):
         self._refresh_support_summary()
         _open_path(latest.parent)
         self.notify(f"最新問い合わせ一式ZIPの場所を開きました: {latest.name}", level="success")
+
+    def copy_latest_support_bundle_path_action(self) -> None:
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            messagebox.showinfo("最新ZIPパス", "問い合わせ一式ZIPがまだありません。")
+            self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
+            return
+        latest = bundles[0]
+        self._refresh_support_summary()
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(str(latest.resolve()))
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("最新問い合わせ一式ZIPのパスをコピーできませんでした", level="error")
+            messagebox.showerror("最新ZIPパス", str(exc))
+            return
+        self.notify(f"最新問い合わせ一式ZIPのパスをコピーしました: {latest.name}", level="success")
 
     def show_support_send_checklist_action(self) -> None:
         bundles = list_support_bundles(self.project_dir)
