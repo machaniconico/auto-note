@@ -168,6 +168,7 @@ STATUS_LABELS = {
     "scheduled": "予定あり",
     "published": "公開済み",
 }
+SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
 STATUS_COLORS = {
     "draft": ("#f3f4f6", "#374151"),
     "ready": ("#e7f0ff", "#174ea6"),
@@ -3565,13 +3566,20 @@ class AutoNoteApp(tk.Tk):
         latest = bundles[0]
         errors = verify_support_bundle(latest)
         self.support_bundle_summary_var.set(latest.name)
+        stale = False
         try:
-            self.support_bundle_freshness_var.set(_format_timestamp(latest.stat().st_mtime))
+            mtime = latest.stat().st_mtime
+            stale = (datetime.now().timestamp() - mtime) > (SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS * 60 * 60)
+            suffix = " / 24h超" if stale else ""
+            self.support_bundle_freshness_var.set(f"{_format_timestamp(mtime)}{suffix}")
         except OSError:
             self.support_bundle_freshness_var.set("確認不可")
         if errors:
             self.support_bundle_status_var.set(f"NG {len(errors)}件")
             self.support_next_action_var.set("一式ZIP検証で詳細確認")
+        elif stale:
+            self.support_bundle_status_var.set("要更新")
+            self.support_next_action_var.set("問い合わせ一式を再作成")
         else:
             self.support_bundle_status_var.set("OK")
             self.support_next_action_var.set("送付前リストを確認")
