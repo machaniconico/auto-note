@@ -1528,6 +1528,49 @@ class AutoNoteApp(tk.Tk):
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="セットアップ", command=lambda: self.show_setup_wizard(force=True)).pack(side=tk.RIGHT)
 
+        support_panel = ttk.Frame(self.help_tab, style="Surface.TFrame", padding=12)
+        support_panel.pack(fill=tk.X, pady=(0, 8))
+        support_header = ttk.Frame(support_panel, style="Surface.TFrame")
+        support_header.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(support_header, text="サポート送付", style="Title.TLabel").pack(side=tk.LEFT)
+        ttk.Label(
+            support_header,
+            text="問い合わせ一式の作成、検証、送付前確認をここで完結します。",
+            style="Muted.TLabel",
+        ).pack(side=tk.LEFT, padx=(12, 0))
+
+        self.support_contact_summary_var = tk.StringVar(value="未設定")
+        self.support_bundle_summary_var = tk.StringVar(value="未作成")
+        self.support_bundle_status_var = tk.StringVar(value="未検証")
+        self.support_next_action_var = tk.StringVar(value="問い合わせ一式を作成")
+        support_summary = ttk.Frame(support_panel, style="Surface.TFrame")
+        support_summary.pack(fill=tk.X, pady=(0, 8))
+        for column, (label, variable) in enumerate(
+            (
+                ("連絡先", self.support_contact_summary_var),
+                ("最新ZIP", self.support_bundle_summary_var),
+                ("検証", self.support_bundle_status_var),
+                ("次の操作", self.support_next_action_var),
+            )
+        ):
+            cell = ttk.Frame(support_summary, style="Surface.TFrame")
+            cell.grid(row=0, column=column, sticky=tk.NSEW, padx=(0 if column == 0 else 8, 0))
+            ttk.Label(cell, text=label, style="KpiLabel.TLabel").pack(anchor=tk.W)
+            ttk.Label(cell, textvariable=variable, style="Surface.TLabel", wraplength=220).pack(anchor=tk.W, pady=(3, 0))
+            support_summary.columnconfigure(column, weight=1, uniform="support_summary")
+        support_buttons = ttk.Frame(support_panel, style="Surface.TFrame")
+        support_buttons.pack(fill=tk.X)
+        self._build_button_bar(
+            support_buttons,
+            [
+                ("問い合わせ一式", self.create_support_bundle_action, "Primary.TButton"),
+                ("一式ZIP検証", self.verify_latest_support_bundle_action),
+                ("送付前リスト", self.show_support_send_checklist_action),
+                ("問い合わせ作成", self.create_support_request_action),
+            ],
+            columns=4,
+        )
+
         docs = ttk.Frame(self.help_tab, style="Surface.TFrame", padding=12)
         docs.pack(fill=tk.X, pady=(0, 8))
         self._build_button_bar(
@@ -3484,6 +3527,7 @@ class AutoNoteApp(tk.Tk):
     def refresh_help(self) -> None:
         if not hasattr(self, "help_text"):
             return
+        self._refresh_support_summary()
         contact = self.settings.support_contact or "(未設定)"
         lines = [
             "サポート用メモ",
@@ -3503,6 +3547,27 @@ class AutoNoteApp(tk.Tk):
             "標準でパス、ユーザー名、メール、記事タイトル、記事ファイル名を隠します。",
         ]
         self._set_text(self.help_text, "\n".join(lines))
+
+    def _refresh_support_summary(self) -> None:
+        if not hasattr(self, "support_bundle_summary_var"):
+            return
+        contact = self.settings.support_contact.strip() if self.settings.support_contact else ""
+        self.support_contact_summary_var.set(contact or "未設定")
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            self.support_bundle_summary_var.set("未作成")
+            self.support_bundle_status_var.set("未検証")
+            self.support_next_action_var.set("問い合わせ一式を作成")
+            return
+        latest = bundles[0]
+        errors = verify_support_bundle(latest)
+        self.support_bundle_summary_var.set(latest.name)
+        if errors:
+            self.support_bundle_status_var.set(f"NG {len(errors)}件")
+            self.support_next_action_var.set("一式ZIP検証で詳細確認")
+        else:
+            self.support_bundle_status_var.set("OK")
+            self.support_next_action_var.set("送付前リストを確認")
 
     def open_readme(self) -> None:
         _open_existing(self.project_dir / "README.md", "READMEが見つかりません。")
@@ -5072,7 +5137,10 @@ class AutoNoteApp(tk.Tk):
         self.refresh_help()
         verification_errors = verify_support_bundle(path)
         privacy = run_privacy_audit(self.project_dir)
-        send_checklist = read_support_send_checklist(path)
+        try:
+            send_checklist = read_support_send_checklist(path)
+        except (OSError, ValueError) as exc:
+            send_checklist = f"送付前リストを表示できませんでした: {exc}"
         self._set_text(
             self.help_text,
             "\n\n".join(
