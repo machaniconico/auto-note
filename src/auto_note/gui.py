@@ -1597,8 +1597,9 @@ class AutoNoteApp(tk.Tk):
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
                 ("最新ZIPパス", self.copy_latest_support_bundle_path_action),
                 ("問い合わせ作成", self.create_support_request_action),
+                ("連絡先へ", self.focus_support_contact_field),
             ],
-            columns=3,
+            columns=4,
         )
 
         docs = ttk.Frame(self.help_tab, style="Surface.TFrame", padding=12)
@@ -3622,7 +3623,10 @@ class AutoNoteApp(tk.Tk):
             self.support_next_action_var.set("問い合わせ一式を再作成")
         else:
             self._set_support_bundle_status("OK")
-            self.support_next_action_var.set("送付前リストを確認")
+            if contact:
+                self.support_next_action_var.set("送付前リストを確認")
+            else:
+                self.support_next_action_var.set("サポート連絡先を設定")
 
     def open_readme(self) -> None:
         _open_existing(self.project_dir / "README.md", "READMEが見つかりません。")
@@ -3925,6 +3929,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
             ("最新ZIPパス", "最新問い合わせ一式ZIPの絶対パスをコピー", self.copy_latest_support_bundle_path_action),
+            ("連絡先へ", "設定タブのサポート連絡先へ移動", self.focus_support_contact_field),
             ("品質チェック", "販売/配布前チェックを実行", self.run_quality_to_tab),
             ("診断プレビュー", "診断レポートの内容を確認", self.preview_diagnostic_report_action),
             ("診断レポート作成", "匿名化済み診断ZIPを作成", self.create_diagnostic_report_action),
@@ -4020,6 +4025,20 @@ class AutoNoteApp(tk.Tk):
                 pass
         self._refresh_commercial_setup_progress()
         self.notify(f"次に確認: {self._commercial_field_label(next_field)}", level="warning")
+
+    def focus_support_contact_field(self) -> None:
+        self.notebook.select(self.settings_tab)
+        widget = getattr(self, "support_contact_entry", None)
+        if widget is not None:
+            try:
+                widget.focus_set()
+                widget.selection_range(0, tk.END)
+            except tk.TclError:
+                pass
+        if self.settings.support_contact.strip():
+            self.notify("サポート連絡先は設定済みです。必要なら編集して保存してください", level="info")
+        else:
+            self.notify("サポート連絡先を入力して保存してください", level="warning")
 
     def _commercial_field_widget(self, field_key: str) -> tk.Widget | None:
         return {

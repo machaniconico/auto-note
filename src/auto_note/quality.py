@@ -1220,6 +1220,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send contact focus action",
+            "focus_support_contact_field",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send contact next action",
+            "サポート連絡先を設定",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send contact focus feedback",
+            "サポート連絡先を入力して保存してください",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send verify refreshes summary",
             "self._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification",
         )
