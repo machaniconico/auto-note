@@ -1542,6 +1542,7 @@ class AutoNoteApp(tk.Tk):
         self.support_contact_summary_var = tk.StringVar(value="未設定")
         self.support_bundle_summary_var = tk.StringVar(value="未作成")
         self.support_bundle_status_var = tk.StringVar(value="未検証")
+        self.support_bundle_freshness_var = tk.StringVar(value="-")
         self.support_next_action_var = tk.StringVar(value="問い合わせ一式を作成")
         support_summary = ttk.Frame(support_panel, style="Surface.TFrame")
         support_summary.pack(fill=tk.X, pady=(0, 8))
@@ -1550,6 +1551,7 @@ class AutoNoteApp(tk.Tk):
                 ("連絡先", self.support_contact_summary_var),
                 ("最新ZIP", self.support_bundle_summary_var),
                 ("検証", self.support_bundle_status_var),
+                ("更新", self.support_bundle_freshness_var),
                 ("次の操作", self.support_next_action_var),
             )
         ):
@@ -3557,11 +3559,16 @@ class AutoNoteApp(tk.Tk):
         if not bundles:
             self.support_bundle_summary_var.set("未作成")
             self.support_bundle_status_var.set("未検証")
+            self.support_bundle_freshness_var.set("-")
             self.support_next_action_var.set("問い合わせ一式を作成")
             return
         latest = bundles[0]
         errors = verify_support_bundle(latest)
         self.support_bundle_summary_var.set(latest.name)
+        try:
+            self.support_bundle_freshness_var.set(_format_timestamp(latest.stat().st_mtime))
+        except OSError:
+            self.support_bundle_freshness_var.set("確認不可")
         if errors:
             self.support_bundle_status_var.set(f"NG {len(errors)}件")
             self.support_next_action_var.set("一式ZIP検証で詳細確認")
