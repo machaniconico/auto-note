@@ -98,6 +98,18 @@ def format_support_bundle_verification(bundle_path: Path, errors: list[str]) -> 
     return "\n".join(lines)
 
 
+def read_support_send_checklist(bundle_path: Path) -> str:
+    if not bundle_path.exists():
+        raise FileNotFoundError(f"support bundle not found: {bundle_path}")
+    try:
+        with zipfile.ZipFile(bundle_path) as archive:
+            return archive.read("SUPPORT_SEND_CHECKLIST.txt").decode("utf-8", errors="replace")
+    except KeyError as exc:
+        raise ValueError("SUPPORT_SEND_CHECKLIST.txt is missing from the support bundle.") from exc
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"invalid support bundle zip: {exc}") from exc
+
+
 def build_support_request(project_dir: Path, *, include_private: bool = False) -> str:
     privacy = "raw details included" if include_private else "paths, user name, email, and article titles are masked"
     return (

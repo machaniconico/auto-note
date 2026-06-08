@@ -138,6 +138,7 @@ from .support import (
     create_support_request,
     format_support_bundle_verification,
     list_support_bundles,
+    read_support_send_checklist,
     verify_support_bundle,
 )
 from .troubleshoot import format_troubleshoot_report, run_troubleshoot
@@ -1584,6 +1585,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ作成", self.create_support_request_action),
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
+                ("送付前リスト", self.show_support_send_checklist_action),
                 ("販売者情報確認", self.show_commercial_setup_status_action),
                 ("販売者テンプレ", self.create_commercial_setup_template_action),
                 ("テンプレ適用", self.apply_latest_commercial_setup_template_action),
@@ -3496,8 +3498,8 @@ class AutoNoteApp(tk.Tk):
             "2. GUIで表示されたエラーメッセージ",
             "3. 問題が起きた操作手順",
             "",
-            "問い合わせ一式ZIPには、サポート依頼Markdownと診断レポートZIPが入ります。",
-            "manifest/checksumも同梱され、ヘルプの 一式ZIP検証 で確認できます。",
+            "問い合わせ一式ZIPには、サポート依頼Markdown、診断レポートZIP、送付前チェックリストが入ります。",
+            "manifest/checksumも同梱され、ヘルプの 一式ZIP検証 と 送付前リスト で確認できます。",
             "標準でパス、ユーザー名、メール、記事タイトル、記事ファイル名を隠します。",
         ]
         self._set_text(self.help_text, "\n".join(lines))
@@ -3800,6 +3802,7 @@ class AutoNoteApp(tk.Tk):
             ("問い合わせ作成", "サポート依頼テンプレートを作成", self.create_support_request_action),
             ("問い合わせ一式", "依頼文と診断ZIPを1つにまとめる", self.create_support_bundle_action),
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
+            ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("品質チェック", "販売/配布前チェックを実行", self.run_quality_to_tab),
             ("診断プレビュー", "診断レポートの内容を確認", self.preview_diagnostic_report_action),
             ("診断レポート作成", "匿名化済み診断ZIPを作成", self.create_diagnostic_report_action),
@@ -5069,11 +5072,13 @@ class AutoNoteApp(tk.Tk):
         self.refresh_help()
         verification_errors = verify_support_bundle(path)
         privacy = run_privacy_audit(self.project_dir)
+        send_checklist = read_support_send_checklist(path)
         self._set_text(
             self.help_text,
             "\n\n".join(
                 [
                     f"問い合わせ一式を作成しました: {path}",
+                    send_checklist,
                     format_support_bundle_verification(path, verification_errors),
                     format_privacy_audit_report(privacy),
                 ]
@@ -5103,6 +5108,36 @@ class AutoNoteApp(tk.Tk):
             self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
         else:
             self.notify(f"問い合わせ一式ZIPを検証しました: {latest.name}", level="success")
+
+    def show_support_send_checklist_action(self) -> None:
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            messagebox.showinfo("送付前リスト", "問い合わせ一式ZIPがまだありません。先に 問い合わせ一式 を作成してください。")
+            self.notify("問い合わせ一式ZIPがありません", level="warning")
+            return
+        latest = bundles[0]
+        errors = verify_support_bundle(latest)
+        try:
+            send_checklist = read_support_send_checklist(latest)
+        except (OSError, ValueError) as exc:
+            self.notify("送付前リストを表示できません", level="error")
+            messagebox.showerror("送付前リスト", str(exc))
+            return
+        self._set_text(
+            self.help_text,
+            "\n\n".join(
+                [
+                    f"送付前リスト: {latest}",
+                    send_checklist,
+                    format_support_bundle_verification(latest, errors),
+                ]
+            ),
+        )
+        self.notebook.select(self.help_tab)
+        if errors:
+            self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
+        else:
+            self.notify(f"送付前リストを表示しました: {latest.name}", level="success")
 
     def preview_cleanup_action(self) -> None:
         result = cleanup_generated_files(self.project_dir, dry_run=True)
