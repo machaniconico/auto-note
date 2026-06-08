@@ -1136,6 +1136,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern first-run subtitle",
+            "初回起動、販売前チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern settings subtitle",
+            "投稿補助、販売者情報",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern diagnostics subtitle",
+            "品質チェック、配布ZIP",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern help subtitle",
+            "購入者向け案内",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI first-run KPI typography",
+            "first_run_count_vars",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home sales next action",
             "run_home_sales_next_action",
         )

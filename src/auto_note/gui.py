@@ -652,7 +652,14 @@ class AutoNoteApp(tk.Tk):
     def _build_first_run_tab(self) -> None:
         top = ttk.Frame(self.first_run_tab)
         top.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(top, text="初回チェック", font=("", 18, "bold")).pack(side=tk.LEFT)
+        title_group = ttk.Frame(top)
+        title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(title_group, text="初回チェック", style="PageTitle.TLabel").pack(anchor=tk.W)
+        ttk.Label(
+            title_group,
+            text="初回起動、販売前チェック、サポート提出物をまとめて確認します。",
+            style="PageSubtitle.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="再チェック", style="Primary.TButton", command=self.run_first_run_to_tab).pack(
             side=tk.RIGHT
         )
@@ -718,8 +725,10 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
+            font=("Segoe UI", 9, "bold"),
             padx=12,
             pady=5,
+            width=10,
         )
         self.first_run_status_pill.pack(side=tk.LEFT)
         self.first_run_score_var = tk.StringVar(value="0/100")
@@ -741,8 +750,8 @@ class AutoNoteApp(tk.Tk):
             self.first_run_count_vars[key] = value
             box = ttk.Frame(counts, style="Surface.TFrame", padding=(10, 4))
             box.grid(row=0, column=index, sticky="nsew", padx=(0 if index == 0 else 6, 0))
-            ttk.Label(box, text=key, style="Muted.TLabel").pack(anchor=tk.CENTER)
-            ttk.Label(box, textvariable=value, style="Title.TLabel").pack(anchor=tk.CENTER)
+            ttk.Label(box, text=key, style="KpiLabel.TLabel").pack(anchor=tk.CENTER)
+            ttk.Label(box, textvariable=value, style="KpiValue.TLabel").pack(anchor=tk.CENTER)
 
         main = ttk.PanedWindow(self.first_run_tab, orient=tk.HORIZONTAL)
         main.pack(fill=tk.BOTH, expand=True)
@@ -1197,7 +1206,14 @@ class AutoNoteApp(tk.Tk):
     def _build_settings_tab(self) -> None:
         top = ttk.Frame(self.settings_tab)
         top.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(top, text="設定", font=("", 18, "bold")).pack(side=tk.LEFT)
+        title_group = ttk.Frame(top)
+        title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(title_group, text="設定", style="PageTitle.TLabel").pack(anchor=tk.W)
+        ttk.Label(
+            title_group,
+            text="投稿補助、販売者情報、画像最適化の既定値を管理します。",
+            style="PageSubtitle.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="保存", style="Primary.TButton", command=self.save_app_settings).pack(side=tk.RIGHT)
 
         form = ttk.Frame(self.settings_tab, style="Surface.TFrame", padding=14)
@@ -1422,7 +1438,14 @@ class AutoNoteApp(tk.Tk):
     def _build_diagnostics_tab(self) -> None:
         top = ttk.Frame(self.diagnostics_tab)
         top.pack(fill=tk.X, pady=(0, 6))
-        ttk.Label(top, text="診断と保守", font=("", 18, "bold")).pack(side=tk.LEFT)
+        title_group = ttk.Frame(top)
+        title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(title_group, text="診断と保守", style="PageTitle.TLabel").pack(anchor=tk.W)
+        ttk.Label(
+            title_group,
+            text="品質チェック、配布ZIP、プライバシー監査、復旧作業を集約します。",
+            style="PageSubtitle.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 0))
 
         actions = ttk.Frame(self.diagnostics_tab)
         actions.pack(fill=tk.X, pady=(0, 8))
@@ -1494,7 +1517,14 @@ class AutoNoteApp(tk.Tk):
     def _build_help_tab(self) -> None:
         top = ttk.Frame(self.help_tab)
         top.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(top, text="ヘルプとサポート", font=("", 18, "bold")).pack(side=tk.LEFT)
+        title_group = ttk.Frame(top)
+        title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(title_group, text="ヘルプとサポート", style="PageTitle.TLabel").pack(anchor=tk.W)
+        ttk.Label(
+            title_group,
+            text="購入者向け案内、問い合わせ一式、販売候補版の確認資料へ移動します。",
+            style="PageSubtitle.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="セットアップ", command=lambda: self.show_setup_wizard(force=True)).pack(side=tk.RIGHT)
 
         docs = ttk.Frame(self.help_tab, style="Surface.TFrame", padding=12)
@@ -5303,12 +5333,12 @@ def _first_run_item_label(status: str) -> str:
 
 def _first_run_status_colors(status: str) -> tuple[str, str]:
     colors = {
-        "pass": ("#146c5f", "#ffffff"),
-        "info": ("#174ea6", "#ffffff"),
-        "warn": ("#8a4f00", "#ffffff"),
-        "fail": ("#8b2119", "#ffffff"),
+        "pass": ("#047857", "#ffffff"),
+        "info": ("#2563eb", "#ffffff"),
+        "warn": ("#b45309", "#ffffff"),
+        "fail": ("#dc2626", "#ffffff"),
     }
-    return colors.get(status, ("#344054", "#ffffff"))
+    return colors.get(status, ("#334155", "#ffffff"))
 
 
 def _first_run_summary(report: FirstRunReport) -> str:
