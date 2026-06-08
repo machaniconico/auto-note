@@ -1591,7 +1591,8 @@ class AutoNoteApp(tk.Tk):
         self._build_button_bar(
             support_buttons,
             [
-                ("問い合わせ一式", self.create_support_bundle_action, "Primary.TButton"),
+                ("次を実行", self.run_support_next_action, "Primary.TButton"),
+                ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
@@ -3925,6 +3926,7 @@ class AutoNoteApp(tk.Tk):
             ("第三者表記更新", "依存ライブラリ表記をMarkdownへ書き出す", self.write_dependency_notices_action),
             ("問い合わせ作成", "サポート依頼テンプレートを作成", self.create_support_request_action),
             ("問い合わせ一式", "依頼文と診断ZIPを1つにまとめる", self.create_support_bundle_action),
+            ("サポート次実行", "サポート送付の現在の次アクションを実行", self.run_support_next_action),
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
@@ -4039,6 +4041,20 @@ class AutoNoteApp(tk.Tk):
             self.notify("サポート連絡先は設定済みです。必要なら編集して保存してください", level="info")
         else:
             self.notify("サポート連絡先を入力して保存してください", level="warning")
+
+    def run_support_next_action(self) -> None:
+        self._refresh_support_summary()
+        action = self.support_next_action_var.get()
+        if action in {"問い合わせ一式を作成", "問い合わせ一式を再作成"}:
+            self.create_support_bundle_action()
+        elif action == "一式ZIP検証で詳細確認":
+            self.verify_latest_support_bundle_action()
+        elif action == "サポート連絡先を設定":
+            self.focus_support_contact_field()
+        elif action == "送付前リストを確認":
+            self.show_support_send_checklist_action()
+        else:
+            self.create_support_bundle_action()
 
     def _commercial_field_widget(self, field_key: str) -> tk.Widget | None:
         return {

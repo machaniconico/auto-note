@@ -1185,6 +1185,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send next action runner",
+            "run_support_next_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send next action palette",
+            "サポート送付の現在の次アクションを実行",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send open latest location action",
             "open_latest_support_bundle_location_action",
         )
