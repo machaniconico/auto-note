@@ -43,6 +43,35 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(_path_check(project_dir / "docs" / "THIRD_PARTY_NOTICES.md", "third-party notices"))
     checks.append(_path_check(project_dir / "docs" / "CHANGELOG.md", "changelog"))
     checks.append(_path_check(project_dir / "docs" / "RELEASE_CHECKLIST.md", "release checklist"))
+    checks.append(_path_check(project_dir / "docs" / "RC_HANDOFF.md", "release candidate handoff"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff release check",
+            "check-release.ps1 -Full",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff sales evidence",
+            "sales-finalize --project-dir . --strict --gui-smoke",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff stop conditions",
+            "止める条件",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RELEASE_CHECKLIST.md",
+            "release checklist RC handoff guidance",
+            "docs\\RC_HANDOFF.md",
+        )
+    )
     checks.append(_path_check(project_dir / ".github" / "workflows" / "ci.yml", "GitHub Actions CI"))
     checks.append(
         _text_contains_check(
@@ -1459,6 +1488,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README sales evidence manifest guidance",
             "sales-evidence-manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README RC handoff guidance",
+            "docs\\RC_HANDOFF.md",
         )
     )
     checks.append(

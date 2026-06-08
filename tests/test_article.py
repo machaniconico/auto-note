@@ -2522,12 +2522,18 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
+                "starter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
                 "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
+                encoding="utf-8",
+            )
+            (project / "docs" / "RC_HANDOFF.md").write_text(
+                "check-release.ps1 -Full\n"
+                "sales-finalize --project-dir . --strict --gui-smoke\n"
+                "止める条件\n",
                 encoding="utf-8",
             )
             (project / "pyproject.toml").write_text('[project]\nversion = "1.2.3"\n', encoding="utf-8")
@@ -2548,6 +2554,11 @@ tags:
         self.assertIn("release check product quality:fail", product_details)
         self.assertIn("release check launcher syntax:fail", product_details)
         self.assertIn("release check full install smoke:fail", product_details)
+        self.assertIn("release candidate handoff:fail", product_details)
+        self.assertIn("RC handoff release check:fail", product_details)
+        self.assertIn("RC handoff sales evidence:fail", product_details)
+        self.assertIn("RC handoff stop conditions:fail", product_details)
+        self.assertIn("release checklist RC handoff guidance:fail", product_details)
         self.assertIn("version consistency:fail", product_details)
         self.assertIn("GitHub Actions CI:fail", product_details)
         self.assertIn("CI Windows runner:fail", product_details)
@@ -2700,6 +2711,7 @@ tags:
         self.assertIn("README sales plan upload guidance:fail", product_details)
         self.assertIn("README sales plan report guidance:fail", product_details)
         self.assertIn("README sales evidence manifest guidance:fail", product_details)
+        self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
         self.assertIn("product readiness commercial policy review command:fail", product_details)
@@ -2740,6 +2752,10 @@ tags:
         self.assertIn("release check product quality:pass", launcher_details)
         self.assertIn("release check launcher syntax:pass", launcher_details)
         self.assertIn("release check full install smoke:pass", launcher_details)
+        self.assertIn("release candidate handoff:pass", launcher_details)
+        self.assertIn("RC handoff release check:pass", launcher_details)
+        self.assertIn("RC handoff sales evidence:pass", launcher_details)
+        self.assertIn("RC handoff stop conditions:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)
         self.assertIn("CLI starter cleanup command:pass", launcher_details)
@@ -2885,6 +2901,7 @@ tags:
         self.assertIn("README sales plan upload guidance:pass", launcher_details)
         self.assertIn("README sales plan report guidance:pass", launcher_details)
         self.assertIn("README sales evidence manifest guidance:pass", launcher_details)
+        self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
         self.assertIn("product readiness commercial policy review command:pass", launcher_details)
