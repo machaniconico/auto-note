@@ -1362,7 +1362,11 @@ class AutoNoteApp(tk.Tk):
             command = action[1]
             style = action[2] if len(action) > 2 else None
             row, column = divmod(index, columns)
-            options = {"text": text, "command": command}
+            options = {"command": command}
+            if isinstance(text, tk.Variable):
+                options["textvariable"] = text
+            else:
+                options["text"] = text
             if style:
                 options["style"] = style
             button = ttk.Button(parent, **options)
@@ -1545,6 +1549,9 @@ class AutoNoteApp(tk.Tk):
         self.support_bundle_status_var = tk.StringVar(value="未検証")
         self.support_bundle_freshness_var = tk.StringVar(value="-")
         self.support_next_action_var = tk.StringVar(value="問い合わせ一式を作成")
+        self.support_next_button_var = tk.StringVar(
+            value=_support_next_button_label(self.support_next_action_var.get())
+        )
         support_summary = ttk.Frame(support_panel, style="Surface.TFrame")
         support_summary.pack(fill=tk.X, pady=(0, 8))
         for column, (label, variable) in enumerate(
@@ -1617,7 +1624,7 @@ class AutoNoteApp(tk.Tk):
         self._build_button_bar(
             support_buttons,
             [
-                ("次を実行", self.run_support_next_action, "Primary.TButton"),
+                (self.support_next_button_var, self.run_support_next_action, "Primary.TButton"),
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
@@ -3473,6 +3480,12 @@ class AutoNoteApp(tk.Tk):
         pill_text, bg, fg = _support_contact_indicator_style(contact)
         pill.configure(text=pill_text, bg=bg, fg=fg)
 
+    def _set_support_next_action(self, text: str) -> None:
+        self.support_next_action_var.set(text)
+        button_var = getattr(self, "support_next_button_var", None)
+        if button_var is not None:
+            button_var.set(_support_next_button_label(text))
+
     def _home_sales_lightweight_next_step(
         self,
         *,
@@ -3632,7 +3645,7 @@ class AutoNoteApp(tk.Tk):
             self.support_bundle_summary_var.set("未作成")
             self._set_support_bundle_status("未検証")
             self.support_bundle_freshness_var.set("-")
-            self.support_next_action_var.set("問い合わせ一式を作成")
+            self._set_support_next_action("問い合わせ一式を作成")
             return
         latest = bundles[0]
         errors = verify_support_bundle(latest)
@@ -3649,19 +3662,19 @@ class AutoNoteApp(tk.Tk):
             self.support_bundle_freshness_var.set("確認不可")
         if errors:
             self._set_support_bundle_status(f"NG {len(errors)}件")
-            self.support_next_action_var.set("一式ZIP検証で詳細確認")
+            self._set_support_next_action("一式ZIP検証で詳細確認")
         elif freshness_unknown:
             self._set_support_bundle_status("確認不可")
-            self.support_next_action_var.set("一式ZIP検証で詳細確認")
+            self._set_support_next_action("一式ZIP検証で詳細確認")
         elif stale:
             self._set_support_bundle_status("要更新")
-            self.support_next_action_var.set("問い合わせ一式を再作成")
+            self._set_support_next_action("問い合わせ一式を再作成")
         else:
             self._set_support_bundle_status("OK")
             if contact:
-                self.support_next_action_var.set("送付前リストを確認")
+                self._set_support_next_action("送付前リストを確認")
             else:
-                self.support_next_action_var.set("サポート連絡先を設定")
+                self._set_support_next_action("サポート連絡先を設定")
 
     def open_readme(self) -> None:
         _open_existing(self.project_dir / "README.md", "READMEが見つかりません。")
@@ -5556,6 +5569,16 @@ def _support_contact_indicator_style(contact: str) -> tuple[str, str, str]:
     if contact.strip() and contact.strip() != "未設定":
         return ("OK", "#047857", "#ffffff")
     return ("REQ", "#b45309", "#ffffff")
+
+
+def _support_next_button_label(action: str) -> str:
+    return {
+        "問い合わせ一式を作成": "次: 一式作成",
+        "問い合わせ一式を再作成": "次: 一式再作成",
+        "一式ZIP検証で詳細確認": "次: ZIP検証",
+        "サポート連絡先を設定": "次: 連絡先",
+        "送付前リストを確認": "次: リスト確認",
+    }.get(action, "次を実行")
 
 
 def _publish_ready_counts(report: PublishReadyReport) -> dict[str, int]:
