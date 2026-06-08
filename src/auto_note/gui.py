@@ -1631,6 +1631,7 @@ class AutoNoteApp(tk.Tk):
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
                 ("最新ZIPパス", self.copy_latest_support_bundle_path_action),
                 ("問い合わせ作成", self.create_support_request_action),
+                ("連絡先コピー", self.copy_support_contact_action),
                 ("連絡先へ", self.focus_support_contact_field),
             ],
             columns=4,
@@ -3978,6 +3979,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
             ("最新ZIPパス", "最新問い合わせ一式ZIPの絶対パスをコピー", self.copy_latest_support_bundle_path_action),
+            ("連絡先コピー", "サポート連絡先をクリップボードへコピー", self.copy_support_contact_action),
             ("連絡先へ", "設定タブのサポート連絡先へ移動", self.focus_support_contact_field),
             ("品質チェック", "販売/配布前チェックを実行", self.run_quality_to_tab),
             ("診断プレビュー", "診断レポートの内容を確認", self.preview_diagnostic_report_action),
@@ -4088,6 +4090,23 @@ class AutoNoteApp(tk.Tk):
             self.notify("サポート連絡先は設定済みです。必要なら編集して保存してください", level="info")
         else:
             self.notify("サポート連絡先を入力して保存してください", level="warning")
+
+    def copy_support_contact_action(self) -> None:
+        self._refresh_support_summary()
+        contact = self.settings.support_contact.strip()
+        if not contact:
+            self.notify("サポート連絡先が未設定です", level="warning")
+            self.focus_support_contact_field()
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(contact)
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("サポート連絡先をコピーできませんでした", level="error")
+            messagebox.showerror("連絡先コピー", str(exc))
+            return
+        self.notify("サポート連絡先をコピーしました", level="success")
 
     def run_support_next_action(self) -> None:
         self._refresh_support_summary()
