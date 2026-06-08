@@ -1559,7 +1559,32 @@ class AutoNoteApp(tk.Tk):
             cell = ttk.Frame(support_summary, style="Surface.TFrame")
             cell.grid(row=0, column=column, sticky=tk.NSEW, padx=(0 if column == 0 else 8, 0))
             ttk.Label(cell, text=label, style="KpiLabel.TLabel").pack(anchor=tk.W)
-            ttk.Label(cell, textvariable=variable, style="Surface.TLabel", wraplength=220).pack(anchor=tk.W, pady=(3, 0))
+            if label == "検証":
+                status_row = ttk.Frame(cell, style="Surface.TFrame")
+                status_row.pack(fill=tk.X, pady=(3, 0))
+                pill_text, bg, fg = _support_bundle_indicator_style(variable.get())
+                self.support_bundle_status_pill = tk.Label(
+                    status_row,
+                    text=pill_text,
+                    bg=bg,
+                    fg=fg,
+                    font=("Segoe UI", 8, "bold"),
+                    padx=8,
+                    pady=3,
+                    width=8,
+                )
+                self.support_bundle_status_pill.pack(side=tk.LEFT)
+                ttk.Label(status_row, textvariable=variable, style="Surface.TLabel", wraplength=160).pack(
+                    side=tk.LEFT,
+                    fill=tk.X,
+                    expand=True,
+                    padx=(6, 0),
+                )
+            else:
+                ttk.Label(cell, textvariable=variable, style="Surface.TLabel", wraplength=220).pack(
+                    anchor=tk.W,
+                    pady=(3, 0),
+                )
             support_summary.columnconfigure(column, weight=1, uniform="support_summary")
         support_buttons = ttk.Frame(support_panel, style="Surface.TFrame")
         support_buttons.pack(fill=tk.X)
@@ -3402,6 +3427,14 @@ class AutoNoteApp(tk.Tk):
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
 
+    def _set_support_bundle_status(self, text: str) -> None:
+        self.support_bundle_status_var.set(text)
+        pill = getattr(self, "support_bundle_status_pill", None)
+        if pill is None:
+            return
+        pill_text, bg, fg = _support_bundle_indicator_style(text)
+        pill.configure(text=pill_text, bg=bg, fg=fg)
+
     def _home_sales_lightweight_next_step(
         self,
         *,
@@ -3559,7 +3592,7 @@ class AutoNoteApp(tk.Tk):
         bundles = list_support_bundles(self.project_dir)
         if not bundles:
             self.support_bundle_summary_var.set("未作成")
-            self.support_bundle_status_var.set("未検証")
+            self._set_support_bundle_status("未検証")
             self.support_bundle_freshness_var.set("-")
             self.support_next_action_var.set("問い合わせ一式を作成")
             return
@@ -3567,21 +3600,26 @@ class AutoNoteApp(tk.Tk):
         errors = verify_support_bundle(latest)
         self.support_bundle_summary_var.set(latest.name)
         stale = False
+        freshness_unknown = False
         try:
             mtime = latest.stat().st_mtime
             stale = (datetime.now().timestamp() - mtime) > (SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS * 60 * 60)
             suffix = " / 24h超" if stale else ""
             self.support_bundle_freshness_var.set(f"{_format_timestamp(mtime)}{suffix}")
         except OSError:
+            freshness_unknown = True
             self.support_bundle_freshness_var.set("確認不可")
         if errors:
-            self.support_bundle_status_var.set(f"NG {len(errors)}件")
+            self._set_support_bundle_status(f"NG {len(errors)}件")
+            self.support_next_action_var.set("一式ZIP検証で詳細確認")
+        elif freshness_unknown:
+            self._set_support_bundle_status("確認不可")
             self.support_next_action_var.set("一式ZIP検証で詳細確認")
         elif stale:
-            self.support_bundle_status_var.set("要更新")
+            self._set_support_bundle_status("要更新")
             self.support_next_action_var.set("問い合わせ一式を再作成")
         else:
-            self.support_bundle_status_var.set("OK")
+            self._set_support_bundle_status("OK")
             self.support_next_action_var.set("送付前リストを確認")
 
     def open_readme(self) -> None:
@@ -5394,6 +5432,16 @@ def _home_sales_indicator_style(state: str) -> tuple[str, str, str]:
         "warn": ("CHECK", "#b45309", "#ffffff"),
         "fail": ("NG", "#dc2626", "#ffffff"),
     }.get(state, ("CHECK", "#334155", "#ffffff"))
+
+
+def _support_bundle_indicator_style(text: str) -> tuple[str, str, str]:
+    if text == "OK":
+        return ("OK", "#047857", "#ffffff")
+    if text.startswith("NG"):
+        return ("NG", "#dc2626", "#ffffff")
+    if text == "要更新":
+        return ("UPDATE", "#b45309", "#ffffff")
+    return ("CHECK", "#2563eb", "#ffffff")
 
 
 def _publish_ready_counts(report: PublishReadyReport) -> dict[str, int]:
