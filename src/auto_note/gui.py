@@ -203,6 +203,11 @@ def smoke_gui(project_dir: Path) -> str:
             if hasattr(app, "home_sales_status_var")
             else 0
         )
+        home_sales_stage_chars = (
+            sum(len(value.get()) for value in app.home_sales_stage_vars.values())
+            if hasattr(app, "home_sales_stage_vars")
+            else 0
+        )
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -210,6 +215,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"review_items={review_items}, "
             f"publish_ready_items={publish_ready_items}, "
             f"home_sales_chars={home_sales_chars}, "
+            f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -404,14 +410,57 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_status_var = tk.StringVar(value="販売準備を確認中です。")
         self.home_sales_detail_var = tk.StringVar(value="")
         self.home_sales_next_var = tk.StringVar(value="")
-        ttk.Label(sales_text, textvariable=self.home_sales_status_var, style="Surface.TLabel").pack(
-            anchor=tk.W,
-            fill=tk.X,
+        sales_status_row = ttk.Frame(sales_text, style="Surface.TFrame")
+        sales_status_row.pack(fill=tk.X)
+        self.home_sales_status_pill = tk.Label(
+            sales_status_row,
+            text="CHECK",
+            bg="#8a4f00",
+            fg="#ffffff",
+            padx=10,
+            pady=4,
+            width=10,
         )
+        self.home_sales_status_pill.pack(side=tk.LEFT)
+        ttk.Label(sales_status_row, textvariable=self.home_sales_status_var, style="Surface.TLabel").pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            expand=True,
+            padx=(10, 0),
+        )
+        self.home_sales_stage_vars: dict[str, tk.StringVar] = {}
+        self.home_sales_stage_pills: dict[str, tk.Label] = {}
+        sales_stage_bar = ttk.Frame(sales_text, style="Surface.TFrame")
+        sales_stage_bar.pack(fill=tk.X, pady=(8, 0))
+        for index, (key, label) in enumerate(
+            (
+                ("seller", "販売者情報"),
+                ("release", "配布ZIP"),
+                ("buyer", "購入者ZIP"),
+                ("send", "送付準備"),
+            )
+        ):
+            stage = ttk.Frame(sales_stage_bar, style="Surface.TFrame")
+            stage.grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 8, 0))
+            sales_stage_bar.columnconfigure(index, weight=1, uniform="sales_stage")
+            ttk.Label(stage, text=label, style="Muted.TLabel").pack(anchor=tk.W)
+            row = ttk.Frame(stage, style="Surface.TFrame")
+            row.pack(fill=tk.X, pady=(3, 0))
+            pill = tk.Label(row, text="CHECK", bg="#8a4f00", fg="#ffffff", padx=8, pady=3, width=8)
+            pill.pack(side=tk.LEFT)
+            value = tk.StringVar(value="確認中")
+            self.home_sales_stage_vars[key] = value
+            self.home_sales_stage_pills[key] = pill
+            ttk.Label(row, textvariable=value, style="Muted.TLabel", wraplength=150).pack(
+                side=tk.LEFT,
+                fill=tk.X,
+                expand=True,
+                padx=(6, 0),
+            )
         ttk.Label(sales_text, textvariable=self.home_sales_detail_var, style="Muted.TLabel", wraplength=820).pack(
             anchor=tk.W,
             fill=tk.X,
-            pady=(4, 0),
+            pady=(8, 0),
         )
         ttk.Label(sales_text, textvariable=self.home_sales_next_var, style="Muted.TLabel", wraplength=820).pack(
             anchor=tk.W,
@@ -3172,12 +3221,46 @@ class AutoNoteApp(tk.Tk):
             f"生成物不足 {artifact_remaining} / 購入者ZIP {'あり' if buyer_packages else 'なし'} / "
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'}"
         )
+        self._set_home_sales_status_pill("ok" if status == "READY TO VERIFY" else "warn")
+        self._set_home_sales_stage(
+            "seller",
+            "ok" if seller_remaining == 0 else "warn",
+            f"{complete}/{total}" if seller_remaining == 0 else f"残件 {seller_remaining}",
+        )
+        self._set_home_sales_stage("release", "ok" if releases else "warn", "あり" if releases else "未作成")
+        buyer_ready = bool(buyer_packages and buyer_messages)
+        self._set_home_sales_stage(
+            "buyer",
+            "ok" if buyer_ready else "warn",
+            "ZIP+送付文" if buyer_ready else "未完了",
+        )
+        send_ready = bool(buyer_ready and seller_receipts)
+        self._set_home_sales_stage(
+            "send",
+            "ok" if send_ready else ("info" if buyer_ready else "warn"),
+            "記録あり" if send_ready else ("照合待ち" if buyer_ready else "未準備"),
+        )
         if self._home_sales_next_step is None:
             self.home_sales_next_var.set("次: 販売ナビで詳細検証します。")
             return
         self.home_sales_next_var.set(
             f"次: {self._home_sales_next_step.title} - {self._home_sales_next_step.action}"
         )
+
+    def _set_home_sales_status_pill(self, state: str) -> None:
+        if not hasattr(self, "home_sales_status_pill"):
+            return
+        text, bg, fg = _home_sales_indicator_style(state)
+        self.home_sales_status_pill.configure(text=text, bg=bg, fg=fg)
+
+    def _set_home_sales_stage(self, key: str, state: str, text: str) -> None:
+        value = getattr(self, "home_sales_stage_vars", {}).get(key)
+        pill = getattr(self, "home_sales_stage_pills", {}).get(key)
+        if value is not None:
+            value.set(text)
+        if pill is not None:
+            pill_text, bg, fg = _home_sales_indicator_style(state)
+            pill.configure(text=pill_text, bg=bg, fg=fg)
 
     def _home_sales_lightweight_next_step(
         self,
@@ -5088,6 +5171,15 @@ def _action_step_label(severity: str) -> str:
         "ready": "準備OK",
         "info": "案内",
     }.get(severity, severity.upper())
+
+
+def _home_sales_indicator_style(state: str) -> tuple[str, str, str]:
+    return {
+        "ok": ("OK", "#146c5f", "#ffffff"),
+        "info": ("CHECK", "#174ea6", "#ffffff"),
+        "warn": ("CHECK", "#8a4f00", "#ffffff"),
+        "fail": ("NG", "#8b2119", "#ffffff"),
+    }.get(state, ("CHECK", "#344054", "#ffffff"))
 
 
 def _publish_ready_counts(report: PublishReadyReport) -> dict[str, int]:

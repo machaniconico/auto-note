@@ -2302,6 +2302,7 @@ tags: note
         self.assertIn("review_items=", text)
         self.assertIn("publish_ready_items=", text)
         self.assertIn("home_sales_chars=", text)
+        self.assertIn("home_sales_stage_chars=", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2513,7 +2514,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
-                "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\n",
+                "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\n_home_sales_indicator_style\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "release.py").write_text(
@@ -2653,6 +2654,9 @@ tags:
         self.assertIn("GUI commercial setup next missing action:fail", product_details)
         self.assertIn("GUI commercial setup command palette action:fail", product_details)
         self.assertIn("GUI home sales summary panel:fail", product_details)
+        self.assertIn("GUI home sales status pill:fail", product_details)
+        self.assertIn("GUI home sales stage indicators:fail", product_details)
+        self.assertIn("GUI home sales indicator style:fail", product_details)
         self.assertIn("GUI home sales next action:fail", product_details)
         self.assertIn("GUI home sales lightweight summary:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
@@ -2835,6 +2839,9 @@ tags:
         self.assertIn("GUI commercial setup next missing action:pass", launcher_details)
         self.assertIn("GUI commercial setup command palette action:pass", launcher_details)
         self.assertIn("GUI home sales summary panel:pass", launcher_details)
+        self.assertIn("GUI home sales status pill:pass", launcher_details)
+        self.assertIn("GUI home sales stage indicators:pass", launcher_details)
+        self.assertIn("GUI home sales indicator style:pass", launcher_details)
         self.assertIn("GUI home sales next action:pass", launcher_details)
         self.assertIn("GUI home sales lightweight summary:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
