@@ -2561,6 +2561,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI standard density readable text",
+            '"standard": {\n        "text_size": 13,',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI standard density readable small text",
+            '"small_text_size": 12,\n        "badge_font_size": 12,',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI large density safe-display text",
+            '"large": {\n        "text_size": 15,',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable font metrics helper",
             "_font_linespace",
         )

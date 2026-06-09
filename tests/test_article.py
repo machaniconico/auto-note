@@ -3324,6 +3324,9 @@ tags:
                 + "UI_NOTEBOOK_TAB_PADDING = (24, 18)\n"
                 + "UI_BUTTON_PADDING = (21, 17)\n"
                 + "UI_TEXT_SPACING_BOTTOM = 7\n"
+                + '"standard": {\n        "text_size": 13,\n'
+                + '"small_text_size": 12,\n        "badge_font_size": 12,\n'
+                + '"large": {\n        "text_size": 15,\n'
                 + "_font_linespace\n"
                 + "UI_DENSITY_LABELS\n"
                 + "ui_density_var\n"
@@ -3948,6 +3951,9 @@ tags:
         self.assertIn("GUI readable tab padding:fail", product_details)
         self.assertIn("GUI readable button padding:fail", product_details)
         self.assertIn("GUI readable text line spacing:fail", product_details)
+        self.assertIn("GUI standard density readable text:fail", product_details)
+        self.assertIn("GUI standard density readable small text:fail", product_details)
+        self.assertIn("GUI large density safe-display text:fail", product_details)
         self.assertIn("GUI readable font metrics helper:fail", product_details)
         self.assertIn("GUI per-monitor DPI awareness:fail", product_details)
         self.assertIn("settings UI density field:fail", product_details)
@@ -4536,6 +4542,9 @@ tags:
         self.assertIn("GUI readable tab padding:pass", launcher_details)
         self.assertIn("GUI readable button padding:pass", launcher_details)
         self.assertIn("GUI readable text line spacing:pass", launcher_details)
+        self.assertIn("GUI standard density readable text:pass", launcher_details)
+        self.assertIn("GUI standard density readable small text:pass", launcher_details)
+        self.assertIn("GUI large density safe-display text:pass", launcher_details)
         self.assertIn("GUI readable font metrics helper:pass", launcher_details)
         self.assertIn("GUI per-monitor DPI awareness:pass", launcher_details)
         self.assertIn("settings UI density field:pass", launcher_details)
