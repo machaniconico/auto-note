@@ -2711,7 +2711,7 @@ tags: note
             create_article("表示診断記事", articles_dir=project / "articles", tags=["note"])
             display_diagnostics = (
                 "Display diagnostics / 表示診断\n"
-                "- UI font: Meiryo UI\n"
+                "- UI font: BIZ UDPゴシック\n"
                 "- scaling: 1.50\n"
                 "- recommendation: 表示サイズを大きめにしてください\n"
             )
@@ -2737,7 +2737,7 @@ tags: note
         self.assertIn("DISPLAY_DIAGNOSTICS.txt: present", verification_text)
         self.assertIn("manifest files: 6", verification_text)
         self.assertIn("Display diagnostics / 表示診断", included_display_diagnostics)
-        self.assertIn("Meiryo UI", included_display_diagnostics)
+        self.assertIn("BIZ UDPゴシック", included_display_diagnostics)
         self.assertEqual(display_diagnostics_from_api, included_display_diagnostics)
         self.assertEqual(manifest["file_count"], 6)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt", checksums)
@@ -3277,8 +3277,8 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
-                + '"Meiryo UI"\n'
-                + 'UI_FONT_CANDIDATES = ("Meiryo UI"\n'
+                + '"BIZ UDPゴシック"\n'
+                + 'UI_FONT_CANDIDATES = ("BIZ UDPゴシック"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_TEXT_SIZE = 13\n"
                 + "UI_BADGE_FONT_SIZE = 12\n"
@@ -3859,7 +3859,7 @@ tags:
         self.assertIn("GUI modern design tokens:fail", product_details)
         self.assertIn("GUI modern text area styling:fail", product_details)
         self.assertIn("GUI readable Japanese font:fail", product_details)
-        self.assertIn("GUI Meiryo preferred font:fail", product_details)
+        self.assertIn("GUI wide Japanese preferred font:fail", product_details)
         self.assertIn("GUI readable text size tokens:fail", product_details)
         self.assertIn("GUI readable badge font size:fail", product_details)
         self.assertIn("GUI readable tree row height:fail", product_details)
@@ -4430,7 +4430,7 @@ tags:
         self.assertIn("GUI modern design tokens:pass", launcher_details)
         self.assertIn("GUI modern text area styling:pass", launcher_details)
         self.assertIn("GUI readable Japanese font:pass", launcher_details)
-        self.assertIn("GUI Meiryo preferred font:pass", launcher_details)
+        self.assertIn("GUI wide Japanese preferred font:pass", launcher_details)
         self.assertIn("GUI readable text size tokens:pass", launcher_details)
         self.assertIn("GUI readable badge font size:pass", launcher_details)
         self.assertIn("GUI readable tree row height:pass", launcher_details)

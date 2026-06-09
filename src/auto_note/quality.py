@@ -2328,14 +2328,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"Meiryo UI"',
+            '"BIZ UDPゴシック"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
-            "GUI Meiryo preferred font",
-            'UI_FONT_CANDIDATES = ("Meiryo UI"',
+            "GUI wide Japanese preferred font",
+            'UI_FONT_CANDIDATES = ("BIZ UDPゴシック"',
         )
     )
     checks.append(

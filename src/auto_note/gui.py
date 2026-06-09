@@ -203,8 +203,8 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Meiryo UI renders Japanese text more crisply in Tk on Windows than Yu Gothic UI.
-UI_FONT_CANDIDATES = ("Meiryo UI", "Yu Gothic UI", "Meiryo", "Segoe UI", "MS Gothic")
+# Prefer wider Japanese UI fonts before condensed UI faces to avoid crushed labels in Tk on Windows.
+UI_FONT_CANDIDATES = ("BIZ UDPゴシック", "Meiryo", "Meiryo UI", "Yu Gothic UI", "MS Gothic", "Segoe UI")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
