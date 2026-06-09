@@ -233,6 +233,9 @@ def smoke_gui(project_dir: Path) -> str:
             if hasattr(app, "home_progress_vars")
             else 0
         )
+        home_progress_action_items = (
+            len(app.home_progress_buttons) if hasattr(app, "home_progress_buttons") else 0
+        )
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -244,6 +247,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_report_items={home_report_items}, "
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
+            f"home_progress_action_items={home_progress_action_items}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -497,6 +501,7 @@ class AutoNoteApp(tk.Tk):
 
         self.home_progress_vars: dict[str, tk.StringVar] = {}
         self.home_progress_pills: dict[str, tk.Label] = {}
+        self.home_progress_buttons: dict[str, ttk.Button] = {}
         progress_steps = ttk.Frame(progress, style="Surface.TFrame")
         progress_steps.pack(fill=tk.X)
         for index, (key, label) in enumerate(
@@ -535,6 +540,13 @@ class AutoNoteApp(tk.Tk):
                 expand=True,
                 padx=(6, 0),
             )
+            button = ttk.Button(
+                step,
+                text="開く",
+                command=lambda stage_key=key: self.open_home_progress_stage(stage_key),
+            )
+            button.pack(anchor=tk.W, pady=(5, 0))
+            self.home_progress_buttons[key] = button
 
         focus = ttk.Frame(self.home_tab, style="Surface.TFrame", padding=12)
         focus.pack(fill=tk.X, pady=(0, 10))
@@ -3698,6 +3710,25 @@ class AutoNoteApp(tk.Tk):
         if pill is not None:
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
+
+    def open_home_progress_stage(self, key: str) -> None:
+        actions = {
+            "setup": self.run_first_run_to_tab,
+            "article": lambda: self._select_home_progress_tab(self.article_tab, "記事タブを開きました"),
+            "review": self.review_all_to_tab,
+            "publish": self.publish_queue_to_tab,
+            "sales": self.run_sales_plan_to_tab,
+            "support": self.show_support_send_panel_action,
+        }
+        action = actions.get(key)
+        if action is None:
+            self.run_action_plan_to_tab()
+            return
+        action()
+
+    def _select_home_progress_tab(self, tab: ttk.Frame, message: str) -> None:
+        self.notebook.select(tab)
+        self.notify(message, level="info")
 
     def _refresh_home_reports(self) -> None:
         if not hasattr(self, "home_reports_tree"):

@@ -407,6 +407,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README home progress direct open guidance",
+            "作業進行レーンの各工程の `開く`",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README first-run actionable filter guidance",
             "要対応だけ",
         )
@@ -1558,6 +1565,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke home progress count",
             "home_progress_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress action buttons",
+            "home_progress_buttons",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress stage opener",
+            "open_home_progress_stage",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress article route",
+            "_select_home_progress_tab",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home progress action count",
+            "home_progress_action_items=",
         )
     )
     checks.append(
