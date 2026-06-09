@@ -2962,6 +2962,7 @@ tags: note
         self.assertIn("command_palette_support_display_diagnostics_actions=1", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
+        self.assertIn("display_font_family=", text)
         self.assertIn("display_font_linespace=", text)
         self.assertIn("display_badge_linespace=", text)
 
@@ -3233,6 +3234,7 @@ tags:
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
                 + '"Meiryo UI"\n'
+                + 'UI_FONT_CANDIDATES = ("Meiryo UI"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_TEXT_SIZE = 13\n"
                 + "UI_BADGE_FONT_SIZE = 12\n"
@@ -3271,6 +3273,7 @@ tags:
                 + "command_palette_support_display_diagnostics_actions=\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
+                + "display_font_family=\n"
                 + "display_font_linespace=\n"
                 + "display_diagnostics_chars=\n"
                 + "Chrome.TCombobox\n"
@@ -3808,6 +3811,7 @@ tags:
         self.assertIn("GUI modern design tokens:fail", product_details)
         self.assertIn("GUI modern text area styling:fail", product_details)
         self.assertIn("GUI readable Japanese font:fail", product_details)
+        self.assertIn("GUI Meiryo preferred font:fail", product_details)
         self.assertIn("GUI readable text size tokens:fail", product_details)
         self.assertIn("GUI readable badge font size:fail", product_details)
         self.assertIn("GUI readable tree row height:fail", product_details)
@@ -3840,6 +3844,7 @@ tags:
         self.assertIn("GUI smoke display readability status:fail", product_details)
         self.assertIn("GUI smoke display readability warning count:fail", product_details)
         self.assertIn("GUI smoke display font metrics:fail", product_details)
+        self.assertIn("GUI smoke display font family:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
         self.assertIn("GUI resolved font family:fail", product_details)
         self.assertIn("GUI named font readability defaults:fail", product_details)
@@ -4370,6 +4375,7 @@ tags:
         self.assertIn("GUI modern design tokens:pass", launcher_details)
         self.assertIn("GUI modern text area styling:pass", launcher_details)
         self.assertIn("GUI readable Japanese font:pass", launcher_details)
+        self.assertIn("GUI Meiryo preferred font:pass", launcher_details)
         self.assertIn("GUI readable text size tokens:pass", launcher_details)
         self.assertIn("GUI readable badge font size:pass", launcher_details)
         self.assertIn("GUI readable tree row height:pass", launcher_details)
@@ -4402,6 +4408,7 @@ tags:
         self.assertIn("GUI smoke display readability status:pass", launcher_details)
         self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
         self.assertIn("GUI smoke display font metrics:pass", launcher_details)
+        self.assertIn("GUI smoke display font family:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
         self.assertIn("GUI resolved font family:pass", launcher_details)
         self.assertIn("GUI named font readability defaults:pass", launcher_details)

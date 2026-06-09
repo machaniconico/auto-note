@@ -2306,6 +2306,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI Meiryo preferred font",
+            'UI_FONT_CANDIDATES = ("Meiryo UI"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
             "UI_TEXT_SIZE = 13",
         )
@@ -2525,6 +2532,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke display font metrics",
             "display_font_linespace=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke display font family",
+            "display_font_family=",
         )
     )
     checks.append(

@@ -203,7 +203,8 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "Segoe UI", "MS Gothic")
+# Meiryo UI renders Japanese text more crisply in Tk on Windows than Yu Gothic UI.
+UI_FONT_CANDIDATES = ("Meiryo UI", "Yu Gothic UI", "Meiryo", "Segoe UI", "MS Gothic")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
@@ -658,6 +659,7 @@ def smoke_gui(project_dir: Path) -> str:
         )
         display_readability_status, display_readability_lines = app._display_readability_checks(style)
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
+        display_font_family = UI_FONT
         display_font_linespace = _font_linespace(app, UI_FONT, UI_TEXT_SIZE) or 0
         display_badge_linespace = _font_linespace(app, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold") or 0
         display_diagnostics = app._format_display_diagnostics()
@@ -696,6 +698,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"command_palette_support_display_diagnostics_actions={command_palette_support_display_diagnostics_actions}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
+            f"display_font_family={display_font_family}, "
             f"display_font_linespace={display_font_linespace}, "
             f"display_badge_linespace={display_badge_linespace}, "
             f"display_diagnostics_chars={display_diagnostics_chars}, "
