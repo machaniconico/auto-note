@@ -194,6 +194,9 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "--report",
         )
     )
+    checks.append(_path_check(project_dir / "auto-note.lnk", "GUI shortcut"))
+    checks.append(_path_check(project_dir / "auto-note safe display.lnk", "GUI safe display shortcut"))
+    checks.append(_path_check(project_dir / "auto-note GUI.lnk", "GUI legacy shortcut"))
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
@@ -796,6 +799,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "release.py",
             "release first-run checklist",
             "FIRST_RUN_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release safe display shortcut guidance",
+            "auto-note safe display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release safe display CLI guidance",
+            "auto-note-gui.bat --safe-display",
         )
     )
     checks.append(

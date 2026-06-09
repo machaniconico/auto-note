@@ -3151,6 +3151,9 @@ tags:
                 "python -m auto_note support --project-dir . --bundle\n",
                 encoding="utf-8",
             )
+            (project / "auto-note.lnk").write_bytes(b"shortcut")
+            (project / "auto-note safe display.lnk").write_bytes(b"safe display shortcut")
+            (project / "auto-note GUI.lnk").write_bytes(b"legacy shortcut")
             (project / "scripts").mkdir(exist_ok=True)
             (project / "scripts" / "launch-gui.vbs").write_text(
                 'batPath = fso.BuildPath(projectDir, "auto-note-gui.bat")\n'
@@ -3581,7 +3584,10 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "release.py").write_text(
-                "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\nstarter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\n",
+                "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\n"
+                "auto-note safe display\nauto-note-gui.bat --safe-display\n"
+                "starter-pack\nauto-note repair\nauto-note troubleshoot\n"
+                "auto-note acceptance\nauto-note acceptance --project-dir . --full\n",
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
@@ -3625,6 +3631,9 @@ tags:
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
         self.assertIn("GUI launcher recovery kit guidance:fail", product_details)
         self.assertIn("GUI launcher recovery kit report guidance:fail", product_details)
+        self.assertIn("GUI shortcut:fail", product_details)
+        self.assertIn("GUI safe display shortcut:fail", product_details)
+        self.assertIn("GUI legacy shortcut:fail", product_details)
         self.assertIn("support bundle send checklist:fail", product_details)
         self.assertIn("support bundle GUI log summary:fail", product_details)
         self.assertIn("support bundle GUI log privacy mask:fail", product_details)
@@ -3675,6 +3684,8 @@ tags:
         self.assertIn("CI sales delivery smoke:fail", product_details)
         self.assertIn("CI GUI smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
+        self.assertIn("release safe display shortcut guidance:fail", product_details)
+        self.assertIn("release safe display CLI guidance:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
         self.assertIn("CLI starter cleanup command:fail", product_details)
         self.assertIn("CLI repair command:fail", product_details)
@@ -4254,6 +4265,8 @@ tags:
         self.assertIn("RC handoff sales launch evidence:pass", launcher_details)
         self.assertIn("RC handoff stop conditions:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
+        self.assertIn("release safe display shortcut guidance:pass", launcher_details)
+        self.assertIn("release safe display CLI guidance:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)
         self.assertIn("CLI starter cleanup command:pass", launcher_details)
         self.assertIn("CLI repair command:pass", launcher_details)
@@ -4811,6 +4824,9 @@ tags:
         self.assertIn("GUI launcher support bundle guidance:pass", launcher_details)
         self.assertIn("GUI launcher recovery kit guidance:pass", launcher_details)
         self.assertIn("GUI launcher recovery kit report guidance:pass", launcher_details)
+        self.assertIn("GUI shortcut:pass", launcher_details)
+        self.assertIn("GUI safe display shortcut:pass", launcher_details)
+        self.assertIn("GUI legacy shortcut:pass", launcher_details)
         self.assertIn("support bundle send checklist:pass", launcher_details)
         self.assertIn("support bundle GUI log summary:pass", launcher_details)
         self.assertIn("support bundle GUI log privacy mask:pass", launcher_details)
@@ -5823,10 +5839,14 @@ publish: false
             self.assertIn("CHECKSUMS.txt", start_here)
             self.assertIn("auto-note troubleshoot --project-dir .", start_here)
             self.assertIn("auto-note acceptance --project-dir . --full", start_here)
+            self.assertIn("auto-note safe display", start_here)
+            self.assertIn("auto-note-gui.bat --safe-display", start_here)
             self.assertIn("auto-note acceptance --project-dir . --full", first_run)
             self.assertIn("auto-note first-run --project-dir . --create --gui-smoke --smoke-helper", first_run)
             self.assertIn("auto-note self-test --project-dir . --create --gui-smoke --report", first_run)
             self.assertIn("auto-note troubleshoot --project-dir .", first_run)
+            self.assertIn("auto-note gui --project-dir . --safe-display", first_run)
+            self.assertIn("auto-note-gui.bat --safe-display", first_run)
             self.assertIn("auto-note acceptance --project-dir . --full", buyer_acceptance)
             self.assertIn("受入チェック", buyer_acceptance)
             self.assertIn("初回チェック", first_run)
@@ -5834,6 +5854,7 @@ publish: false
             self.assertIn("auto-note action-plan --project-dir .", first_run)
             self.assertIn("問い合わせ一式", first_run)
             self.assertIn("User articles are not included.", release_summary)
+            self.assertIn("auto-note safe display", release_summary)
             self.assertIn("FIRST_RUN_CHECKLIST.txt", release_summary)
             self.assertIn("BUYER_ACCEPTANCE_CHECKLIST.txt", release_summary)
             self.assertIn("CHECKSUMS.txt", release_summary)
