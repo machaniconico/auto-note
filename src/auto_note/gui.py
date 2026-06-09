@@ -507,6 +507,7 @@ def smoke_gui(project_dir: Path) -> str:
             + str(style.lookup("TButton", "padding"))
         )
         ui_density_chars = len(getattr(app.settings, "ui_density", ""))
+        header_ui_density_chars = len(app.header_ui_density_var.get()) if hasattr(app, "header_ui_density_var") else 0
         command_palette_ui_density_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label.startswith("表示サイズ")
         )
@@ -535,6 +536,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_gui_log_chars={home_gui_log_chars}, "
             f"readability_style_chars={readability_style_chars}, "
             f"ui_density_chars={ui_density_chars}, "
+            f"header_ui_density_chars={header_ui_density_chars}, "
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
@@ -699,6 +701,25 @@ class AutoNoteApp(tk.Tk):
             foreground="#ffffff",
             font=(font, UI_SMALL_TEXT_SIZE),
             padding=(9, 5),
+        )
+        style.configure(
+            "Chrome.TCombobox",
+            padding=(7, 5),
+            fieldbackground=UI_COLORS["chrome_chip"],
+            background=chrome_alt,
+            foreground="#ffffff",
+            arrowcolor=chrome_muted,
+            bordercolor="#475569",
+            lightcolor="#475569",
+            darkcolor="#475569",
+            font=(font, UI_SMALL_TEXT_SIZE),
+        )
+        style.map(
+            "Chrome.TCombobox",
+            fieldbackground=[("readonly", UI_COLORS["chrome_chip"]), ("focus", UI_COLORS["chrome_chip"])],
+            foreground=[("readonly", "#ffffff"), ("focus", "#ffffff")],
+            arrowcolor=[("active", "#ffffff"), ("pressed", "#ffffff")],
+            bordercolor=[("focus", UI_COLORS["focus"]), ("active", "#64748b")],
         )
         style.configure("Title.TLabel", background=surface, foreground=primary, font=(font, 16, "bold"))
         style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
@@ -936,6 +957,20 @@ class AutoNoteApp(tk.Tk):
             side=tk.RIGHT,
             padx=6,
         )
+        density = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
+        density.pack(side=tk.RIGHT, padx=(0, 6))
+        ttk.Label(density, text="表示", style="ChromeAction.TLabel").pack(side=tk.LEFT)
+        self.header_ui_density_var = tk.StringVar(value=_ui_density_label(self.settings.ui_density))
+        self.header_ui_density_combo = ttk.Combobox(
+            density,
+            textvariable=self.header_ui_density_var,
+            values=tuple(UI_DENSITY_LABELS.values()),
+            state="readonly",
+            width=8,
+            style="Chrome.TCombobox",
+        )
+        self.header_ui_density_combo.pack(side=tk.LEFT, padx=(8, 0))
+        self.header_ui_density_combo.bind("<<ComboboxSelected>>", self.on_header_ui_density_selected)
         quick = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
         quick.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Label(quick, text="note", style="ChromeAction.TLabel").pack(side=tk.LEFT)
@@ -2347,7 +2382,7 @@ class AutoNoteApp(tk.Tk):
             "設定は .auto-note/settings.json に保存されます。\n\n"
             "既定タグは、新規記事作成時にタグ入力を省略した場合に使われます。\n"
             "記事検索パターンは通常 *.md のままで構いません。\n"
-            "表示サイズは、文字や行高が潰れて見える時に「大きめ」へ変更します。\n"
+            "表示サイズは、文字や行高が潰れて見える時にヘッダーの「表示」またはここから「大きめ」へ変更します。\n"
             "画像最大幅と画像品質は、画像挿入時の最適化に使われます。\n"
             "サポート連絡先はヘルプ画面に表示する任意のメモです。\n"
             "販売者情報と確認チェックは、販売準備レポートの根拠として保存されます。\n"
@@ -5763,6 +5798,8 @@ class AutoNoteApp(tk.Tk):
             self.article_glob_var.set(self.settings.article_glob)
         if hasattr(self, "ui_density_var"):
             self.ui_density_var.set(_ui_density_label(self.settings.ui_density))
+        if hasattr(self, "header_ui_density_var"):
+            self.header_ui_density_var.set(_ui_density_label(self.settings.ui_density))
         if hasattr(self, "support_contact_var"):
             self.support_contact_var.set(self.settings.support_contact)
         if hasattr(self, "seller_name_var"):
@@ -6073,6 +6110,11 @@ class AutoNoteApp(tk.Tk):
             self.notify(f"設定を保存しました。販売者情報の確認事項: {len(warnings)}件", level="warning")
         else:
             self.notify("設定を保存しました。販売者情報も整っています", level="success")
+
+    def on_header_ui_density_selected(self, _event=None) -> None:
+        if not hasattr(self, "header_ui_density_var"):
+            return
+        self.set_ui_density_action(_ui_density_value(self.header_ui_density_var.get()))
 
     def run_diagnostics_to_tab(self) -> None:
         if not hasattr(self, "diagnostics_text"):

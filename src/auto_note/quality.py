@@ -2102,6 +2102,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header UI density selector",
+            "header_ui_density_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header UI density combobox",
+            "header_ui_density_combo",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header UI density binding",
+            "<<ComboboxSelected>>",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header UI density action",
+            "on_header_ui_density_selected",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI UI density style apply",
             "_apply_ui_density",
         )
@@ -2125,6 +2153,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke UI density metrics",
             "ui_density_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke header UI density metrics",
+            "header_ui_density_chars=",
         )
     )
     checks.append(
@@ -2195,6 +2230,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern command search header",
             "コマンド検索",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern header UI density style",
+            "Chrome.TCombobox",
         )
     )
     checks.append(
@@ -2363,6 +2405,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README UI density command guidance",
             "表示サイズ: 大きめ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README UI density header guidance",
+            "ヘッダーの `表示`",
         )
     )
     checks.append(
