@@ -3020,7 +3020,14 @@ tags:
                 "python -m unittest discover -s tests\n"
                 "auto_note quality --project-dir\n"
                 "AUTO_NOTE_LAUNCHER_CHECK\n"
-                "smoke-install.ps1\n",
+                "smoke-install.ps1\n"
+                "smoke-sales-delivery.ps1\n",
+                encoding="utf-8",
+            )
+            (project / "scripts" / "smoke-sales-delivery.ps1").write_text(
+                "sales-finalize --project-dir . --no-report\n"
+                "sales-handoff --verify-buyer-package\n"
+                "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt\n",
                 encoding="utf-8",
             )
             (project / ".github" / "workflows").mkdir(parents=True)
@@ -3032,6 +3039,7 @@ tags:
                 "scripts\\smoke-install.ps1\n"
                 "python -m auto_note release --project-dir .\n"
                 "python -m auto_note release --verify\n"
+                "scripts\\smoke-sales-delivery.ps1\n"
                 "python -m auto_note gui --project-dir . --smoke\n",
                 encoding="utf-8",
             )
@@ -3447,6 +3455,11 @@ tags:
         self.assertIn("release check product quality:fail", product_details)
         self.assertIn("release check launcher syntax:fail", product_details)
         self.assertIn("release check full install smoke:fail", product_details)
+        self.assertIn("release check full sales delivery smoke:fail", product_details)
+        self.assertIn("sales delivery smoke test:fail", product_details)
+        self.assertIn("sales delivery smoke finalize:fail", product_details)
+        self.assertIn("sales delivery smoke buyer package verify:fail", product_details)
+        self.assertIn("sales delivery smoke send readiness:fail", product_details)
         self.assertIn("release candidate handoff:fail", product_details)
         self.assertIn("RC handoff release check:fail", product_details)
         self.assertIn("RC handoff sales evidence:fail", product_details)
@@ -3461,6 +3474,7 @@ tags:
         self.assertIn("CI install smoke:fail", product_details)
         self.assertIn("CI release smoke create:fail", product_details)
         self.assertIn("CI release smoke verify:fail", product_details)
+        self.assertIn("CI sales delivery smoke:fail", product_details)
         self.assertIn("CI GUI smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
@@ -3972,12 +3986,18 @@ tags:
         self.assertIn("CI install smoke:pass", launcher_details)
         self.assertIn("CI release smoke create:pass", launcher_details)
         self.assertIn("CI release smoke verify:pass", launcher_details)
+        self.assertIn("CI sales delivery smoke:pass", launcher_details)
         self.assertIn("CI GUI smoke:pass", launcher_details)
         self.assertIn("release check script:pass", launcher_details)
         self.assertIn("release check unit tests:pass", launcher_details)
         self.assertIn("release check product quality:pass", launcher_details)
         self.assertIn("release check launcher syntax:pass", launcher_details)
         self.assertIn("release check full install smoke:pass", launcher_details)
+        self.assertIn("release check full sales delivery smoke:pass", launcher_details)
+        self.assertIn("sales delivery smoke test:pass", launcher_details)
+        self.assertIn("sales delivery smoke finalize:pass", launcher_details)
+        self.assertIn("sales delivery smoke buyer package verify:pass", launcher_details)
+        self.assertIn("sales delivery smoke send readiness:pass", launcher_details)
         self.assertIn("release candidate handoff:pass", launcher_details)
         self.assertIn("RC handoff release check:pass", launcher_details)
         self.assertIn("RC handoff sales evidence:pass", launcher_details)

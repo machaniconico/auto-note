@@ -68,6 +68,10 @@ try {
     Invoke-Check "Install/uninstall smoke" {
       powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-install.ps1 -SourceDir $project
     }
+
+    Invoke-Check "Sales delivery smoke" {
+      powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-sales-delivery.ps1 -SourceDir $project
+    }
   }
 
   Write-Host ""

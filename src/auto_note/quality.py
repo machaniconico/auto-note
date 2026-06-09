@@ -125,6 +125,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / ".github" / "workflows" / "ci.yml",
+            "CI sales delivery smoke",
+            "scripts\\smoke-sales-delivery.ps1",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
             "CI GUI smoke",
             "python -m auto_note gui --project-dir . --smoke",
         )
@@ -656,7 +663,36 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "smoke-install.ps1",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check full sales delivery smoke",
+            "smoke-sales-delivery.ps1",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "smoke-install.ps1", "install smoke test"))
+    checks.append(_path_check(project_dir / "scripts" / "smoke-sales-delivery.ps1", "sales delivery smoke test"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke finalize",
+            "sales-finalize --project-dir . --no-report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke buyer package verify",
+            "sales-handoff --verify-buyer-package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke send readiness",
+            "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt",
+        )
+    )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "release.py",

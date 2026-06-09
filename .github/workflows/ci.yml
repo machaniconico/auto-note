@@ -63,6 +63,10 @@ jobs:
           }
           python -m auto_note release --verify $release.FullName
 
+      - name: Run sales delivery smoke
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-sales-delivery.ps1 -SourceDir .
+
       - name: Run GUI smoke
         shell: pwsh
         run: python -m auto_note gui --project-dir . --smoke
