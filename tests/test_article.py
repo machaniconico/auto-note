@@ -2866,6 +2866,8 @@ tags: note
         self.assertIn("home_status_badge_chars=", text)
         self.assertIn("home_updated_chars=", text)
         self.assertIn("home_primary_button_chars=", text)
+        self.assertIn("display_readability_status=OK", text)
+        self.assertIn("display_readability_warnings=0", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3144,6 +3146,8 @@ tags:
                 + "command_palette_ui_density_actions=\n"
                 + "command_palette_display_reset_actions=\n"
                 + "command_palette_display_diagnostics_actions=\n"
+                + "display_readability_status=\n"
+                + "display_readability_warnings=\n"
                 + "display_diagnostics_chars=\n"
                 + "Chrome.TCombobox\n"
                 + "_resolve_font_family\n"
@@ -3169,6 +3173,9 @@ tags:
                 + "home_button_var.set(_home_support_next_button_label(text))\n"
                 + "show_display_diagnostics_action\n"
                 + "Display diagnostics / 表示診断\n"
+                + "Readability check / 可読性チェック\n"
+                + "- status:\n"
+                + "/ action:\n"
                 + "この表示診断、GUIログ表示、復旧セット\n"
                 + 'extra_entries={"DISPLAY_DIAGNOSTICS.txt": self._format_display_diagnostics()}\n'
                 + "show_gui_log_action\n"
@@ -3654,6 +3661,8 @@ tags:
         self.assertIn("GUI smoke display reset command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
+        self.assertIn("GUI smoke display readability status:fail", product_details)
+        self.assertIn("GUI smoke display readability warning count:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
         self.assertIn("GUI resolved font family:fail", product_details)
         self.assertIn("GUI named font readability defaults:fail", product_details)
@@ -3678,6 +3687,9 @@ tags:
         self.assertIn("GUI log display action:fail", product_details)
         self.assertIn("GUI display diagnostics action:fail", product_details)
         self.assertIn("GUI display diagnostics report:fail", product_details)
+        self.assertIn("GUI display readability checks:fail", product_details)
+        self.assertIn("GUI display readability status line:fail", product_details)
+        self.assertIn("GUI display readability warning actions:fail", product_details)
         self.assertIn("GUI display diagnostics support guidance:fail", product_details)
         self.assertIn("GUI log copy action:fail", product_details)
         self.assertIn("GUI log folder action:fail", product_details)
@@ -4151,6 +4163,8 @@ tags:
         self.assertIn("GUI smoke display reset command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
+        self.assertIn("GUI smoke display readability status:pass", launcher_details)
+        self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
         self.assertIn("GUI resolved font family:pass", launcher_details)
         self.assertIn("GUI named font readability defaults:pass", launcher_details)
@@ -4175,6 +4189,9 @@ tags:
         self.assertIn("GUI log display action:pass", launcher_details)
         self.assertIn("GUI display diagnostics action:pass", launcher_details)
         self.assertIn("GUI display diagnostics report:pass", launcher_details)
+        self.assertIn("GUI display readability checks:pass", launcher_details)
+        self.assertIn("GUI display readability status line:pass", launcher_details)
+        self.assertIn("GUI display readability warning actions:pass", launcher_details)
         self.assertIn("GUI display diagnostics support guidance:pass", launcher_details)
         self.assertIn("GUI log copy action:pass", launcher_details)
         self.assertIn("GUI log folder action:pass", launcher_details)

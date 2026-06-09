@@ -385,6 +385,31 @@ def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
     )
 
 
+def _numeric_tokens(value: object) -> list[float]:
+    tokens = str(value).replace("(", " ").replace(")", " ").replace(",", " ").split()
+    numbers: list[float] = []
+    for token in tokens:
+        try:
+            numbers.append(float(token))
+        except ValueError:
+            continue
+    return numbers
+
+
+def _first_number(value: object) -> float | None:
+    numbers = _numeric_tokens(value)
+    return numbers[0] if numbers else None
+
+
+def _vertical_padding(value: object) -> float | None:
+    numbers = _numeric_tokens(value)
+    if len(numbers) >= 4:
+        return min(numbers[1], numbers[3])
+    if len(numbers) >= 2:
+        return numbers[1]
+    return numbers[0] if numbers else None
+
+
 def _command_palette_status(match_count: int, total_count: int, query: str) -> str:
     if match_count <= 0:
         return "一致するコマンドがありません。別の言葉で検索してください。"
@@ -539,7 +564,10 @@ def smoke_gui(project_dir: Path) -> str:
         command_palette_display_diagnostics_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "表示診断"
         )
-        display_diagnostics_chars = len(app._format_display_diagnostics())
+        display_readability_status, display_readability_lines = app._display_readability_checks(style)
+        display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
+        display_diagnostics = app._format_display_diagnostics()
+        display_diagnostics_chars = len(display_diagnostics)
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -570,6 +598,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
             f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
             f"command_palette_display_diagnostics_actions={command_palette_display_diagnostics_actions}, "
+            f"display_readability_status={display_readability_status}, "
+            f"display_readability_warnings={display_readability_warnings}, "
             f"display_diagnostics_chars={display_diagnostics_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
@@ -6248,9 +6278,84 @@ class AutoNoteApp(tk.Tk):
         self._set_text(self.diagnostics_text, text)
 
     def show_display_diagnostics_action(self) -> None:
+        status, _lines = self._display_readability_checks()
         self._set_text(self.diagnostics_text, self._format_display_diagnostics())
         self.notebook.select(self.diagnostics_tab)
-        self.notify("表示診断を表示しました", level="success")
+        if status == "OK":
+            self.notify("表示診断を表示しました", level="success")
+        else:
+            self.notify("表示診断に注意項目があります", level="warning")
+
+    def _display_readability_checks(self, style: ttk.Style | None = None) -> tuple[str, list[str]]:
+        style = style or ttk.Style(self)
+
+        checks: list[tuple[str, bool, str, str]] = []
+
+        def add(label: str, ok: bool, detail: str, action: str) -> None:
+            checks.append((label, ok, detail, action))
+
+        try:
+            scaling_value: object = self.tk.call("tk", "scaling")
+        except tk.TclError as exc:
+            scaling_value = f"unavailable ({exc})"
+        scaling_number = _first_number(scaling_value)
+        tree_height = style.lookup("Treeview", "rowheight")
+        tab_padding = style.lookup("TNotebook.Tab", "padding")
+        button_padding = style.lookup("TButton", "padding")
+        tree_height_number = _first_number(tree_height)
+        tab_vertical_padding = _vertical_padding(tab_padding)
+        button_vertical_padding = _vertical_padding(button_padding)
+
+        add(
+            "main text",
+            UI_TEXT_SIZE >= 11,
+            f"{UI_TEXT_SIZE}pt (target 11+)",
+            "ヘッダーの 表示 で ゆったり または 大きめ を選ぶ",
+        )
+        add(
+            "small text",
+            UI_SMALL_TEXT_SIZE >= 10,
+            f"{UI_SMALL_TEXT_SIZE}pt (target 10+)",
+            "表示サイズを ゆったり または 大きめ にする",
+        )
+        add(
+            "tree rows",
+            tree_height_number is not None and tree_height_number >= 40,
+            f"{tree_height or 'unknown'}px (target 40+)",
+            "表示リセット後、表示サイズを 大きめ にする",
+        )
+        add(
+            "tabs",
+            tab_vertical_padding is not None and tab_vertical_padding >= 10,
+            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target 10+)",
+            "表示リセットを実行する",
+        )
+        add(
+            "buttons",
+            button_vertical_padding is not None and button_vertical_padding >= 10,
+            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target 10+)",
+            "表示リセットを実行する",
+        )
+        add(
+            "tk scaling",
+            scaling_number is not None and scaling_number >= 1.0,
+            f"{scaling_value} (target 1.0+)",
+            "Windowsの表示倍率を確認し、auto-noteを再起動する",
+        )
+        add(
+            "DPI awareness",
+            _DPI_AWARENESS_ENABLED,
+            f"requested={_DPI_AWARENESS_ENABLED}",
+            "auto-noteを再起動して改善しない場合は問い合わせ一式ZIPを送る",
+        )
+
+        status = "OK" if all(ok for _label, ok, _detail, _action in checks) else "WARN"
+        lines = [f"- status: {status}"]
+        for label, ok, detail, action in checks:
+            prefix = "OK" if ok else "WARN"
+            suffix = "" if ok else f" / action: {action}"
+            lines.append(f"- [{prefix}] {label}: {detail}{suffix}")
+        return status, lines
 
     def _format_display_diagnostics(self) -> str:
         def _safe(callback) -> str:
@@ -6266,11 +6371,15 @@ class AutoNoteApp(tk.Tk):
         tree_height = _safe(lambda: style.lookup("Treeview", "rowheight"))
         tab_padding = _safe(lambda: style.lookup("TNotebook.Tab", "padding"))
         button_padding = _safe(lambda: style.lookup("TButton", "padding"))
+        _status, readability_lines = self._display_readability_checks(style)
         lines = [
             "Display diagnostics / 表示診断",
             "",
             f"generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"project: {self.project_dir}",
+            "",
+            "Readability check / 可読性チェック",
+            *readability_lines,
             "",
             "Current display settings",
             f"- display density: {density} / {_ui_density_label(density)}",
