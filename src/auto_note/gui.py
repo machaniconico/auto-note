@@ -85,7 +85,7 @@ from .publish_queue import (
 from .quality import format_quality_report, run_quality_checks
 from .quickstart import format_quickstart_report, run_quickstart
 from .readiness import format_readiness_report, run_readiness
-from .repair import format_repair_report, run_repair
+from .repair import format_recovery_kit_report, format_repair_report, run_recovery_kit, run_repair
 from .release import create_release_package, format_release_verification, list_releases, verify_release_package
 from .review import ArticleReview, format_review_report, has_review_blockers, review_article, review_path
 from .scaffold import create_article, create_practice_article, list_article_templates
@@ -648,6 +648,7 @@ class AutoNoteApp(tk.Tk):
                 ("練習記事作成", self.create_practice_article_action),
                 ("記事レビュー", self.review_all_to_tab),
                 ("準備度確認", self.run_readiness_to_tab),
+                ("復旧セット", self.run_recovery_kit_to_tab),
                 ("自動修復", self.run_repair_to_tab),
                 ("トラブル診断", self.run_troubleshoot_to_tab),
                 ("出荷前チェック", self.run_preflight_to_tab),
@@ -1506,6 +1507,7 @@ class AutoNoteApp(tk.Tk):
                 ("ヘルパー生成確認", self.run_quickstart_helper_smoke_to_tab),
                 ("セットアップ確認", self.run_setup_to_tab),
                 ("準備度", self.run_readiness_to_tab),
+                ("復旧セット", self.run_recovery_kit_to_tab),
                 ("自動修復", self.run_repair_to_tab),
                 ("トラブル診断", self.run_troubleshoot_to_tab),
                 ("出荷前チェック", self.run_preflight_to_tab),
@@ -1732,6 +1734,7 @@ class AutoNoteApp(tk.Tk):
                 ("ライセンス表示", self.show_dependency_notices),
                 ("第三者表記更新", self.write_dependency_notices_action),
                 ("セットアップ確認", self.run_setup_to_tab),
+                ("復旧セット", self.run_recovery_kit_to_tab),
                 ("自動修復", self.run_repair_to_tab),
                 ("トラブル診断", self.run_troubleshoot_to_tab),
                 ("問い合わせ作成", self.create_support_request_action),
@@ -4050,6 +4053,7 @@ class AutoNoteApp(tk.Tk):
             ("ヘルパー生成確認", "投稿ヘルパーHTML生成を確認", self.run_quickstart_helper_smoke_to_tab),
             ("セットアップ確認", "初回セットアップ状態を確認", self.run_setup_to_tab),
             ("準備度確認", "スコアと次の対応を表示", self.run_readiness_to_tab),
+            ("復旧セット", "安全な基本修復、再診断、必要時の問い合わせ一式作成をまとめて実行", self.run_recovery_kit_to_tab),
             ("自動修復", "基本フォルダ/設定を安全に再作成し、整理候補を確認", self.run_repair_to_tab),
             ("トラブル診断", "起動、ログイン、プライバシー、配布ZIPの詰まりどころを確認", self.run_troubleshoot_to_tab),
             ("出荷前チェック", "販売/配布前の総合チェックを表示", self.run_preflight_to_tab),
@@ -4956,6 +4960,28 @@ class AutoNoteApp(tk.Tk):
         self.notebook.select(self.diagnostics_tab)
         level = {"pass": "success", "warn": "warning", "fail": "error"}.get(report.status, "info")
         self.notify("トラブル診断を実行しました", level=level)
+
+    def run_recovery_kit_to_tab(self) -> None:
+        if not messagebox.askyesno(
+            "復旧セット",
+            "安全な基本修復、再診断、必要時の問い合わせ一式ZIP作成をまとめて実行します。\n\n"
+            "記事は変更しません。古い生成物やプライバシー監査NG生成物の削除も行いません。",
+        ):
+            return
+        try:
+            report = run_recovery_kit(self.project_dir)
+        except OSError as exc:
+            self.notify("復旧セットに失敗しました", level="error")
+            messagebox.showerror("復旧セットエラー", str(exc))
+            return
+        self.settings = load_settings(self.project_dir)
+        self.sync_settings_tab()
+        self.refresh_all()
+        self._refresh_support_summary()
+        self._set_text(self.diagnostics_text, format_recovery_kit_report(report))
+        self.notebook.select(self.diagnostics_tab)
+        level = {"pass": "success", "warn": "warning", "fail": "error"}.get(report.status, "info")
+        self.notify("復旧セットを実行しました", level=level)
 
     def run_repair_to_tab(self) -> None:
         if not messagebox.askyesno(

@@ -166,6 +166,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "Send this ZIP only",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "repair.py",
+            "recovery kit workflow",
+            "run_recovery_kit",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "repair.py",
+            "recovery kit support bundle fallback",
+            "create_bundle_on_issue",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery kit action",
+            "run_recovery_kit_to_tab",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery kit button",
+            "復旧セット",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README recovery kit guidance",
+            "復旧セット",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
     checks.append(
         _text_contains_check(

@@ -6,6 +6,12 @@ from pathlib import Path
 from .maintenance import cleanup_generated_files
 from .readiness import run_readiness
 from .setup_check import run_setup_check
+from .support import (
+    create_support_bundle,
+    format_support_bundle_verification,
+    verify_support_bundle,
+)
+from .troubleshoot import TroubleshootReport, format_troubleshoot_report, run_troubleshoot
 
 
 @dataclass(frozen=True)
@@ -22,6 +28,27 @@ class RepairReport:
     applied: bool
     readiness_score: int
     items: list[RepairItem]
+
+
+@dataclass(frozen=True)
+class RecoveryKitReport:
+    project_dir: Path
+    before: TroubleshootReport
+    repair: RepairReport
+    after: TroubleshootReport
+    support_bundle: Path | None = None
+    support_bundle_errors: list[str] | None = None
+    support_bundle_error: str = ""
+
+    @property
+    def status(self) -> str:
+        if self.support_bundle_error or (self.support_bundle_errors or []) or self.after.status == "fail":
+            return "fail"
+        if self.before.status != "pass" or self.after.status != "pass":
+            return "warn"
+        if any(item.status == "warn" for item in self.repair.items):
+            return "warn"
+        return "pass"
 
 
 def run_repair(
@@ -127,6 +154,37 @@ def run_repair(
     )
 
 
+def run_recovery_kit(
+    project_dir: Path,
+    *,
+    create_bundle_on_issue: bool = True,
+) -> RecoveryKitReport:
+    project_dir = project_dir.resolve()
+    before = run_troubleshoot(project_dir)
+    repair = run_repair(project_dir, apply=True)
+    after = run_troubleshoot(project_dir)
+    support_bundle: Path | None = None
+    support_bundle_errors: list[str] | None = None
+    support_bundle_error = ""
+
+    if create_bundle_on_issue and after.status != "pass":
+        try:
+            support_bundle = create_support_bundle(project_dir)
+            support_bundle_errors = verify_support_bundle(support_bundle)
+        except Exception as exc:  # pragma: no cover - surfaced in report for GUI support
+            support_bundle_error = str(exc)
+
+    return RecoveryKitReport(
+        project_dir=project_dir,
+        before=before,
+        repair=repair,
+        after=after,
+        support_bundle=support_bundle,
+        support_bundle_errors=support_bundle_errors,
+        support_bundle_error=support_bundle_error,
+    )
+
+
 def format_repair_report(report: RepairReport) -> str:
     mode = "APPLY" if report.applied else "PREVIEW"
     lines = [
@@ -145,6 +203,48 @@ def format_repair_report(report: RepairReport) -> str:
     if next_actions:
         lines.extend(["", "Next actions"])
         lines.extend(next_actions)
+    return "\n".join(lines)
+
+
+def format_recovery_kit_report(report: RecoveryKitReport) -> str:
+    label = {"pass": "OK", "warn": "CHECK", "fail": "BLOCKED"}[report.status]
+    lines = [
+        "Recovery kit / 復旧セット",
+        f"Verdict: {label}",
+        f"Before: {_troubleshoot_label(report.before.status)}",
+        f"After: {_troubleshoot_label(report.after.status)}",
+        "Flow: safe setup repair -> troubleshoot -> support bundle when needed",
+        "",
+        "Safe repair result",
+        _indent(format_repair_report(report.repair)),
+        "",
+        "Troubleshooting after repair",
+        _indent(format_troubleshoot_report(report.after)),
+    ]
+    if report.support_bundle is not None:
+        errors = report.support_bundle_errors or []
+        lines.extend(
+            [
+                "",
+                f"Support bundle: {_report_path(report.project_dir, report.support_bundle)}",
+                _indent(
+                    _mask_project_paths(
+                        format_support_bundle_verification(report.support_bundle, errors),
+                        report.project_dir,
+                    )
+                ),
+            ]
+        )
+    elif report.support_bundle_error:
+        lines.extend(
+            [
+                "",
+                "Support bundle: failed to create "
+                f"({_mask_project_paths(report.support_bundle_error, report.project_dir)})",
+            ]
+        )
+    else:
+        lines.extend(["", "Support bundle: not needed"])
     return "\n".join(lines)
 
 
@@ -203,3 +303,28 @@ def _format_bytes(value: int) -> str:
     if value >= 1024:
         return f"{value / 1024:.1f} KB"
     return f"{value} B"
+
+
+def _troubleshoot_label(status: str) -> str:
+    return {"pass": "OK", "warn": "CHECK", "fail": "BLOCKED"}.get(status, status.upper())
+
+
+def _indent(text: str) -> str:
+    return "\n".join(f"  {line}" if line else "" for line in text.splitlines())
+
+
+def _report_path(project_dir: Path, path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(project_dir.resolve()))
+    except ValueError:
+        return path.name
+
+
+def _mask_project_paths(text: str, project_dir: Path) -> str:
+    resolved = project_dir.resolve()
+    values = (str(resolved), resolved.as_posix())
+    masked = text
+    for value in sorted(values, key=len, reverse=True):
+        if value:
+            masked = masked.replace(value, "<PROJECT_DIR>")
+    return masked
