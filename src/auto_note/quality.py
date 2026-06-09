@@ -2506,14 +2506,28 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"BIZ UDPゴシック"',
+            '"Yu Gothic UI"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI wide Japanese preferred font",
-            'UI_FONT_CANDIDATES = ("BIZ UDPゴシック"',
+            'UI_FONT_CANDIDATES = ("Yu Gothic UI"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable font line-space guard",
+            "UI_MIN_FONT_LINESPACE_RATIO",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable font resolver threshold",
+            "minimum_linespace_ratio",
         )
     )
     checks.append(

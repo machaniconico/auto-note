@@ -203,11 +203,13 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer wider Japanese UI fonts before condensed UI faces to avoid crushed labels in Tk on Windows.
-UI_FONT_CANDIDATES = ("BIZ UDPゴシック", "Meiryo", "Meiryo UI", "Yu Gothic UI", "MS Gothic", "Segoe UI")
+# Prefer modern Windows Japanese UI faces with generous line metrics.
+# BIZ UD/UDP Gothic can render with a short Tk linespace on some displays and make kana look crushed.
+UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
+UI_MIN_FONT_LINESPACE_RATIO = 1.55
 UI_TEXT_SIZE = 13
 UI_SMALL_TEXT_SIZE = 12
 UI_BADGE_FONT_SIZE = 12
@@ -358,16 +360,41 @@ def _enable_windows_dpi_awareness() -> None:
     _DPI_AWARENESS_ENABLED = True
 
 
-def _resolve_font_family(root: tk.Misc, candidates: tuple[str, ...]) -> str:
+def _minimum_readable_linespace(size: int) -> int:
+    return int(math.ceil(size * UI_MIN_FONT_LINESPACE_RATIO))
+
+
+def _candidate_font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> int | None:
+    try:
+        font = tkfont.Font(root=root, family=family, size=size, weight=weight)
+        return int(font.metrics("linespace"))
+    except (tk.TclError, ValueError):
+        return None
+
+
+def _resolve_font_family(
+    root: tk.Misc,
+    candidates: tuple[str, ...],
+    *,
+    minimum_linespace_ratio: float | None = None,
+) -> str:
     try:
         available = {family.lower(): family for family in tkfont.families(root)}
     except tk.TclError:
         return candidates[0]
+    first_available: str | None = None
     for candidate in candidates:
         resolved = available.get(candidate.lower())
         if resolved:
+            if first_available is None:
+                first_available = resolved
+            if minimum_linespace_ratio is not None:
+                linespace = _candidate_font_linespace(root, resolved, UI_TEXT_SIZE)
+                minimum = int(math.ceil(UI_TEXT_SIZE * minimum_linespace_ratio))
+                if linespace is None or linespace < minimum:
+                    continue
             return resolved
-    return candidates[-1]
+    return first_available or candidates[-1]
 
 
 def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> None:
@@ -388,11 +415,7 @@ def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> 
 
 
 def _font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> int | None:
-    try:
-        font = tkfont.Font(root=root, family=family, size=size, weight=weight)
-        return int(font.metrics("linespace"))
-    except (tk.TclError, ValueError):
-        return None
+    return _candidate_font_linespace(root, family, size, weight=weight)
 
 
 def _readable_vertical_padding(
@@ -788,7 +811,11 @@ class AutoNoteApp(tk.Tk):
             style.theme_use("clam")
         except tk.TclError:
             pass
-        UI_FONT = _resolve_font_family(self, UI_FONT_CANDIDATES)
+        UI_FONT = _resolve_font_family(
+            self,
+            UI_FONT_CANDIDATES,
+            minimum_linespace_ratio=UI_MIN_FONT_LINESPACE_RATIO,
+        )
         CODE_FONT = _resolve_font_family(self, CODE_FONT_CANDIDATES)
         _configure_tk_font_defaults(self, UI_FONT, CODE_FONT)
         _guard_ui_readability_metrics(self, UI_FONT)
@@ -6493,6 +6520,9 @@ class AutoNoteApp(tk.Tk):
         main_linespace = _font_linespace(self, UI_FONT, UI_TEXT_SIZE)
         small_linespace = _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE)
         badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold")
+        minimum_main_linespace = _minimum_readable_linespace(UI_TEXT_SIZE)
+        minimum_small_linespace = _minimum_readable_linespace(UI_SMALL_TEXT_SIZE)
+        minimum_badge_linespace = _minimum_readable_linespace(UI_BADGE_FONT_SIZE)
         line_target = main_linespace or (UI_TEXT_SIZE + 9)
         tree_target = max(52, int(math.ceil(line_target * 2.05)), line_target + 24)
         tab_target = _readable_vertical_padding((0, 0), main_linespace, minimum=18, ratio=0.58)
@@ -6513,8 +6543,17 @@ class AutoNoteApp(tk.Tk):
         )
         add(
             "font line height",
-            main_linespace is not None and small_linespace is not None and badge_linespace is not None,
-            f"main {main_linespace or 'unknown'}px / small {small_linespace or 'unknown'}px / badge {badge_linespace or 'unknown'}px",
+            main_linespace is not None
+            and small_linespace is not None
+            and badge_linespace is not None
+            and main_linespace >= minimum_main_linespace
+            and small_linespace >= minimum_small_linespace
+            and badge_linespace >= minimum_badge_linespace,
+            (
+                f"main {main_linespace or 'unknown'}px / small {small_linespace or 'unknown'}px / "
+                f"badge {badge_linespace or 'unknown'}px "
+                f"(target {minimum_main_linespace}/{minimum_small_linespace}/{minimum_badge_linespace}+)"
+            ),
             "表示リセット後、改善しない場合は表示診断コピーを送る",
         )
         add(

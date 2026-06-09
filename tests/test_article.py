@@ -3315,9 +3315,10 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
-                + '"BIZ UDPゴシック"\n'
-                + 'UI_FONT_CANDIDATES = ("BIZ UDPゴシック"\n'
+                + '"Yu Gothic UI"\n'
+                + 'UI_FONT_CANDIDATES = ("Yu Gothic UI"\n'
                 + "UI_FONT_CANDIDATES\n"
+                + "UI_MIN_FONT_LINESPACE_RATIO\n"
                 + "UI_TEXT_SIZE = 13\n"
                 + "UI_BADGE_FONT_SIZE = 12\n"
                 + "UI_TREE_ROW_HEIGHT = 58\n"
@@ -3328,6 +3329,8 @@ tags:
                 + '"small_text_size": 12,\n        "badge_font_size": 12,\n'
                 + '"large": {\n        "text_size": 15,\n'
                 + "_font_linespace\n"
+                + "_minimum_readable_linespace\n"
+                + "minimum_linespace_ratio\n"
                 + "UI_DENSITY_LABELS\n"
                 + "ui_density_var\n"
                 + "_apply_ui_density\n"
@@ -3945,6 +3948,8 @@ tags:
         self.assertIn("GUI modern text area styling:fail", product_details)
         self.assertIn("GUI readable Japanese font:fail", product_details)
         self.assertIn("GUI wide Japanese preferred font:fail", product_details)
+        self.assertIn("GUI readable font line-space guard:fail", product_details)
+        self.assertIn("GUI readable font resolver threshold:fail", product_details)
         self.assertIn("GUI readable text size tokens:fail", product_details)
         self.assertIn("GUI readable badge font size:fail", product_details)
         self.assertIn("GUI readable tree row height:fail", product_details)
@@ -4536,6 +4541,8 @@ tags:
         self.assertIn("GUI modern text area styling:pass", launcher_details)
         self.assertIn("GUI readable Japanese font:pass", launcher_details)
         self.assertIn("GUI wide Japanese preferred font:pass", launcher_details)
+        self.assertIn("GUI readable font line-space guard:pass", launcher_details)
+        self.assertIn("GUI readable font resolver threshold:pass", launcher_details)
         self.assertIn("GUI readable text size tokens:pass", launcher_details)
         self.assertIn("GUI readable badge font size:pass", launcher_details)
         self.assertIn("GUI readable tree row height:pass", launcher_details)
