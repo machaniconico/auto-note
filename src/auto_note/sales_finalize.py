@@ -615,7 +615,13 @@ def run_buyer_send_readiness(project_dir: Path) -> BuyerSendReadinessReport:
                 )
             missing_message_parts = [
                 part
-                for part in ("Paste-ready message", "SHA-256", "START_HERE_FOR_BUYER.txt", "パスワード")
+                for part in (
+                    "Paste-ready message",
+                    "SHA-256",
+                    "START_HERE_FOR_BUYER.txt",
+                    "BUYER_SUPPORT_REQUEST.txt",
+                    "パスワード",
+                )
                 if part not in message_text
             ]
             if missing_message_parts:
@@ -964,7 +970,7 @@ def format_sales_finalize_report(report: SalesFinalizeReport) -> str:
             else:
                 next_actions.append(
                     f"- delivery: 購入者には {report.buyer_delivery_dir.name} の配布ZIP、START_HERE_FOR_BUYER.txt、BUYER_HANDOFF.txt、"
-                    "BUYER_SUPPORT_GUIDE.txt、BUYER_DELIVERY_MANIFEST.json、SHA256SUMS.txt を渡し、"
+                    "BUYER_SUPPORT_GUIDE.txt、BUYER_SUPPORT_REQUEST.txt、BUYER_DELIVERY_MANIFEST.json、SHA256SUMS.txt を渡し、"
                     f"販売者は {report.sales_handoff_path.name} を証跡として保管してください。"
                 )
         else:
@@ -1276,7 +1282,8 @@ def _build_buyer_delivery_message(
         "ZIPを展開したら、まず START_HERE_FOR_BUYER.txt を開いてください。"
         "その案内に沿って配布ZIPを展開し、START_HERE.txt と shortcuts\\install-auto-note.bat から導入してください。"
         "note.com の自動ログインが安全ではない可能性で止まる場合は、普段使うブラウザでnote.comへログインし、投稿ヘルパーの貼り付け運用をご利用ください。\n\n"
-        "困った時は BUYER_SUPPORT_GUIDE.txt を確認し、GUIの ヘルプ > 問い合わせ一式、または `auto-note support --project-dir . --bundle` で作成したZIPを共有してください。"
+        "困った時は BUYER_SUPPORT_GUIDE.txt を確認し、BUYER_SUPPORT_REQUEST.txt に状況を書いてください。"
+        "GUIの ヘルプ > 問い合わせ一式、または `auto-note support --project-dir . --bundle` で作成したZIPと一緒に共有してください。"
         "パスワード、ログインコード、未公開本文全文、支払い情報は送らないでください。\n\n"
         "Seller note / 販売者メモ:\n"
         f"- Buyer delivery ZIP: {package_path.name}\n"

@@ -1039,6 +1039,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer support request",
+            "BUYER_SUPPORT_REQUEST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer support request template",
+            "_build_buyer_support_request",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
             "sales handoff buyer start guide",
             "START_HERE_FOR_BUYER.txt",
         )
@@ -1153,6 +1167,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "sales finalize buyer delivery message",
             "_write_buyer_delivery_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize buyer support request message",
+            "BUYER_SUPPORT_REQUEST.txt",
         )
     )
     checks.append(

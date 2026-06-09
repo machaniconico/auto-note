@@ -7515,7 +7515,7 @@ class AutoNoteApp(tk.Tk):
                     format_buyer_delivery_result(result),
                     "",
                     f"購入者に添付するのは {result.package_path.name} です。",
-                    "中には配布ZIP、START_HERE_FOR_BUYER.txt、BUYER_HANDOFF.txt、BUYER_SUPPORT_GUIDE.txt、BUYER_DELIVERY_MANIFEST.json、SHA256SUMS.txt だけが入っています。",
+                    "中には配布ZIP、START_HERE_FOR_BUYER.txt、BUYER_HANDOFF.txt、BUYER_SUPPORT_GUIDE.txt、BUYER_SUPPORT_REQUEST.txt、BUYER_DELIVERY_MANIFEST.json、SHA256SUMS.txt だけが入っています。",
                     "元の auto-note-sales-handoff-*.zip は販売者の証跡として保管してください。",
                 ]
             ),

@@ -1605,6 +1605,7 @@ tags: note
                 manifest = archive.read("SALES_HANDOFF_MANIFEST.json").decode("utf-8")
                 buyer_handoff = archive.read("BUYER_HANDOFF.txt").decode("utf-8")
                 buyer_support_guide = archive.read("BUYER_SUPPORT_GUIDE.txt").decode("utf-8")
+                buyer_support_request = archive.read("BUYER_SUPPORT_REQUEST.txt").decode("utf-8")
                 delivery_checklist = archive.read("DELIVERY_CHECKLIST.txt").decode("utf-8")
                 seller_receipt = archive.read("SELLER_DELIVERY_RECEIPT.txt").decode("utf-8")
                 seller_checklist = archive.read("SELLER_FINAL_CHECKLIST.txt").decode("utf-8")
@@ -1614,6 +1615,7 @@ tags: note
             buyer_delivery = extract_buyer_delivery(result.path)
             buyer_delivery_text = format_buyer_delivery_result(buyer_delivery)
             buyer_start = buyer_delivery.buyer_start_path.read_text(encoding="utf-8")
+            buyer_support_request_from_delivery = buyer_delivery.buyer_support_request_path.read_text(encoding="utf-8")
             buyer_delivery_names = {path.name for path in buyer_delivery.directory.iterdir()}
             buyer_delivery_errors = verify_buyer_delivery(buyer_delivery.directory)
             buyer_delivery_verification = format_buyer_delivery_verification(
@@ -1627,6 +1629,7 @@ tags: note
                 buyer_package_names = set(archive.namelist())
                 buyer_package_manifest = json.loads(archive.read("BUYER_DELIVERY_MANIFEST.json").decode("utf-8"))
                 buyer_package_start = archive.read("START_HERE_FOR_BUYER.txt").decode("utf-8")
+                buyer_package_support_request = archive.read("BUYER_SUPPORT_REQUEST.txt").decode("utf-8")
             buyer_package_errors = verify_buyer_delivery_package(buyer_delivery.package_path)
             buyer_package_verification = format_buyer_delivery_package_verification(
                 buyer_delivery.package_path,
@@ -1748,6 +1751,7 @@ tags: note
         self.assertIn("README.txt", names)
         self.assertIn("BUYER_HANDOFF.txt", names)
         self.assertIn("BUYER_SUPPORT_GUIDE.txt", names)
+        self.assertIn("BUYER_SUPPORT_REQUEST.txt", names)
         self.assertIn("DELIVERY_CHECKLIST.txt", names)
         self.assertIn("SELLER_DELIVERY_RECEIPT.txt", names)
         self.assertIn("SELLER_FINAL_CHECKLIST.txt", names)
@@ -1764,15 +1768,23 @@ tags: note
         self.assertIn("購入者の最初の10分", buyer_handoff)
         self.assertIn("auto-note buyer support guide", buyer_support_guide)
         self.assertIn("auto-note support --project-dir . --bundle", buyer_support_guide)
+        self.assertIn("BUYER_SUPPORT_REQUEST.txt", buyer_support_guide)
+        self.assertIn("auto-note buyer support request", buyer_support_request)
+        self.assertIn("Order ID / 注文ID", buyer_support_request)
+        self.assertIn(".auto-note\\support\\auto-note-support-bundle-*.zip", buyer_support_request)
         self.assertIn("auto-note buyer start here", buyer_start)
         self.assertIn(result.release_path.name, buyer_start)
         self.assertIn("START_HERE.txt", buyer_start)
         self.assertIn("shortcuts\\install-auto-note.bat", buyer_start)
         self.assertIn("BUYER_SUPPORT_GUIDE.txt", buyer_start)
+        self.assertIn("BUYER_SUPPORT_REQUEST.txt", buyer_start)
         self.assertIn("auto-note buyer start here", buyer_package_start)
+        self.assertIn("auto-note buyer support request", buyer_support_request_from_delivery)
+        self.assertIn("auto-note buyer support request", buyer_package_support_request)
         self.assertIn("Buyer delivery", delivery_checklist)
         self.assertIn("購入者に送るもの", delivery_checklist)
         self.assertIn("START_HERE_FOR_BUYER.txt", delivery_checklist)
+        self.assertIn("BUYER_SUPPORT_REQUEST.txt", delivery_checklist)
         self.assertIn("Seller evidence", delivery_checklist)
         self.assertIn("SELLER_DELIVERY_RECEIPT.txt", delivery_checklist)
         self.assertIn("通常は送らないもの", delivery_checklist)
@@ -1788,6 +1800,7 @@ tags: note
                 "START_HERE_FOR_BUYER.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "BUYER_DELIVERY_MANIFEST.json",
                 "SHA256SUMS.txt",
             },
@@ -1804,6 +1817,7 @@ tags: note
                 "START_HERE_FOR_BUYER.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "BUYER_DELIVERY_MANIFEST.json",
                 "SHA256SUMS.txt",
             },
@@ -1812,6 +1826,10 @@ tags: note
         self.assertEqual(buyer_package_manifest["release_package"], result.release_path.name)
         self.assertIn(
             "START_HERE_FOR_BUYER.txt",
+            {str(item["path"]) for item in buyer_package_manifest["files"] if isinstance(item, dict)},
+        )
+        self.assertIn(
+            "BUYER_SUPPORT_REQUEST.txt",
             {str(item["path"]) for item in buyer_package_manifest["files"] if isinstance(item, dict)},
         )
         self.assertEqual(buyer_package_errors, [])
@@ -1824,6 +1842,7 @@ tags: note
         self.assertIn("buyer delivery zip", buyer_delivery_text)
         self.assertIn("buyer start guide", buyer_delivery_text)
         self.assertIn("buyer support guide", buyer_delivery_text)
+        self.assertIn("buyer support request template", buyer_delivery_text)
         self.assertTrue(any("unexpected file" in error for error in dirty_buyer_delivery_errors))
         self.assertTrue(any("buyer checksum mismatch: BUYER_HANDOFF.txt" in error for error in tampered_buyer_delivery_errors))
         self.assertIn("release package to send", buyer_delivery_text)
@@ -1836,6 +1855,7 @@ tags: note
                 "START_HERE_FOR_BUYER.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "BUYER_DELIVERY_MANIFEST.json",
                 "SHA256SUMS.txt",
             },
@@ -2213,6 +2233,7 @@ tags: note
                 "START_HERE_FOR_BUYER.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "BUYER_DELIVERY_MANIFEST.json",
                 "SHA256SUMS.txt",
             },
@@ -2241,6 +2262,7 @@ tags: note
         self.assertIn("貼り付け用文", buyer_delivery_message_text)
         self.assertIn("START_HERE_FOR_BUYER.txt", buyer_delivery_message_text)
         self.assertIn("BUYER_SUPPORT_GUIDE.txt", buyer_delivery_message_text)
+        self.assertIn("BUYER_SUPPORT_REQUEST.txt", buyer_delivery_message_text)
         self.assertIn("SHA-256", buyer_delivery_message_text)
         self.assertIn("パスワード", buyer_delivery_message_text)
         self.assertIn("auto-note seller send checklist", seller_send_checklist_text)
@@ -3182,11 +3204,11 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_handoff.py").write_text(
-                "購入者の最初の10分\nDELIVERY_CHECKLIST.txt\nSELLER_DELIVERY_RECEIPT.txt\nextract_buyer_delivery\nverify_buyer_delivery\nSHA256SUMS.txt\nPackage SHA-256\nSTART_HERE_FOR_BUYER.txt\nBUYER_SUPPORT_GUIDE.txt\nBUYER_DELIVERY_MANIFEST.json\n_verify_buyer_delivery_manifest\npackage_buyer_delivery\nverify_buyer_delivery_package\n",
+                "購入者の最初の10分\nDELIVERY_CHECKLIST.txt\nSELLER_DELIVERY_RECEIPT.txt\nextract_buyer_delivery\nverify_buyer_delivery\nSHA256SUMS.txt\nPackage SHA-256\nSTART_HERE_FOR_BUYER.txt\nBUYER_SUPPORT_GUIDE.txt\nBUYER_SUPPORT_REQUEST.txt\n_build_buyer_support_request\nBUYER_DELIVERY_MANIFEST.json\n_verify_buyer_delivery_manifest\npackage_buyer_delivery\nverify_buyer_delivery_package\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_finalize.py").write_text(
-                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nlist_buyer_delivery_messages\nrun_buyer_send_readiness\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n",
+                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\nrun_buyer_send_readiness\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "privacy.py").write_text(
@@ -3639,6 +3661,8 @@ tags:
         self.assertIn("sales handoff buyer delivery extractor:fail", product_details)
         self.assertIn("sales handoff buyer delivery verifier:fail", product_details)
         self.assertIn("sales handoff buyer support guide:fail", product_details)
+        self.assertIn("sales handoff buyer support request:fail", product_details)
+        self.assertIn("sales handoff buyer support request template:fail", product_details)
         self.assertIn("sales handoff buyer delivery manifest:fail", product_details)
         self.assertIn("sales handoff buyer delivery manifest verifier:fail", product_details)
         self.assertIn("sales handoff buyer delivery package:fail", product_details)
@@ -3649,6 +3673,7 @@ tags:
         self.assertIn("sales finalize creates buyer delivery:fail", product_details)
         self.assertIn("sales finalize verifies buyer delivery:fail", product_details)
         self.assertIn("sales finalize verifies buyer delivery zip:fail", product_details)
+        self.assertIn("sales finalize buyer support request message:fail", product_details)
         self.assertIn("sales finalize seller send checklist:fail", product_details)
         self.assertIn("privacy audit seller send checklist:fail", product_details)
         self.assertIn("diagnostic seller send checklist:fail", product_details)
@@ -4203,6 +4228,8 @@ tags:
         self.assertIn("sales handoff buyer delivery extractor:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery verifier:pass", launcher_details)
         self.assertIn("sales handoff buyer support guide:pass", launcher_details)
+        self.assertIn("sales handoff buyer support request:pass", launcher_details)
+        self.assertIn("sales handoff buyer support request template:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery manifest:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery manifest verifier:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery package:pass", launcher_details)
@@ -4213,6 +4240,7 @@ tags:
         self.assertIn("sales finalize creates buyer delivery:pass", launcher_details)
         self.assertIn("sales finalize verifies buyer delivery:pass", launcher_details)
         self.assertIn("sales finalize verifies buyer delivery zip:pass", launcher_details)
+        self.assertIn("sales finalize buyer support request message:pass", launcher_details)
         self.assertIn("sales finalize seller send checklist:pass", launcher_details)
         self.assertIn("privacy audit seller send checklist:pass", launcher_details)
         self.assertIn("diagnostic seller send checklist:pass", launcher_details)

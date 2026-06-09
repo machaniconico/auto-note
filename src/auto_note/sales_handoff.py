@@ -32,6 +32,7 @@ class BuyerDeliveryResult:
     buyer_start_path: Path
     buyer_handoff_path: Path
     buyer_support_guide_path: Path
+    buyer_support_request_path: Path
     manifest_path: Path
     checksum_path: Path
     package_path: Path
@@ -72,6 +73,7 @@ def create_sales_handoff(project_dir: Path, *, strict: bool = False) -> SalesHan
         "README.txt": _build_readme(release_path.name, readiness.status).encode("utf-8"),
         "BUYER_HANDOFF.txt": _build_buyer_handoff(release_path.name).encode("utf-8"),
         "BUYER_SUPPORT_GUIDE.txt": _build_buyer_support_guide(release_path.name).encode("utf-8"),
+        "BUYER_SUPPORT_REQUEST.txt": _build_buyer_support_request(release_path.name).encode("utf-8"),
         "DELIVERY_CHECKLIST.txt": _build_delivery_checklist(release_path.name, readiness).encode("utf-8"),
         "SELLER_DELIVERY_RECEIPT.txt": _build_seller_delivery_receipt(
             release_path.name,
@@ -148,6 +150,7 @@ def verify_sales_handoff(handoff_path: Path) -> list[str]:
                 "README.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "DELIVERY_CHECKLIST.txt",
                 "SELLER_DELIVERY_RECEIPT.txt",
                 "SELLER_FINAL_CHECKLIST.txt",
@@ -203,6 +206,7 @@ def extract_buyer_delivery(handoff_path: Path, *, output_dir: Path | None = None
         buyer_start_bytes = _build_buyer_start_here(release_name).encode("utf-8")
         buyer_handoff_bytes = archive.read("BUYER_HANDOFF.txt")
         buyer_support_guide_bytes = archive.read("BUYER_SUPPORT_GUIDE.txt")
+        buyer_support_request_bytes = archive.read("BUYER_SUPPORT_REQUEST.txt")
         release_path = unique_path(target_dir / release_name)
         release_path.write_bytes(release_bytes)
         buyer_start_path = unique_path(target_dir / "START_HERE_FOR_BUYER.txt")
@@ -211,11 +215,14 @@ def extract_buyer_delivery(handoff_path: Path, *, output_dir: Path | None = None
         buyer_handoff_path.write_bytes(buyer_handoff_bytes)
         buyer_support_guide_path = unique_path(target_dir / "BUYER_SUPPORT_GUIDE.txt")
         buyer_support_guide_path.write_bytes(buyer_support_guide_bytes)
+        buyer_support_request_path = unique_path(target_dir / "BUYER_SUPPORT_REQUEST.txt")
+        buyer_support_request_path.write_bytes(buyer_support_request_bytes)
         records = [
             _record(release_path.name, release_bytes),
             _record(buyer_start_path.name, buyer_start_bytes),
             _record(buyer_handoff_path.name, buyer_handoff_bytes),
             _record(buyer_support_guide_path.name, buyer_support_guide_bytes),
+            _record(buyer_support_request_path.name, buyer_support_request_bytes),
         ]
         manifest = _build_buyer_delivery_manifest(
             created_at=created_at,
@@ -238,6 +245,7 @@ def extract_buyer_delivery(handoff_path: Path, *, output_dir: Path | None = None
         buyer_start_path,
         buyer_handoff_path,
         buyer_support_guide_path,
+        buyer_support_request_path,
         manifest_path,
         checksum_path,
         package_path,
@@ -252,6 +260,7 @@ def format_buyer_delivery_result(result: BuyerDeliveryResult) -> str:
             f"- buyer start guide: {result.buyer_start_path.name}",
             f"- buyer handoff note: {result.buyer_handoff_path.name}",
             f"- buyer support guide: {result.buyer_support_guide_path.name}",
+            f"- buyer support request template: {result.buyer_support_request_path.name}",
             f"- manifest file: {result.manifest_path.name}",
             f"- checksum file: {result.checksum_path.name}",
             f"- buyer delivery zip: {result.package_path.name}",
@@ -312,6 +321,9 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
     buyer_support_guide = directory / "BUYER_SUPPORT_GUIDE.txt"
     if not buyer_support_guide.exists():
         errors.append("missing BUYER_SUPPORT_GUIDE.txt")
+    buyer_support_request = directory / "BUYER_SUPPORT_REQUEST.txt"
+    if not buyer_support_request.exists():
+        errors.append("missing BUYER_SUPPORT_REQUEST.txt")
     manifest_file = directory / "BUYER_DELIVERY_MANIFEST.json"
     if not manifest_file.exists():
         errors.append("missing BUYER_DELIVERY_MANIFEST.json")
@@ -319,7 +331,7 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
     if not checksum_file.exists():
         errors.append("missing SHA256SUMS.txt")
 
-    allowed = {buyer_start, buyer_handoff, buyer_support_guide, manifest_file, checksum_file}
+    allowed = {buyer_start, buyer_handoff, buyer_support_guide, buyer_support_request, manifest_file, checksum_file}
     if release_files:
         allowed.add(release_files[0])
     extras = sorted(path.relative_to(directory).as_posix() for path in files if path not in allowed)
@@ -339,7 +351,12 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
                 errors.append("START_HERE_FOR_BUYER.txt does not look like an auto-note buyer start guide")
             if release_files and release_files[0].name not in start_text:
                 errors.append(f"START_HERE_FOR_BUYER.txt does not mention release package: {release_files[0].name}")
-            for required_text in ("START_HERE.txt", "shortcuts\\install-auto-note.bat", "BUYER_SUPPORT_GUIDE.txt"):
+            for required_text in (
+                "START_HERE.txt",
+                "shortcuts\\install-auto-note.bat",
+                "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
+            ):
                 if required_text not in start_text:
                     errors.append(f"START_HERE_FOR_BUYER.txt is missing {required_text}")
     if buyer_handoff.exists():
@@ -364,8 +381,28 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
                 errors.append("BUYER_SUPPORT_GUIDE.txt does not look like an auto-note buyer support guide")
             if "auto-note support --project-dir . --bundle" not in support_text:
                 errors.append("BUYER_SUPPORT_GUIDE.txt is missing support bundle instructions")
+            if "BUYER_SUPPORT_REQUEST.txt" not in support_text:
+                errors.append("BUYER_SUPPORT_GUIDE.txt is missing support request template instructions")
             if release_files and release_files[0].name not in support_text:
                 errors.append(f"BUYER_SUPPORT_GUIDE.txt does not mention release package: {release_files[0].name}")
+    if buyer_support_request.exists():
+        try:
+            request_text = buyer_support_request.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            errors.append(f"BUYER_SUPPORT_REQUEST.txt unreadable: {exc}")
+        else:
+            if "auto-note buyer support request" not in request_text:
+                errors.append("BUYER_SUPPORT_REQUEST.txt does not look like an auto-note buyer support request template")
+            for required_text in (
+                "Order ID / 注文ID",
+                "Support bundle / 問い合わせ一式ZIP",
+                ".auto-note\\support\\auto-note-support-bundle-*.zip",
+                "Do not include / 入れないもの",
+            ):
+                if required_text not in request_text:
+                    errors.append(f"BUYER_SUPPORT_REQUEST.txt is missing {required_text}")
+            if release_files and release_files[0].name not in request_text:
+                errors.append(f"BUYER_SUPPORT_REQUEST.txt does not mention release package: {release_files[0].name}")
     if manifest_file.exists():
         errors.extend(
             _verify_buyer_delivery_manifest(
@@ -374,6 +411,7 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
                 buyer_start,
                 buyer_handoff,
                 buyer_support_guide,
+                buyer_support_request,
                 manifest_file,
             )
         )
@@ -385,6 +423,7 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
                 buyer_start,
                 buyer_handoff,
                 buyer_support_guide,
+                buyer_support_request,
                 manifest_file,
                 checksum_file,
             )
@@ -415,6 +454,7 @@ def verify_buyer_delivery_package(package_path: Path) -> list[str]:
                 "START_HERE_FOR_BUYER.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "BUYER_DELIVERY_MANIFEST.json",
                 "SHA256SUMS.txt",
             ):
@@ -425,6 +465,7 @@ def verify_buyer_delivery_package(package_path: Path) -> list[str]:
                 "START_HERE_FOR_BUYER.txt",
                 "BUYER_HANDOFF.txt",
                 "BUYER_SUPPORT_GUIDE.txt",
+                "BUYER_SUPPORT_REQUEST.txt",
                 "BUYER_DELIVERY_MANIFEST.json",
                 "SHA256SUMS.txt",
             }
@@ -436,6 +477,7 @@ def verify_buyer_delivery_package(package_path: Path) -> list[str]:
                 and "START_HERE_FOR_BUYER.txt" in names
                 and "BUYER_HANDOFF.txt" in names
                 and "BUYER_SUPPORT_GUIDE.txt" in names
+                and "BUYER_SUPPORT_REQUEST.txt" in names
                 and "BUYER_DELIVERY_MANIFEST.json" in names
                 and "SHA256SUMS.txt" in names
             ):
@@ -446,6 +488,7 @@ def verify_buyer_delivery_package(package_path: Path) -> list[str]:
                         "START_HERE_FOR_BUYER.txt",
                         "BUYER_HANDOFF.txt",
                         "BUYER_SUPPORT_GUIDE.txt",
+                        "BUYER_SUPPORT_REQUEST.txt",
                         "BUYER_DELIVERY_MANIFEST.json",
                         "SHA256SUMS.txt",
                     ):
@@ -510,6 +553,7 @@ def _build_readme(release_name: str, readiness_status: str) -> str:
         "- release/: Buyer-facing auto-note release zip.\n"
         "- BUYER_HANDOFF.txt: Short handoff note you can paste into the delivery message.\n"
         "- BUYER_SUPPORT_GUIDE.txt: What the buyer should send if they need support.\n"
+        "- BUYER_SUPPORT_REQUEST.txt: Fillable support request template for the buyer.\n"
         "- DELIVERY_CHECKLIST.txt: What to send to the buyer and what to keep as seller evidence.\n"
         "- SELLER_DELIVERY_RECEIPT.txt: Seller-side order and delivery record template.\n"
         "- SELLER_FINAL_CHECKLIST.txt: Final seller-side confirmation before delivery.\n"
@@ -560,11 +604,15 @@ def _build_buyer_support_guide(release_name: str) -> str:
         "   auto-note support --project-dir . --bundle\n"
         "5. note.com のログインが安全ではない可能性で止まる場合は、普段のブラウザでnote.comへログインし、投稿ヘルパーの貼り付け運用を使ってください。\n\n"
         "What to send / 送ってほしいもの:\n"
+        "- 記入済みの BUYER_SUPPORT_REQUEST.txt\n"
         "- 問い合わせ一式ZIP: .auto-note\\support\\auto-note-support-bundle-*.zip\n"
         "- エラー画面のスクリーンショット\n"
         "- 何を押した直後に起きたか\n"
         "- 期待した動きと実際の動き\n"
         "- このファイルに書かれた配布ZIP名\n\n"
+        "Use the request template / 問い合わせ票:\n"
+        "- BUYER_SUPPORT_REQUEST.txt を開き、分かる範囲だけ記入して一緒に送ってください。\n"
+        "- 分からない欄は空欄のままで構いません。\n\n"
         "Do not send unless asked / 通常は送らないもの:\n"
         "- noteアカウントのパスワードやログインコード\n"
         "- 記事本文全文、未公開原稿、個人メモ\n"
@@ -576,6 +624,37 @@ def _build_buyer_support_guide(release_name: str) -> str:
     )
 
 
+def _build_buyer_support_request(release_name: str) -> str:
+    return (
+        "auto-note buyer support request / 購入者向け問い合わせ票\n\n"
+        f"Release package / 配布ZIP: {release_name}\n\n"
+        "Fill in what you can / 分かる範囲で記入:\n"
+        "- Order ID / 注文ID:\n"
+        "- Marketplace / 購入した販売先:\n"
+        "- Buyer name or handle / 購入者名またはハンドル:\n"
+        "- Windows version / Windowsバージョン:\n"
+        "- auto-note version / auto-noteバージョン:\n"
+        "- Buyer delivery ZIP / 納品ZIP名:\n"
+        f"- Release ZIP / 配布ZIP名: {release_name}\n"
+        "- What you clicked / 押したもの:\n"
+        "- Expected result / 期待した動き:\n"
+        "- Actual result / 実際の動き:\n"
+        "- Error message / 表示されたエラー:\n"
+        "- Screenshot attached / スクリーンショット添付: yes/no\n"
+        "- Support bundle / 問い合わせ一式ZIP: .auto-note\\support\\auto-note-support-bundle-*.zip\n"
+        "- Support bundle attached / 問い合わせ一式ZIP添付: yes/no\n"
+        "- SHA-256 checked / SHA-256確認: yes/no\n\n"
+        "Attach / 添付するもの:\n"
+        "[ ] This BUYER_SUPPORT_REQUEST.txt after filling it in\n"
+        "[ ] .auto-note\\support\\auto-note-support-bundle-*.zip if available\n"
+        "[ ] Screenshot of the error window if available\n\n"
+        "Do not include / 入れないもの:\n"
+        "- note password, login code, payment information, address, phone number\n"
+        "- full unpublished article text or private notes\n"
+        "- .venv folder, Python installer, or the whole workspace\n"
+    )
+
+
 def _build_buyer_start_here(release_name: str) -> str:
     return (
         "auto-note buyer start here / 購入者向け最初に読むメモ\n\n"
@@ -583,7 +662,7 @@ def _build_buyer_start_here(release_name: str) -> str:
         "What this ZIP is / このZIPについて:\n"
         "- この auto-note-buyer-delivery-*.zip は購入者へそのまま渡すための納品物です。\n"
         "- まず同梱の配布ZIPを展開し、展開先の START_HERE.txt を開いてください。\n"
-        "- このファイル、BUYER_HANDOFF.txt、BUYER_SUPPORT_GUIDE.txt は、迷った時に確認する短い案内です。\n\n"
+        "- このファイル、BUYER_HANDOFF.txt、BUYER_SUPPORT_GUIDE.txt、BUYER_SUPPORT_REQUEST.txt は、迷った時に確認する短い案内です。\n\n"
         "First 10 minutes / 最初の10分:\n"
         "1. auto-note-buyer-delivery-*.zip を展開します。\n"
         f"2. {release_name} を展開します。\n"
@@ -598,6 +677,7 @@ def _build_buyer_start_here(release_name: str) -> str:
         "- その後、投稿ヘルパーの貼り付け運用でタイトル、本文、タグをコピーして投稿できます。\n\n"
         "When something does not work / 困った時:\n"
         "- BUYER_SUPPORT_GUIDE.txt を開き、問い合わせ前に試すことを確認してください。\n"
+        "- BUYER_SUPPORT_REQUEST.txt に状況を書いて、問い合わせ一式ZIPやスクリーンショットと一緒に送ってください。\n"
         "- GUIが開く場合は ヘルプ > 問い合わせ一式 を作成してください。\n"
         "- GUIが開かない場合は auto-note-gui.bat を直接開き、表示されたエラー画面を共有してください。\n"
     )
@@ -614,6 +694,7 @@ def _build_delivery_checklist(release_name: str, readiness) -> str:
         "- START_HERE_FOR_BUYER.txt の最初に読む案内",
         "- BUYER_HANDOFF.txt の納品メッセージ案",
         "- BUYER_SUPPORT_GUIDE.txt の問い合わせ手順",
+        "- BUYER_SUPPORT_REQUEST.txt の問い合わせ記入票",
         "",
         "Seller evidence / 販売者が保管するもの",
         "- This full auto-note-sales-handoff-*.zip",
@@ -714,10 +795,11 @@ def _build_support_response_template() -> str:
         "auto-note support response template\n\n"
         "Subject: auto-note support request\n\n"
         "Thank you for reaching out. To help diagnose the issue, please send the following:\n\n"
-        "1. What you clicked immediately before the issue happened.\n"
-        "2. A screenshot of the message or window.\n"
-        "3. Your Windows version if you know it.\n"
-        "4. The support bundle created from Help > Support bundle, or by running:\n"
+        "1. The filled BUYER_SUPPORT_REQUEST.txt from your buyer delivery ZIP.\n"
+        "2. What you clicked immediately before the issue happened.\n"
+        "3. A screenshot of the message or window.\n"
+        "4. Your Windows version if you know it.\n"
+        "5. The support bundle created from Help > Support bundle, or by running:\n"
         "   auto-note support --project-dir . --bundle\n\n"
         "Please do not paste private article text into the message. The support bundle is designed to avoid raw article content.\n\n"
         "First checks to suggest:\n"
@@ -838,6 +920,7 @@ def _verify_checksums(archive: zipfile.ZipFile) -> list[str]:
         "README.txt",
         "BUYER_HANDOFF.txt",
         "BUYER_SUPPORT_GUIDE.txt",
+        "BUYER_SUPPORT_REQUEST.txt",
         "SELLER_DELIVERY_RECEIPT.txt",
         "SELLER_FINAL_CHECKLIST.txt",
         "SUPPORT_RESPONSE_TEMPLATE.txt",
@@ -858,6 +941,7 @@ def _verify_buyer_delivery_checksums(
     buyer_start: Path,
     buyer_handoff: Path,
     buyer_support_guide: Path,
+    buyer_support_request: Path,
     manifest_file: Path,
     checksum_file: Path,
 ) -> list[str]:
@@ -865,7 +949,14 @@ def _verify_buyer_delivery_checksums(
     checked: set[str] = set()
     targets = {
         path.name: path
-        for path in [*release_files, buyer_start, buyer_handoff, buyer_support_guide, manifest_file]
+        for path in [
+            *release_files,
+            buyer_start,
+            buyer_handoff,
+            buyer_support_guide,
+            buyer_support_request,
+            manifest_file,
+        ]
         if path.exists()
     }
     try:
@@ -916,6 +1007,7 @@ def _buyer_delivery_root_files(directory: Path) -> list[Path]:
             directory / "START_HERE_FOR_BUYER.txt",
             directory / "BUYER_HANDOFF.txt",
             directory / "BUYER_SUPPORT_GUIDE.txt",
+            directory / "BUYER_SUPPORT_REQUEST.txt",
             directory / "BUYER_DELIVERY_MANIFEST.json",
             directory / "SHA256SUMS.txt",
         ]
@@ -929,6 +1021,7 @@ def _verify_buyer_delivery_manifest(
     buyer_start: Path,
     buyer_handoff: Path,
     buyer_support_guide: Path,
+    buyer_support_request: Path,
     manifest_file: Path,
 ) -> list[str]:
     errors: list[str] = []
@@ -950,7 +1043,11 @@ def _verify_buyer_delivery_manifest(
         return [*errors, "buyer manifest files is not a list"]
     if raw.get("file_count") != len(files):
         errors.append("buyer manifest file_count mismatch")
-    targets = {path.name: path for path in [*release_files, buyer_start, buyer_handoff, buyer_support_guide] if path.exists()}
+    targets = {
+        path.name: path
+        for path in [*release_files, buyer_start, buyer_handoff, buyer_support_guide, buyer_support_request]
+        if path.exists()
+    }
     expected_names = set(targets)
     seen: set[str] = set()
     for item in files:
