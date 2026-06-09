@@ -73,6 +73,7 @@ from auto_note.gui import (
     _home_progress_review_text,
     _home_progress_state_from_status,
     _home_progress_summary,
+    _home_report_status,
     _support_bundle_indicator_style,
     _support_send_readiness_indicator_style,
     smoke_gui,
@@ -387,6 +388,15 @@ class ArticleTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertTrue(_home_buyer_send_receipt_matches_delivery(package, message, receipt))
+
+    def test_home_report_status_verifies_buyer_delivery_zip_contents(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "buyer.zip"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("only.txt", "not a buyer delivery package")
+
+            self.assertEqual(_home_report_status("購入者ZIP", package), "NG")
+            self.assertEqual(_home_report_status("任意ZIP", package), "OK")
 
     def test_command_palette_status_describes_results(self) -> None:
         self.assertEqual(
@@ -2899,6 +2909,8 @@ tags:
                 + "copy_selected_home_report_path_action\n"
                 + "self.clipboard_append(str(path.resolve()))\n"
                 + "_home_report_status\n"
+                + "verify_buyer_delivery_package(path)\n"
+                + "format_buyer_delivery_package_verification(path\n"
                 + "購入者ZIP\n"
                 + "購入者送付文\n"
                 + "送付記録\n"
@@ -3263,6 +3275,8 @@ tags:
         self.assertIn("GUI home recent reports copy path action:fail", product_details)
         self.assertIn("GUI home recent reports copy path clipboard:fail", product_details)
         self.assertIn("GUI home recent reports verification status:fail", product_details)
+        self.assertIn("GUI home recent reports buyer ZIP verification status:fail", product_details)
+        self.assertIn("GUI home recent reports buyer ZIP verification preview:fail", product_details)
         self.assertIn("GUI home recent reports buyer delivery ZIP:fail", product_details)
         self.assertIn("GUI home recent reports buyer delivery message:fail", product_details)
         self.assertIn("GUI home recent reports seller receipt:fail", product_details)
@@ -3654,6 +3668,8 @@ tags:
         self.assertIn("GUI home recent reports copy path action:pass", launcher_details)
         self.assertIn("GUI home recent reports copy path clipboard:pass", launcher_details)
         self.assertIn("GUI home recent reports verification status:pass", launcher_details)
+        self.assertIn("GUI home recent reports buyer ZIP verification status:pass", launcher_details)
+        self.assertIn("GUI home recent reports buyer ZIP verification preview:pass", launcher_details)
         self.assertIn("GUI home recent reports buyer delivery ZIP:pass", launcher_details)
         self.assertIn("GUI home recent reports buyer delivery message:pass", launcher_details)
         self.assertIn("GUI home recent reports seller receipt:pass", launcher_details)

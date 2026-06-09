@@ -351,6 +351,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports buyer ZIP verification status",
+            "verify_buyer_delivery_package(path)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports buyer ZIP verification preview",
+            "format_buyer_delivery_package_verification(path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home recent reports buyer delivery ZIP",
             "購入者ZIP",
         )

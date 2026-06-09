@@ -4075,6 +4075,10 @@ class AutoNoteApp(tk.Tk):
             return "\n".join([*header, format_support_bundle_verification(path, verify_support_bundle(path))])
         if label == "配布ZIP":
             return "\n".join([*header, format_release_verification(path, verify_release_package(path))])
+        if label == "購入者ZIP":
+            return "\n".join(
+                [*header, format_buyer_delivery_package_verification(path, verify_buyer_delivery_package(path))]
+            )
         if path.suffix.lower() == ".zip":
             return "\n".join([*header, *_format_zip_report_summary(path)])
         try:
@@ -7075,6 +7079,8 @@ def _home_report_status(label: str, path: Path) -> str:
         return "NG" if verify_support_bundle(path) else "OK"
     if label == "配布ZIP":
         return "NG" if verify_release_package(path) else "OK"
+    if label == "購入者ZIP":
+        return "NG" if verify_buyer_delivery_package(path) else "OK"
     if path.suffix.lower() == ".zip":
         try:
             with zipfile.ZipFile(path) as archive:
