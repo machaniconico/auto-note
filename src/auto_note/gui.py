@@ -137,7 +137,7 @@ from .sales_materials import (
     verify_sales_materials,
 )
 from .sales_plan import SalesPlanStep, build_sales_plan, format_sales_plan, write_sales_plan_report
-from .settings import AppSettings, UI_DENSITY_OPTIONS, load_settings, parse_tags, save_settings
+from .settings import AppSettings, DEFAULT_SETTINGS, UI_DENSITY_OPTIONS, load_settings, parse_tags, save_settings
 from .selftest import format_self_test_report, run_self_test, write_self_test_report
 from .setup_check import format_setup_report, run_setup_check
 from .starter import (
@@ -188,20 +188,20 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "MS Gothic", "Segoe UI")
+UI_FONT_CANDIDATES = ("Meiryo UI", "Yu Gothic UI", "Meiryo", "Segoe UI", "MS Gothic")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_TEXT_SIZE = 10
-UI_SMALL_TEXT_SIZE = 9
-UI_BADGE_FONT_SIZE = 9
-UI_TREE_ROW_HEIGHT = 38
-UI_NOTEBOOK_TAB_PADDING = (18, 12)
-UI_BUTTON_PADDING = (14, 10)
-UI_PRIMARY_BUTTON_PADDING = (16, 10)
-UI_DANGER_BUTTON_PADDING = (12, 9)
-UI_TEXT_SPACING_TOP = 2
-UI_TEXT_SPACING_BOTTOM = 4
+UI_TEXT_SIZE = 11
+UI_SMALL_TEXT_SIZE = 10
+UI_BADGE_FONT_SIZE = 10
+UI_TREE_ROW_HEIGHT = 44
+UI_NOTEBOOK_TAB_PADDING = (20, 14)
+UI_BUTTON_PADDING = (17, 13)
+UI_PRIMARY_BUTTON_PADDING = (19, 13)
+UI_DANGER_BUTTON_PADDING = (15, 11)
+UI_TEXT_SPACING_TOP = 3
+UI_TEXT_SPACING_BOTTOM = 5
 UI_DENSITY_LABELS = {
     "standard": "標準",
     "comfortable": "ゆったり",
@@ -213,37 +213,37 @@ UI_DENSITY_VALUES = {
         "text_size": 10,
         "small_text_size": 9,
         "badge_font_size": 9,
-        "tree_row_height": 36,
-        "notebook_tab_padding": (16, 10),
-        "button_padding": (13, 8),
-        "primary_button_padding": (15, 9),
-        "danger_button_padding": (11, 8),
-        "text_spacing_top": 1,
-        "text_spacing_bottom": 3,
-    },
-    "comfortable": {
-        "text_size": 10,
-        "small_text_size": 9,
-        "badge_font_size": 9,
-        "tree_row_height": 38,
+        "tree_row_height": 40,
         "notebook_tab_padding": (18, 12),
-        "button_padding": (14, 10),
-        "primary_button_padding": (16, 10),
-        "danger_button_padding": (12, 9),
+        "button_padding": (15, 11),
+        "primary_button_padding": (17, 11),
+        "danger_button_padding": (13, 9),
         "text_spacing_top": 2,
         "text_spacing_bottom": 4,
     },
-    "large": {
+    "comfortable": {
         "text_size": 11,
         "small_text_size": 10,
         "badge_font_size": 10,
-        "tree_row_height": 42,
+        "tree_row_height": 44,
         "notebook_tab_padding": (20, 14),
-        "button_padding": (16, 12),
-        "primary_button_padding": (18, 12),
-        "danger_button_padding": (14, 10),
+        "button_padding": (17, 13),
+        "primary_button_padding": (19, 13),
+        "danger_button_padding": (15, 11),
         "text_spacing_top": 3,
         "text_spacing_bottom": 5,
+    },
+    "large": {
+        "text_size": 12,
+        "small_text_size": 11,
+        "badge_font_size": 11,
+        "tree_row_height": 50,
+        "notebook_tab_padding": (22, 16),
+        "button_padding": (19, 15),
+        "primary_button_padding": (21, 15),
+        "danger_button_padding": (17, 13),
+        "text_spacing_top": 4,
+        "text_spacing_bottom": 6,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -346,6 +346,23 @@ def _resolve_font_family(root: tk.Misc, candidates: tuple[str, ...]) -> str:
         if resolved:
             return resolved
     return candidates[-1]
+
+
+def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> None:
+    for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkTooltipFont"):
+        try:
+            tkfont.nametofont(name).configure(family=ui_font, size=UI_TEXT_SIZE)
+        except tk.TclError:
+            continue
+    for name in ("TkFixedFont",):
+        try:
+            tkfont.nametofont(name).configure(family=code_font, size=UI_TEXT_SIZE)
+        except tk.TclError:
+            continue
+    try:
+        root.tk.call("tk", "scaling", max(1.0, root.winfo_fpixels("1i") / 72.0))
+    except tk.TclError:
+        pass
 
 
 def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
@@ -508,8 +525,16 @@ def smoke_gui(project_dir: Path) -> str:
         )
         ui_density_chars = len(getattr(app.settings, "ui_density", ""))
         header_ui_density_chars = len(app.header_ui_density_var.get()) if hasattr(app, "header_ui_density_var") else 0
+        header_display_reset_chars = (
+            len(str(app.header_display_reset_button.cget("text")))
+            if hasattr(app, "header_display_reset_button")
+            else 0
+        )
         command_palette_ui_density_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label.startswith("表示サイズ")
+        )
+        command_palette_display_reset_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "表示リセット"
         )
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
@@ -537,7 +562,9 @@ def smoke_gui(project_dir: Path) -> str:
             f"readability_style_chars={readability_style_chars}, "
             f"ui_density_chars={ui_density_chars}, "
             f"header_ui_density_chars={header_ui_density_chars}, "
+            f"header_display_reset_chars={header_display_reset_chars}, "
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
+            f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -612,6 +639,7 @@ class AutoNoteApp(tk.Tk):
             pass
         UI_FONT = _resolve_font_family(self, UI_FONT_CANDIDATES)
         CODE_FONT = _resolve_font_family(self, CODE_FONT_CANDIDATES)
+        _configure_tk_font_defaults(self, UI_FONT, CODE_FONT)
         font = UI_FONT
         self.option_add("*Font", f"{{{font}}} {UI_TEXT_SIZE}")
         bg = UI_COLORS["bg"]
@@ -675,7 +703,7 @@ class AutoNoteApp(tk.Tk):
             "HomeSnapshotValue.TLabel",
             background=surface_alt,
             foreground=primary,
-            font=(font, UI_TEXT_SIZE, "bold"),
+            font=(font, UI_TEXT_SIZE),
         )
         style.configure(
             "ArticleFocusTitle.TLabel",
@@ -687,14 +715,14 @@ class AutoNoteApp(tk.Tk):
             "ArticleFocusValue.TLabel",
             background=surface_alt,
             foreground=primary,
-            font=(font, UI_TEXT_SIZE, "bold"),
+            font=(font, UI_TEXT_SIZE),
         )
         style.configure("ArticleFocusMuted.TLabel", background=surface_alt, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, "bold"))
         style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, UI_TEXT_SIZE))
         style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
         style.configure("ChromeMuted.TLabel", background=chrome, foreground=chrome_muted, font=(font, UI_SMALL_TEXT_SIZE))
-        style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, UI_TEXT_SIZE, "bold"))
+        style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, UI_TEXT_SIZE))
         style.configure(
             "ChromeChip.TLabel",
             background=UI_COLORS["chrome_chip"],
@@ -841,7 +869,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "Primary.TButton",
             padding=UI_PRIMARY_BUTTON_PADDING,
-            font=(font, UI_TEXT_SIZE, "bold"),
+            font=(font, UI_TEXT_SIZE),
             background=accent,
             foreground="#ffffff",
             borderwidth=0,
@@ -870,8 +898,8 @@ class AutoNoteApp(tk.Tk):
             foreground="#991b1b",
         )
         style.map("Danger.TButton", background=[("active", "#fecaca"), ("pressed", "#fca5a5")])
-        style.configure("TLabelframe", background=surface, padding=12, relief="flat", borderwidth=0)
-        style.configure("TLabelframe.Label", background=surface, foreground=primary, font=(font, 10, "bold"))
+        style.configure("TLabelframe", background=surface, padding=14, relief="flat", borderwidth=0)
+        style.configure("TLabelframe.Label", background=surface, foreground=primary, font=(font, UI_TEXT_SIZE))
 
     def _manual_status_widgets(self) -> list[tk.Label]:
         widgets: list[tk.Label] = []
@@ -971,6 +999,13 @@ class AutoNoteApp(tk.Tk):
         )
         self.header_ui_density_combo.pack(side=tk.LEFT, padx=(8, 0))
         self.header_ui_density_combo.bind("<<ComboboxSelected>>", self.on_header_ui_density_selected)
+        self.header_display_reset_button = ttk.Button(
+            density,
+            text="リセット",
+            style="Quiet.TButton",
+            command=self.reset_display_action,
+        )
+        self.header_display_reset_button.pack(side=tk.LEFT, padx=(8, 0))
         quick = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
         quick.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Label(quick, text="note", style="ChromeAction.TLabel").pack(side=tk.LEFT)
@@ -2383,6 +2418,7 @@ class AutoNoteApp(tk.Tk):
             "既定タグは、新規記事作成時にタグ入力を省略した場合に使われます。\n"
             "記事検索パターンは通常 *.md のままで構いません。\n"
             "表示サイズは、文字や行高が潰れて見える時にヘッダーの「表示」またはここから「大きめ」へ変更します。\n"
+            "表示リセットは、表示サイズとウィンドウサイズを初期状態へ戻します。\n"
             "画像最大幅と画像品質は、画像挿入時の最適化に使われます。\n"
             "サポート連絡先はヘルプ画面に表示する任意のメモです。\n"
             "販売者情報と確認チェックは、販売準備レポートの根拠として保存されます。\n"
@@ -5674,6 +5710,25 @@ class AutoNoteApp(tk.Tk):
             self.ui_density_combo.focus_set()
         self.notify("表示サイズを選んで保存できます", level="info")
 
+    def reset_display_action(self) -> None:
+        density = _normalise_ui_density(DEFAULT_SETTINGS.ui_density)
+        self.settings = replace(self.settings, ui_density=density)
+        save_settings(self.project_dir, self.settings)
+        self._configure_style()
+        self._refresh_manual_readability_widgets()
+        self._refresh_text_widget_readability()
+        self.sync_settings_tab()
+        try:
+            self.state("normal")
+            self.geometry("1240x780")
+            self.minsize(1020, 640)
+            self.lift()
+            self.focus_force()
+        except tk.TclError:
+            pass
+        self.refresh_all()
+        self.notify(f"表示をリセットしました: {_ui_density_label(density)} / 1240x780", level="success")
+
     def command_palette_actions(self):
         return [
             ("新規記事", "テンプレートから記事を作成", self.new_article),
@@ -5685,6 +5740,7 @@ class AutoNoteApp(tk.Tk):
             ("表示サイズ: ゆったり", "標準より少し余白を増やして読みやすくする", lambda: self.set_ui_density_action("comfortable")),
             ("表示サイズ: 標準", "表示密度を標準に戻す", lambda: self.set_ui_density_action("standard")),
             ("表示サイズ設定へ", "設定タブの表示サイズを開く", self.focus_ui_density_setting_action),
+            ("表示リセット", "表示サイズとウィンドウを初期状態へ戻す", self.reset_display_action),
             ("作業進行: 初回", "ホームの初回工程を開く", lambda: self.open_home_progress_stage("setup")),
             ("作業進行: 記事", "ホームの記事工程を開く", lambda: self.open_home_progress_stage("article")),
             ("作業進行: 仕上げ", "ホームの仕上げ工程を開く", lambda: self.open_home_progress_stage("review")),

@@ -1934,6 +1934,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette display reset action",
+            "表示リセット",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display reset helper",
+            "reset_display_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI command palette empty state",
             "一致するコマンドがありません",
         )
@@ -2026,49 +2040,49 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"Yu Gothic UI"',
+            '"Meiryo UI"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
-            "UI_TEXT_SIZE = 10",
+            "UI_TEXT_SIZE = 11",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable badge font size",
-            "UI_BADGE_FONT_SIZE = 9",
+            "UI_BADGE_FONT_SIZE = 10",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tree row height",
-            "UI_TREE_ROW_HEIGHT = 38",
+            "UI_TREE_ROW_HEIGHT = 44",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tab padding",
-            "UI_NOTEBOOK_TAB_PADDING = (18, 12)",
+            "UI_NOTEBOOK_TAB_PADDING = (20, 14)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable button padding",
-            "UI_BUTTON_PADDING = (14, 10)",
+            "UI_BUTTON_PADDING = (17, 13)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text line spacing",
-            "UI_TEXT_SPACING_BOTTOM = 4",
+            "UI_TEXT_SPACING_BOTTOM = 5",
         )
     )
     checks.append(
@@ -2111,6 +2125,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI header UI density combobox",
             "header_ui_density_combo",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header display reset button",
+            "header_display_reset_button",
         )
     )
     checks.append(
@@ -2165,8 +2186,22 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke header display reset metrics",
+            "header_display_reset_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke UI density command metrics",
             "command_palette_ui_density_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke display reset command metrics",
+            "command_palette_display_reset_actions=",
         )
     )
     checks.append(
@@ -2181,6 +2216,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI resolved font family",
             "_resolve_font_family",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI named font readability defaults",
+            "_configure_tk_font_defaults",
         )
     )
     checks.append(
@@ -2412,6 +2454,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README UI density header guidance",
             "ヘッダーの `表示`",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README display reset guidance",
+            "表示リセット",
         )
     )
     checks.append(
