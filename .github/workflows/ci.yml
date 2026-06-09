@@ -47,6 +47,10 @@ jobs:
           $env:AUTO_NOTE_LAUNCHER_CHECK = "1"
           cscript.exe //nologo .\scripts\launch-gui.vbs
 
+      - name: Run install smoke
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-install.ps1 -SourceDir .
+
       - name: Run GUI smoke
         shell: pwsh
         run: python -m auto_note gui --project-dir . --smoke

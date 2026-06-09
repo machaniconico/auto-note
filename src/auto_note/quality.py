@@ -104,6 +104,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / ".github" / "workflows" / "ci.yml",
+            "CI install smoke",
+            "scripts\\smoke-install.ps1",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
             "CI GUI smoke",
             "python -m auto_note gui --project-dir . --smoke",
         )

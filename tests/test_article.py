@@ -3027,6 +3027,7 @@ tags:
                 "python -m unittest discover -s tests\n"
                 "python -m auto_note quality --project-dir . --product-only\n"
                 "AUTO_NOTE_LAUNCHER_CHECK\n"
+                "scripts\\smoke-install.ps1\n"
                 "python -m auto_note gui --project-dir . --smoke\n",
                 encoding="utf-8",
             )
@@ -3450,6 +3451,7 @@ tags:
         self.assertIn("CI unit tests:fail", product_details)
         self.assertIn("CI product quality gate:fail", product_details)
         self.assertIn("CI hidden launcher syntax check:fail", product_details)
+        self.assertIn("CI install smoke:fail", product_details)
         self.assertIn("CI GUI smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
@@ -3955,6 +3957,7 @@ tags:
         self.assertIn("CI unit tests:pass", launcher_details)
         self.assertIn("CI product quality gate:pass", launcher_details)
         self.assertIn("CI hidden launcher syntax check:pass", launcher_details)
+        self.assertIn("CI install smoke:pass", launcher_details)
         self.assertIn("CI GUI smoke:pass", launcher_details)
         self.assertIn("release check script:pass", launcher_details)
         self.assertIn("release check unit tests:pass", launcher_details)
