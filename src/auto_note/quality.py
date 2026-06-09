@@ -400,6 +400,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README home progress lane guidance",
+            "作業進行",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README first-run actionable filter guidance",
             "要対応だけ",
         )
@@ -1502,6 +1509,55 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home sales indicator style",
             "_home_sales_indicator_style",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress lane",
+            "作業進行",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress summary",
+            "home_progress_summary_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress stage indicators",
+            "home_progress_vars",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress refresh",
+            "_refresh_home_progress_lane",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress stage setter",
+            "_set_home_progress_stage",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home progress summary helper",
+            "_home_progress_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home progress count",
+            "home_progress_chars=",
         )
     )
     checks.append(

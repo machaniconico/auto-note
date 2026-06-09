@@ -227,6 +227,12 @@ def smoke_gui(project_dir: Path) -> str:
             else 0
         )
         home_report_items = len(app.home_reports_tree.get_children()) if hasattr(app, "home_reports_tree") else 0
+        home_progress_chars = len(app.home_progress_summary_var.get()) if hasattr(app, "home_progress_summary_var") else 0
+        home_progress_stage_chars = (
+            sum(len(value.get()) for value in app.home_progress_vars.values())
+            if hasattr(app, "home_progress_vars")
+            else 0
+        )
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -236,6 +242,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_report_items={home_report_items}, "
+            f"home_progress_chars={home_progress_chars}, "
+            f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -469,6 +477,64 @@ class AutoNoteApp(tk.Tk):
             ttk.Label(box, text=key, style="KpiLabel.TLabel").pack(anchor=tk.W)
             ttk.Label(box, textvariable=value, style="KpiValue.TLabel").pack(anchor=tk.W, pady=(4, 0))
             self.kpi_frame.columnconfigure(index, weight=1)
+
+        progress = ttk.LabelFrame(self.home_tab, text="作業進行", padding=10)
+        progress.pack(fill=tk.X, pady=(0, 10))
+        progress_header = ttk.Frame(progress, style="Surface.TFrame")
+        progress_header.pack(fill=tk.X, pady=(0, 8))
+        self.home_progress_summary_var = tk.StringVar(value="投稿までの進行状況を確認中です。")
+        ttk.Label(
+            progress_header,
+            textvariable=self.home_progress_summary_var,
+            style="Muted.TLabel",
+            wraplength=820,
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(progress_header, text="次を実行", style="Primary.TButton", command=self.run_home_primary_action).pack(
+            side=tk.RIGHT,
+            padx=(6, 0),
+        )
+        ttk.Button(progress_header, text="詳細", command=self.run_action_plan_to_tab).pack(side=tk.RIGHT)
+
+        self.home_progress_vars: dict[str, tk.StringVar] = {}
+        self.home_progress_pills: dict[str, tk.Label] = {}
+        progress_steps = ttk.Frame(progress, style="Surface.TFrame")
+        progress_steps.pack(fill=tk.X)
+        for index, (key, label) in enumerate(
+            (
+                ("setup", "初回"),
+                ("article", "記事"),
+                ("review", "仕上げ"),
+                ("publish", "投稿"),
+                ("sales", "販売"),
+                ("support", "サポート"),
+            )
+        ):
+            step = ttk.Frame(progress_steps, style="Surface.TFrame")
+            step.grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 8, 0))
+            progress_steps.columnconfigure(index, weight=1, uniform="home_progress")
+            ttk.Label(step, text=label, style="Muted.TLabel").pack(anchor=tk.W)
+            row = ttk.Frame(step, style="Surface.TFrame")
+            row.pack(fill=tk.X, pady=(3, 0))
+            pill = tk.Label(
+                row,
+                text="CHECK",
+                bg="#8a4f00",
+                fg="#ffffff",
+                font=("Segoe UI", 8, "bold"),
+                padx=8,
+                pady=3,
+                width=8,
+            )
+            pill.pack(side=tk.LEFT)
+            value = tk.StringVar(value="確認中")
+            self.home_progress_vars[key] = value
+            self.home_progress_pills[key] = pill
+            ttk.Label(row, textvariable=value, style="Muted.TLabel", wraplength=140).pack(
+                side=tk.LEFT,
+                fill=tk.X,
+                expand=True,
+                padx=(6, 0),
+            )
 
         focus = ttk.Frame(self.home_tab, style="Surface.TFrame", padding=12)
         focus.pack(fill=tk.X, pady=(0, 10))
@@ -3536,6 +3602,7 @@ class AutoNoteApp(tk.Tk):
             self.home_focus_var.set(self._format_home_focus(action_plan))
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
+        self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
         self._refresh_home_reports()
 
         lines = [
@@ -3557,6 +3624,80 @@ class AutoNoteApp(tk.Tk):
             format_calendar(self.articles_dir, pattern=self.settings.article_glob, days=14),
         ]
         self._set_text(self.home_text, "\n".join(lines))
+
+    def _refresh_home_progress_lane(self, readiness, quickstart, action_plan, articles, counts) -> None:
+        if not hasattr(self, "home_progress_summary_var"):
+            return
+        quick_items = {item.name: item for item in quickstart.items}
+        readiness_items = {item.name: item for item in readiness.items}
+        total_articles = len(articles)
+        prepared_articles = counts["ready"] + counts["scheduled"] + counts["published"]
+        post_candidates = counts["ready"] + counts["scheduled"]
+
+        setup_item = quick_items.get("setup")
+        setup_state = _home_progress_state_from_status(setup_item.status if setup_item else "info")
+        setup_text = f"{quickstart.score}/100"
+
+        if total_articles == 0:
+            article_state = "warn"
+            article_text = "未作成"
+        elif prepared_articles:
+            article_state = "ok" if prepared_articles == total_articles else "info"
+            article_text = f"{prepared_articles}/{total_articles}準備"
+        else:
+            article_state = "warn"
+            article_text = f"下書き {total_articles}"
+
+        review_item = quick_items.get("article review") or readiness_items.get("article content")
+        review_state = "warn" if total_articles == 0 else _home_progress_state_from_status(
+            review_item.status if review_item else "info"
+        )
+        review_text = _home_progress_review_text(review_item.status if review_item else "info", total_articles)
+
+        if post_candidates:
+            publish_state = "ok"
+            publish_text = f"候補 {post_candidates}"
+        elif counts["published"]:
+            publish_state = "info"
+            publish_text = f"公開済み {counts['published']}"
+        elif total_articles:
+            publish_state = "warn"
+            publish_text = "候補なし"
+        else:
+            publish_state = "info"
+            publish_text = "記事待ち"
+
+        sales_status = self.home_sales_status_var.get() if hasattr(self, "home_sales_status_var") else ""
+        sales_state = "ok" if "READY TO VERIFY" in sales_status else "warn"
+        sales_text = "検証待ち" if sales_state == "ok" else "残件あり"
+
+        support_state, support_text = self._home_support_send_readiness()
+        stages = {
+            "setup": setup_state,
+            "article": article_state,
+            "review": review_state,
+            "publish": publish_state,
+            "sales": sales_state,
+            "support": support_state,
+        }
+        self._set_home_progress_stage("setup", setup_state, setup_text)
+        self._set_home_progress_stage("article", article_state, article_text)
+        self._set_home_progress_stage("review", review_state, review_text)
+        self._set_home_progress_stage("publish", publish_state, publish_text)
+        self._set_home_progress_stage("sales", sales_state, sales_text)
+        self._set_home_progress_stage("support", support_state, support_text)
+
+        next_title = action_plan.steps[0].title if action_plan.steps else "出荷前チェック"
+        self.home_progress_summary_var.set(_home_progress_summary(stages, next_title))
+
+    def _set_home_progress_stage(self, key: str, state: str, text: str) -> None:
+        value = getattr(self, "home_progress_vars", {}).get(key)
+        pill = getattr(self, "home_progress_pills", {}).get(key)
+        if value is not None:
+            value.set(text)
+        if pill is not None:
+            pill_text, bg, fg = _home_sales_indicator_style(state)
+            pill.configure(text=pill_text, bg=bg, fg=fg)
 
     def _refresh_home_reports(self) -> None:
         if not hasattr(self, "home_reports_tree"):
@@ -6240,6 +6381,37 @@ def _action_step_label(severity: str) -> str:
         "ready": "準備OK",
         "info": "案内",
     }.get(severity, severity.upper())
+
+
+def _home_progress_state_from_status(status: str) -> str:
+    return {
+        "pass": "ok",
+        "info": "info",
+        "warn": "warn",
+        "fail": "fail",
+    }.get(status, "info")
+
+
+def _home_progress_review_text(status: str, total_articles: int) -> str:
+    if total_articles == 0:
+        return "記事待ち"
+    return {
+        "pass": "準備OK",
+        "info": "確認中",
+        "warn": "要仕上げ",
+        "fail": "NGあり",
+    }.get(status, "確認中")
+
+
+def _home_progress_summary(stages: dict[str, str], next_title: str) -> str:
+    ready = sum(1 for state in stages.values() if state == "ok")
+    blocked = sum(1 for state in stages.values() if state == "fail")
+    check = sum(1 for state in stages.values() if state in {"warn", "info"})
+    if blocked:
+        status = f"NG {blocked} / CHECK {check} / READY {ready}"
+    else:
+        status = f"READY {ready}/{len(stages)} / CHECK {check}"
+    return f"{status} - 次: {next_title}"
 
 
 def _home_sales_indicator_style(state: str) -> tuple[str, str, str]:

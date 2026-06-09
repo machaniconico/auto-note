@@ -51,7 +51,14 @@ from auto_note.diagnostics import (
 )
 from auto_note.export import export_article_inventory
 from auto_note.first_run import _top_action_item, format_first_run_report, has_first_run_blockers, run_first_run_checklist
-from auto_note.gui import _support_bundle_indicator_style, _support_send_readiness_indicator_style, smoke_gui
+from auto_note.gui import (
+    _home_progress_review_text,
+    _home_progress_state_from_status,
+    _home_progress_summary,
+    _support_bundle_indicator_style,
+    _support_send_readiness_indicator_style,
+    smoke_gui,
+)
 from auto_note.gui_errors import append_gui_error, gui_error_log_path
 from auto_note.history import create_revision, list_revisions, restore_revision
 from auto_note.images import (
@@ -213,6 +220,20 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_support_send_readiness_indicator_style("要更新")[0], "CHECK")
         self.assertEqual(_support_send_readiness_indicator_style("連絡先未設定")[0], "REQ")
         self.assertEqual(_support_send_readiness_indicator_style("未準備")[0], "REQ")
+
+    def test_home_progress_helpers_summarize_stages(self) -> None:
+        self.assertEqual(_home_progress_state_from_status("pass"), "ok")
+        self.assertEqual(_home_progress_state_from_status("warn"), "warn")
+        self.assertEqual(_home_progress_review_text("warn", 2), "要仕上げ")
+        self.assertEqual(_home_progress_review_text("pass", 0), "記事待ち")
+        self.assertIn(
+            "READY 1/3 / CHECK 2",
+            _home_progress_summary({"setup": "ok", "article": "warn", "publish": "info"}, "記事レビュー"),
+        )
+        self.assertIn(
+            "NG 1 / CHECK 1 / READY 1",
+            _home_progress_summary({"setup": "ok", "article": "fail", "publish": "warn"}, "自動修復"),
+        )
 
     def test_loads_frontmatter_title_and_tags(self) -> None:
         article = _write_and_load(
@@ -2685,12 +2706,23 @@ tags:
                 + 'self._set_support_next_action("送付文コピー")\n',
                 encoding="utf-8",
             )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
+                + "作業進行\n"
+                + "home_progress_summary_var\n"
+                + "home_progress_vars\n"
+                + "_refresh_home_progress_lane\n"
+                + "_set_home_progress_stage\n"
+                + "_home_progress_summary\n"
+                + "home_progress_chars=\n",
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "release.py").write_text(
                 "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\nstarter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\n",
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n要対応だけ\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -2872,6 +2904,13 @@ tags:
         self.assertIn("GUI home support send next preserves message action:fail", product_details)
         self.assertIn("GUI home support send feedback:fail", product_details)
         self.assertIn("GUI home sales indicator style:fail", product_details)
+        self.assertIn("GUI home progress lane:fail", product_details)
+        self.assertIn("GUI home progress summary:fail", product_details)
+        self.assertIn("GUI home progress stage indicators:fail", product_details)
+        self.assertIn("GUI home progress refresh:fail", product_details)
+        self.assertIn("GUI home progress stage setter:fail", product_details)
+        self.assertIn("GUI home progress summary helper:fail", product_details)
+        self.assertIn("GUI smoke home progress count:fail", product_details)
         self.assertIn("GUI modern chrome style:fail", product_details)
         self.assertIn("GUI modern app title style:fail", product_details)
         self.assertIn("GUI modern KPI typography:fail", product_details)
@@ -2915,6 +2954,7 @@ tags:
         self.assertIn("GUI home recent reports copy path clipboard:fail", product_details)
         self.assertIn("GUI home recent reports verification status:fail", product_details)
         self.assertIn("GUI smoke recent reports count:fail", product_details)
+        self.assertIn("README home progress lane guidance:fail", product_details)
         self.assertIn("GUI support send checklist action:fail", product_details)
         self.assertIn("GUI support send log summary action:fail", product_details)
         self.assertIn("GUI support send log summary button:fail", product_details)
@@ -3202,6 +3242,13 @@ tags:
         self.assertIn("GUI home support send next preserves message action:pass", launcher_details)
         self.assertIn("GUI home support send feedback:pass", launcher_details)
         self.assertIn("GUI home sales indicator style:pass", launcher_details)
+        self.assertIn("GUI home progress lane:pass", launcher_details)
+        self.assertIn("GUI home progress summary:pass", launcher_details)
+        self.assertIn("GUI home progress stage indicators:pass", launcher_details)
+        self.assertIn("GUI home progress refresh:pass", launcher_details)
+        self.assertIn("GUI home progress stage setter:pass", launcher_details)
+        self.assertIn("GUI home progress summary helper:pass", launcher_details)
+        self.assertIn("GUI smoke home progress count:pass", launcher_details)
         self.assertIn("GUI modern chrome style:pass", launcher_details)
         self.assertIn("GUI modern app title style:pass", launcher_details)
         self.assertIn("GUI modern KPI typography:pass", launcher_details)
@@ -3245,6 +3292,7 @@ tags:
         self.assertIn("GUI home recent reports copy path clipboard:pass", launcher_details)
         self.assertIn("GUI home recent reports verification status:pass", launcher_details)
         self.assertIn("GUI smoke recent reports count:pass", launcher_details)
+        self.assertIn("README home progress lane guidance:pass", launcher_details)
         self.assertIn("GUI support send checklist action:pass", launcher_details)
         self.assertIn("GUI support send log summary action:pass", launcher_details)
         self.assertIn("GUI support send log summary button:pass", launcher_details)
