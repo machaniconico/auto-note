@@ -1122,6 +1122,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send stage",
+            '"support", "サポート"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send readiness helper",
+            "_home_support_send_readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send detail",
+            "サポート {support_text}",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send action",
+            "show_support_send_panel_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send feedback",
+            "サポート送付の状態を表示しました",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home sales indicator style",
             "_home_sales_indicator_style",
         )

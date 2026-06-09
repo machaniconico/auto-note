@@ -503,6 +503,7 @@ class AutoNoteApp(tk.Tk):
                 ("release", "配布ZIP"),
                 ("buyer", "購入者ZIP"),
                 ("send", "送付準備"),
+                ("support", "サポート"),
             )
         ):
             stage = ttk.Frame(sales_stage_bar, style="Surface.TFrame")
@@ -551,6 +552,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
+            ("サポート送付", self.show_support_send_panel_action, None),
         )
         for row_index, (text, command, style_name) in enumerate(sales_action_items):
             options = {"text": text, "command": command}
@@ -3431,6 +3433,7 @@ class AutoNoteApp(tk.Tk):
         buyer_messages = list_buyer_delivery_messages(self.project_dir)
         seller_receipts = list_seller_delivery_receipts(self.project_dir)
         materials = list_sales_materials(self.project_dir)
+        support_state, support_text = self._home_support_send_readiness()
         artifact_remaining = sum(
             1
             for paths in (releases, materials, handoffs, buyer_packages, buyer_messages)
@@ -3452,7 +3455,8 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_detail_var.set(
             f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
             f"生成物不足 {artifact_remaining} / 購入者ZIP {'あり' if buyer_packages else 'なし'} / "
-            f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'}"
+            f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
+            f"サポート {support_text}"
         )
         self._set_home_sales_status_pill("ok" if status == "READY TO VERIFY" else "warn")
         self._set_home_sales_stage(
@@ -3473,12 +3477,32 @@ class AutoNoteApp(tk.Tk):
             "ok" if send_ready else ("info" if buyer_ready else "warn"),
             "記録あり" if send_ready else ("照合待ち" if buyer_ready else "未準備"),
         )
+        self._set_home_sales_stage("support", support_state, support_text)
         if self._home_sales_next_step is None:
             self.home_sales_next_var.set("次: 販売ナビで詳細検証します。")
             return
         self.home_sales_next_var.set(
             f"次: {self._home_sales_next_step.title} - {self._home_sales_next_step.action}"
         )
+
+    def _home_support_send_readiness(self) -> tuple[str, str]:
+        contact = self.settings.support_contact.strip() if self.settings.support_contact else ""
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            return ("warn", "未作成")
+        latest = bundles[0]
+        if verify_support_bundle(latest):
+            return ("fail", "要確認")
+        try:
+            mtime = latest.stat().st_mtime
+        except OSError:
+            return ("fail", "確認不可")
+        stale = (datetime.now().timestamp() - mtime) > (SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS * 60 * 60)
+        if stale:
+            return ("warn", "要更新")
+        if not contact:
+            return ("warn", "連絡先")
+        return ("ok", "準備OK")
 
     def _set_home_sales_status_pill(self, state: str) -> None:
         if not hasattr(self, "home_sales_status_pill"):
@@ -4135,6 +4159,11 @@ class AutoNoteApp(tk.Tk):
             self.notify("サポート連絡先は設定済みです。必要なら編集して保存してください", level="info")
         else:
             self.notify("サポート連絡先を入力して保存してください", level="warning")
+
+    def show_support_send_panel_action(self) -> None:
+        self._refresh_support_summary()
+        self.notebook.select(self.help_tab)
+        self.notify("サポート送付の状態を表示しました", level="info")
 
     def copy_support_contact_action(self) -> None:
         self._refresh_support_summary()
