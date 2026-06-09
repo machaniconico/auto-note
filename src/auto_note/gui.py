@@ -302,6 +302,14 @@ def smoke_gui(project_dir: Path) -> str:
             if hasattr(app, "article_focus_summary_var")
             else 0
         )
+        commercial_setup_items = (
+            len(app.commercial_setup_tree.get_children()) if hasattr(app, "commercial_setup_tree") else 0
+        )
+        commercial_setup_chars = (
+            len(app.commercial_progress_var.get() + app.commercial_next_var.get() + app.commercial_setup_action_var.get())
+            if hasattr(app, "commercial_setup_action_var")
+            else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
@@ -350,6 +358,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"review_items={review_items}, "
             f"publish_ready_items={publish_ready_items}, "
             f"article_focus_chars={article_focus_chars}, "
+            f"commercial_setup_items={commercial_setup_items}, "
+            f"commercial_setup_chars={commercial_setup_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_report_items={home_report_items}, "
@@ -1859,6 +1869,7 @@ class AutoNoteApp(tk.Tk):
         self.commercial_support_scope_var = tk.BooleanVar(value=self.settings.commercial_support_scope_confirmed)
         self.commercial_progress_var = tk.StringVar()
         self.commercial_next_var = tk.StringVar()
+        self.commercial_setup_action_var = tk.StringVar(value="")
         self.image_optimize_var = tk.BooleanVar(value=self.settings.image_optimize_by_default)
         self.image_max_width_var = tk.IntVar(value=self.settings.image_max_width)
         self.image_quality_var = tk.IntVar(value=self.settings.image_quality)
@@ -1936,6 +1947,7 @@ class AutoNoteApp(tk.Tk):
             fill=tk.X,
             pady=(3, 0),
         )
+        self._build_commercial_setup_checklist(progress_panel)
         setup_actions = ttk.Frame(form, style="Surface.TFrame")
         setup_actions.grid(row=15, column=1, sticky=tk.EW, pady=8)
         ttk.Button(setup_actions, text="セットアップウィザード", command=lambda: self.show_setup_wizard(force=True)).pack(
@@ -1944,6 +1956,9 @@ class AutoNoteApp(tk.Tk):
         ttk.Button(setup_actions, text="次の不足へ", command=self.focus_next_commercial_missing_field).pack(
             side=tk.LEFT,
             padx=6,
+        )
+        ttk.Button(setup_actions, text="選択項目へ", command=self.focus_selected_commercial_setup_item).pack(
+            side=tk.LEFT
         )
         ttk.Button(setup_actions, text="販売者情報確認", command=self.show_commercial_setup_status_action).pack(
             side=tk.LEFT,
@@ -1976,6 +1991,38 @@ class AutoNoteApp(tk.Tk):
             "次の不足へは、販売者情報の未入力または確認が必要な欄へ移動します。",
         )
         help_box.configure(state=tk.DISABLED)
+
+    def _build_commercial_setup_checklist(self, parent: ttk.Frame) -> None:
+        columns = ("status", "field", "detail", "action")
+        self.commercial_setup_tree = ttk.Treeview(
+            parent,
+            columns=columns,
+            show="headings",
+            selectmode="browse",
+            height=6,
+        )
+        self.commercial_setup_tree.heading("status", text="状態")
+        self.commercial_setup_tree.heading("field", text="項目")
+        self.commercial_setup_tree.heading("detail", text="現在")
+        self.commercial_setup_tree.heading("action", text="次の操作")
+        self.commercial_setup_tree.column("status", width=74, minwidth=64, stretch=False)
+        self.commercial_setup_tree.column("field", width=154, minwidth=120, stretch=False)
+        self.commercial_setup_tree.column("detail", width=210, minwidth=150)
+        self.commercial_setup_tree.column("action", width=310, minwidth=180)
+        self.commercial_setup_tree.pack(fill=tk.X, pady=(8, 0))
+        self.commercial_setup_tree.bind("<<TreeviewSelect>>", lambda _event: self.on_select_commercial_setup_item())
+        self._configure_commercial_setup_tree_tags()
+        ttk.Label(
+            parent,
+            textvariable=self.commercial_setup_action_var,
+            style="Muted.TLabel",
+            wraplength=720,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(4, 0))
+
+    def _configure_commercial_setup_tree_tags(self) -> None:
+        self.commercial_setup_tree.tag_configure("ok", background="#dff3ed", foreground="#105f54")
+        self.commercial_setup_tree.tag_configure("warn", background="#fff4db", foreground="#8a4f00")
+        self.commercial_setup_tree.tag_configure("missing", background="#ffe2df", foreground="#8b2119")
 
     def _form_row(self, parent: ttk.Frame, row: int, label: str, widget: tk.Widget) -> None:
         ttk.Label(parent, text=label, style="Surface.TLabel").grid(row=row, column=0, sticky=tk.W, pady=8, padx=(0, 12))
@@ -5320,6 +5367,79 @@ class AutoNoteApp(tk.Tk):
             self.commercial_next_var.set(f"次: {self._commercial_field_action(next_field)}")
         else:
             self.commercial_next_var.set("次: 設定を保存して、販売素材作成または販売一括作成へ進めます。")
+        self._refresh_commercial_setup_checklist(settings, next_field)
+
+    def _refresh_commercial_setup_checklist(self, settings: AppSettings, next_field: str = "") -> None:
+        if not hasattr(self, "commercial_setup_tree"):
+            return
+        rows = _commercial_setup_field_rows(settings)
+        selected_field = ""
+        current_selection = self.commercial_setup_tree.selection()
+        if current_selection:
+            selected_field = current_selection[0]
+        self.commercial_setup_tree.delete(*self.commercial_setup_tree.get_children())
+        first_attention = ""
+        for field, label, status, detail, action in rows:
+            self.commercial_setup_tree.insert(
+                "",
+                tk.END,
+                iid=field,
+                values=(_commercial_setup_status_label(status), label, detail, action),
+                tags=(status,),
+            )
+            if not first_attention and status != "ok":
+                first_attention = field
+        target = selected_field if selected_field and self.commercial_setup_tree.exists(selected_field) else ""
+        if not target:
+            target = next_field if next_field and self.commercial_setup_tree.exists(next_field) else ""
+        if not target:
+            children = self.commercial_setup_tree.get_children()
+            target = first_attention or (children[0] if children else "")
+        if target:
+            self.commercial_setup_tree.selection_set(target)
+            self.commercial_setup_tree.focus(target)
+            self.on_select_commercial_setup_item()
+        else:
+            self.commercial_setup_action_var.set("")
+
+    def on_select_commercial_setup_item(self) -> None:
+        row = self._selected_commercial_setup_row()
+        if row is None:
+            self.commercial_setup_action_var.set("")
+            return
+        _field, label, status, detail, action = row
+        if status == "ok":
+            self.commercial_setup_action_var.set(f"{label}: OK / {detail}")
+        else:
+            self.commercial_setup_action_var.set(f"{label}: {action}")
+
+    def focus_selected_commercial_setup_item(self) -> None:
+        row = self._selected_commercial_setup_row()
+        if row is None:
+            self.focus_next_commercial_missing_field()
+            return
+        field, label, status, _detail, _action = row
+        self.notebook.select(self.settings_tab)
+        widget = self._commercial_field_widget(field)
+        if widget is not None:
+            try:
+                widget.focus_set()
+            except tk.TclError:
+                pass
+        if status == "ok":
+            self.notify(f"{label}は設定済みです。必要なら編集して保存してください", level="info")
+        else:
+            self.notify(f"次に確認: {label}", level="warning")
+
+    def _selected_commercial_setup_row(self) -> tuple[str, str, str, str, str] | None:
+        if not hasattr(self, "commercial_setup_tree"):
+            return None
+        selection = self.commercial_setup_tree.selection()
+        if not selection:
+            return None
+        field = selection[0]
+        rows = {row[0]: row for row in _commercial_setup_field_rows(self._settings_preview_from_controls())}
+        return rows.get(field)
 
     def focus_next_commercial_missing_field(self) -> None:
         if not hasattr(self, "seller_name_var"):
@@ -7286,6 +7406,95 @@ def _article_focus_brief(text: str, limit: int) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _commercial_setup_field_rows(settings: AppSettings) -> list[tuple[str, str, str, str, str]]:
+    fields = [
+        (
+            "seller_name",
+            "販売者/屋号",
+            settings.seller_name.strip(),
+            "販売素材に表示する販売者名です。",
+            "販売者/屋号を入力します。",
+        ),
+        (
+            "sales_channel_url",
+            "販売ページURL",
+            settings.sales_channel_url.strip(),
+            "購入者が確認できる販売ページです。",
+            "https:// で始まる販売ページURLを入力します。",
+        ),
+        (
+            "refund_policy_url",
+            "返金方針URL",
+            settings.refund_policy_url.strip(),
+            "返金/キャンセル方針の公開ページです。",
+            "https:// で始まる返金方針URLを入力します。",
+        ),
+        (
+            "support_contact",
+            "サポート連絡先",
+            settings.support_contact.strip(),
+            "購入者向け問い合わせ先です。",
+            "問い合わせフォームなどの公開サポートURLを入力します。",
+        ),
+    ]
+    rows: list[tuple[str, str, str, str, str]] = []
+    for field, label, value, ok_detail, action in fields:
+        status = "ok"
+        detail = ok_detail
+        if not value:
+            status = "missing"
+            detail = "未入力"
+        elif field in {"sales_channel_url", "refund_policy_url"} and not _commercial_setup_public_url(value):
+            status = "warn"
+            detail = "公開URL形式ではありません。"
+        elif field == "support_contact":
+            if _commercial_setup_raw_email(value):
+                status = "warn"
+                detail = "メール直書きより公開サポートURL推奨です。"
+            elif not _commercial_setup_public_url(value):
+                status = "warn"
+                detail = "公開サポートURL形式ではありません。"
+        rows.append((field, label, status, detail, action))
+    checks = [
+        (
+            "commercial_terms_reviewed",
+            "利用条件/商用方針",
+            settings.commercial_terms_reviewed,
+            "販売前確認済み",
+            "利用条件/商用方針の確認チェックをONにします。",
+        ),
+        (
+            "commercial_support_scope_confirmed",
+            "サポート範囲",
+            settings.commercial_support_scope_confirmed,
+            "販売ページに明記済み",
+            "サポート範囲と返金条件の明記チェックをONにします。",
+        ),
+    ]
+    for field, label, ok, ok_detail, action in checks:
+        status = "ok" if ok else "missing"
+        detail = ok_detail if ok else "未確認"
+        rows.append((field, label, status, detail, action))
+    return rows
+
+
+def _commercial_setup_status_label(status: str) -> str:
+    return {
+        "ok": "OK",
+        "warn": "確認",
+        "missing": "未入力",
+    }.get(status, status.upper())
+
+
+def _commercial_setup_public_url(value: str) -> bool:
+    return value.strip().lower().startswith(("http://", "https://"))
+
+
+def _commercial_setup_raw_email(value: str) -> bool:
+    text = value.strip()
+    return "@" in text and not _commercial_setup_public_url(text)
 
 
 def _home_primary_button_label(step: ActionPlanStep | None) -> str:

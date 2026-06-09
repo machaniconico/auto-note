@@ -1570,6 +1570,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup checklist",
+            "commercial_setup_tree",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup checklist helper",
+            "_commercial_setup_field_rows",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup selected focus",
+            "focus_selected_commercial_setup_item",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke commercial setup checklist",
+            "commercial_setup_items=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI commercial setup next missing action",
             "focus_next_commercial_missing_field",
         )

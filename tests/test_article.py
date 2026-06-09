@@ -1,5 +1,6 @@
 from pathlib import Path
 from contextlib import redirect_stdout
+from dataclasses import replace
 from datetime import datetime, timedelta
 import io
 import json
@@ -68,6 +69,8 @@ from auto_note.gui import (
     _command_palette_matches,
     _command_palette_selection_index,
     _command_palette_status,
+    _commercial_setup_field_rows,
+    _commercial_setup_status_label,
     _gui_runtime_error_message,
     _home_buyer_send_action,
     _home_buyer_send_button_label,
@@ -197,7 +200,7 @@ from auto_note.sales_plan import (
     write_sales_plan_report,
 )
 from auto_note.scaffold import create_article, create_practice_article, list_article_templates
-from auto_note.settings import AppSettings, inspect_settings, list_settings_recovery_files, load_settings, save_settings
+from auto_note.settings import DEFAULT_SETTINGS, AppSettings, inspect_settings, list_settings_recovery_files, load_settings, save_settings
 from auto_note.selftest import (
     _launcher_health_item,
     _self_test_quickstart_item,
@@ -313,6 +316,27 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_article_focus_status_style("ready")[0], "READY")
         self.assertEqual(_article_focus_status_style("blocked")[0], "BLOCKED")
         self.assertTrue(_article_focus_accent_color("check").startswith("#"))
+
+    def test_commercial_setup_field_rows_show_missing_warning_and_ok(self) -> None:
+        missing_rows = _commercial_setup_field_rows(DEFAULT_SETTINGS)
+        self.assertEqual(len(missing_rows), 6)
+        self.assertTrue(all(row[2] == "missing" for row in missing_rows))
+        self.assertEqual(_commercial_setup_status_label("missing"), "未入力")
+
+        warned = replace(
+            DEFAULT_SETTINGS,
+            seller_name="Auto Note Shop",
+            sales_channel_url="example.com/sales",
+            refund_policy_url="https://example.com/refund",
+            support_contact="support@example.com",
+            commercial_terms_reviewed=True,
+            commercial_support_scope_confirmed=True,
+        )
+        rows = {row[0]: row for row in _commercial_setup_field_rows(warned)}
+        self.assertEqual(rows["seller_name"][2], "ok")
+        self.assertEqual(rows["sales_channel_url"][2], "warn")
+        self.assertEqual(rows["support_contact"][2], "warn")
+        self.assertEqual(rows["commercial_terms_reviewed"][2], "ok")
 
     def test_home_primary_button_label_names_next_action(self) -> None:
         self.assertEqual(_home_primary_button_label(None), "詳細を見る")
@@ -3032,6 +3056,16 @@ tags:
             gui_fixture = project / "src" / "auto_note" / "gui.py"
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "commercial_setup_tree\n"
+                + "commercial_setup_action_var\n"
+                + "_commercial_setup_field_rows\n"
+                + "focus_selected_commercial_setup_item\n"
+                + "commercial_setup_items=\n"
+                + "commercial_setup_chars=\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
                 + 'if action == "送付文コピー":\n'
                 + 'self.support_next_action_var.get() != "送付文コピー"\n'
                 + "home_support_next_button_var\n"
@@ -3403,6 +3437,10 @@ tags:
         self.assertIn("GUI commercial setup status action:fail", product_details)
         self.assertIn("GUI commercial setup save feedback:fail", product_details)
         self.assertIn("GUI commercial setup progress panel:fail", product_details)
+        self.assertIn("GUI commercial setup checklist:fail", product_details)
+        self.assertIn("GUI commercial setup checklist helper:fail", product_details)
+        self.assertIn("GUI commercial setup selected focus:fail", product_details)
+        self.assertIn("GUI smoke commercial setup checklist:fail", product_details)
         self.assertIn("GUI commercial setup next missing action:fail", product_details)
         self.assertIn("GUI commercial setup command palette action:fail", product_details)
         self.assertIn("GUI home sales summary panel:fail", product_details)
@@ -3840,6 +3878,10 @@ tags:
         self.assertIn("GUI commercial setup status action:pass", launcher_details)
         self.assertIn("GUI commercial setup save feedback:pass", launcher_details)
         self.assertIn("GUI commercial setup progress panel:pass", launcher_details)
+        self.assertIn("GUI commercial setup checklist:pass", launcher_details)
+        self.assertIn("GUI commercial setup checklist helper:pass", launcher_details)
+        self.assertIn("GUI commercial setup selected focus:pass", launcher_details)
+        self.assertIn("GUI smoke commercial setup checklist:pass", launcher_details)
         self.assertIn("GUI commercial setup next missing action:pass", launcher_details)
         self.assertIn("GUI commercial setup command palette action:pass", launcher_details)
         self.assertIn("GUI home sales summary panel:pass", launcher_details)
