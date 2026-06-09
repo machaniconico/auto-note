@@ -1,5 +1,7 @@
 param(
   [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "auto-note"),
+  [string]$DesktopShortcutDir = "",
+  [string]$StartMenuShortcutDir = "",
   [switch]$RemoveUserData,
   [switch]$NoShortcuts
 )
@@ -54,7 +56,7 @@ foreach ($name in $appDirectories) {
   Remove-ChildPath $install $name
 }
 
-$appFiles = @("auto-note-gui.bat", "README.md", "pyproject.toml", "auto-note.lnk", "auto-note GUI.lnk")
+$appFiles = @("auto-note-gui.bat", "README.md", "pyproject.toml", "auto-note.lnk", "auto-note safe display.lnk", "auto-note GUI.lnk")
 foreach ($name in $appFiles) {
   Remove-ChildPath $install $name
 }
@@ -64,11 +66,13 @@ if ($RemoveUserData) {
   Remove-ChildPath $install ".auto-note"
 }
 
-$desktop = [Environment]::GetFolderPath("DesktopDirectory")
-$programs = [Environment]::GetFolderPath("Programs")
+$desktop = if ($DesktopShortcutDir) { Get-NormalizedPath $DesktopShortcutDir } else { [Environment]::GetFolderPath("DesktopDirectory") }
+$programs = if ($StartMenuShortcutDir) { Get-NormalizedPath $StartMenuShortcutDir } else { [Environment]::GetFolderPath("Programs") }
 if (-not $NoShortcuts) {
   Remove-KnownShortcut (Join-Path $desktop "auto-note.lnk")
+  Remove-KnownShortcut (Join-Path $desktop "auto-note safe display.lnk")
   Remove-KnownShortcut (Join-Path $programs "auto-note.lnk")
+  Remove-KnownShortcut (Join-Path $programs "auto-note safe display.lnk")
   Remove-KnownShortcut (Join-Path $programs "auto-note uninstall.lnk")
 }
 

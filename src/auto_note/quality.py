@@ -35,7 +35,28 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(_path_check(project_dir / "docs" / "QUICKSTART.md", "quickstart guide"))
     checks.append(_path_check(project_dir / "docs" / "PRODUCT_READINESS.md", "product readiness memo"))
     checks.append(_path_check(project_dir / "docs" / "INSTALL.md", "install guide"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "INSTALL.md",
+            "install guide safe display shortcut guidance",
+            "auto-note safe display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "INSTALL.md",
+            "install guide safe display CLI guidance",
+            "auto-note-gui.bat --safe-display",
+        )
+    )
     checks.append(_path_check(project_dir / "docs" / "UPDATE.md", "update guide"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "UPDATE.md",
+            "update guide safe display shortcut guidance",
+            "auto-note safe display",
+        )
+    )
     checks.append(_path_check(project_dir / "docs" / "SUPPORT.md", "support guide"))
     checks.append(_path_check(project_dir / "docs" / "PRIVACY.md", "privacy guide"))
     checks.append(_path_check(project_dir / "docs" / "TERMS_DRAFT.md", "terms draft"))
@@ -711,8 +732,43 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "auto-note safe display.lnk",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "install-auto-note.ps1",
+            "installer custom desktop shortcut directory",
+            "DesktopShortcutDir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "install-auto-note.ps1",
+            "installer custom start menu shortcut directory",
+            "StartMenuShortcutDir",
+        )
+    )
     checks.append(_path_check(project_dir / "shortcuts" / "install-auto-note.bat", "installer launcher"))
     checks.append(_path_check(project_dir / "scripts" / "uninstall-auto-note.ps1", "uninstaller script"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "uninstall-auto-note.ps1",
+            "uninstaller safe display shortcut cleanup",
+            "auto-note safe display.lnk",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "uninstall-auto-note.ps1",
+            "uninstaller custom desktop shortcut directory",
+            "DesktopShortcutDir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "uninstall-auto-note.ps1",
+            "uninstaller custom start menu shortcut directory",
+            "StartMenuShortcutDir",
+        )
+    )
     checks.append(_path_check(project_dir / "shortcuts" / "uninstall-auto-note.bat", "uninstaller launcher"))
     checks.append(_path_check(project_dir / "scripts" / "check-release.ps1", "release check script"))
     checks.append(
@@ -751,6 +807,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         )
     )
     checks.append(_path_check(project_dir / "scripts" / "smoke-install.ps1", "install smoke test"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke verifies safe display shortcut",
+            "Assert-GuiShortcut",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke checks safe display argument",
+            "--safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke uses isolated shortcut directories",
+            "DesktopShortcutDir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke uses isolated start menu directory",
+            "StartMenuShortcutDir",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "smoke-sales-delivery.ps1", "sales delivery smoke test"))
     checks.append(
         _text_contains_check(

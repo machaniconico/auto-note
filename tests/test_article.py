@@ -3202,8 +3202,23 @@ tags:
                 encoding="utf-8",
             )
             (project / "scripts" / "install-auto-note.ps1").write_text(
+                "DesktopShortcutDir\n"
+                "StartMenuShortcutDir\n"
                 '-SafeDisplayShortcutPath (Join-Path $desktop "auto-note safe display.lnk")\n'
                 '-SafeDisplayShortcutPath (Join-Path $programs "auto-note safe display.lnk")\n',
+                encoding="utf-8",
+            )
+            (project / "scripts" / "uninstall-auto-note.ps1").write_text(
+                "DesktopShortcutDir\n"
+                "StartMenuShortcutDir\n"
+                "auto-note safe display.lnk\n",
+                encoding="utf-8",
+            )
+            (project / "scripts" / "smoke-install.ps1").write_text(
+                "Assert-GuiShortcut\n"
+                "--safe-display\n"
+                "DesktopShortcutDir\n"
+                "StartMenuShortcutDir\n",
                 encoding="utf-8",
             )
             (project / "shortcuts").mkdir(exist_ok=True)
@@ -3595,6 +3610,15 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
+            (project / "docs" / "INSTALL.md").write_text(
+                "auto-note safe display\n"
+                "auto-note-gui.bat --safe-display\n",
+                encoding="utf-8",
+            )
+            (project / "docs" / "UPDATE.md").write_text(
+                "auto-note safe display\n",
+                encoding="utf-8",
+            )
             (project / "docs" / "SUPPORT.md").write_text(
                 "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
@@ -3624,6 +3648,9 @@ tags:
         self.assertIn("workflow status:fail", details)
         self.assertIn("schedule format:fail", details)
         self.assertTrue(any(check.name == "article review" for check in checks))
+        self.assertIn("install guide safe display shortcut guidance:fail", product_details)
+        self.assertIn("install guide safe display CLI guidance:fail", product_details)
+        self.assertIn("update guide safe display shortcut guidance:fail", product_details)
         self.assertIn("GUI launcher smoke check:fail", product_details)
         self.assertIn("GUI launcher safe display argument:fail", product_details)
         self.assertIn("GUI launcher safe display environment:fail", product_details)
@@ -3653,6 +3680,11 @@ tags:
         self.assertIn("safe display shortcut argument:fail", product_details)
         self.assertIn("installer safe display shortcut path:fail", product_details)
         self.assertIn("installer safe display shortcut name:fail", product_details)
+        self.assertIn("installer custom desktop shortcut directory:fail", product_details)
+        self.assertIn("installer custom start menu shortcut directory:fail", product_details)
+        self.assertIn("uninstaller safe display shortcut cleanup:fail", product_details)
+        self.assertIn("uninstaller custom desktop shortcut directory:fail", product_details)
+        self.assertIn("uninstaller custom start menu shortcut directory:fail", product_details)
         self.assertIn("release check script:fail", product_details)
         self.assertIn("release check unit tests:fail", product_details)
         self.assertIn("release check product quality:fail", product_details)
@@ -3666,6 +3698,10 @@ tags:
         self.assertIn("sales delivery smoke launch checklist:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
         self.assertIn("sales delivery smoke platform checklist assertion:fail", product_details)
+        self.assertIn("install smoke verifies safe display shortcut:fail", product_details)
+        self.assertIn("install smoke checks safe display argument:fail", product_details)
+        self.assertIn("install smoke uses isolated shortcut directories:fail", product_details)
+        self.assertIn("install smoke uses isolated start menu directory:fail", product_details)
         self.assertIn("release candidate handoff:fail", product_details)
         self.assertIn("RC handoff release check:fail", product_details)
         self.assertIn("RC handoff sales evidence:fail", product_details)
@@ -4236,6 +4272,9 @@ tags:
         self.assertIn("release buyer acceptance checklist:fail", product_details)
         self.assertIn("release buyer acceptance full guidance:fail", product_details)
         self.assertIn("version consistency:pass", launcher_details)
+        self.assertIn("install guide safe display shortcut guidance:pass", launcher_details)
+        self.assertIn("install guide safe display CLI guidance:pass", launcher_details)
+        self.assertIn("update guide safe display shortcut guidance:pass", launcher_details)
         self.assertIn("GitHub Actions CI:pass", launcher_details)
         self.assertIn("CI Windows runner:pass", launcher_details)
         self.assertIn("CI unit tests:pass", launcher_details)
@@ -4259,6 +4298,10 @@ tags:
         self.assertIn("sales delivery smoke launch checklist:pass", launcher_details)
         self.assertIn("sales delivery smoke launch checklist assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke platform checklist assertion:pass", launcher_details)
+        self.assertIn("install smoke verifies safe display shortcut:pass", launcher_details)
+        self.assertIn("install smoke checks safe display argument:pass", launcher_details)
+        self.assertIn("install smoke uses isolated shortcut directories:pass", launcher_details)
+        self.assertIn("install smoke uses isolated start menu directory:pass", launcher_details)
         self.assertIn("release candidate handoff:pass", launcher_details)
         self.assertIn("RC handoff release check:pass", launcher_details)
         self.assertIn("RC handoff sales evidence:pass", launcher_details)
@@ -4849,6 +4892,11 @@ tags:
         self.assertIn("safe display shortcut argument:pass", launcher_details)
         self.assertIn("installer safe display shortcut path:pass", launcher_details)
         self.assertIn("installer safe display shortcut name:pass", launcher_details)
+        self.assertIn("installer custom desktop shortcut directory:pass", launcher_details)
+        self.assertIn("installer custom start menu shortcut directory:pass", launcher_details)
+        self.assertIn("uninstaller safe display shortcut cleanup:pass", launcher_details)
+        self.assertIn("uninstaller custom desktop shortcut directory:pass", launcher_details)
+        self.assertIn("uninstaller custom start menu shortcut directory:pass", launcher_details)
         self.assertNotIn("article check", product_details)
         self.assertNotIn("article review", product_details)
 

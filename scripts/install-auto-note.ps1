@@ -1,6 +1,8 @@
 param(
   [string]$SourceDir = (Resolve-Path "$PSScriptRoot\..").Path,
   [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "auto-note"),
+  [string]$DesktopShortcutDir = "",
+  [string]$StartMenuShortcutDir = "",
   [switch]$NoShortcuts,
   [switch]$SkipEnv
 )
@@ -149,8 +151,10 @@ New-Item -ItemType Directory -Force -Path (Join-Path $install ".auto-note") | Ou
 Write-InstallInfo $install $source $version $preInstallBackup
 
 if (-not $NoShortcuts) {
-  $desktop = [Environment]::GetFolderPath("DesktopDirectory")
-  $programs = [Environment]::GetFolderPath("Programs")
+  $desktop = if ($DesktopShortcutDir) { Get-NormalizedPath $DesktopShortcutDir } else { [Environment]::GetFolderPath("DesktopDirectory") }
+  $programs = if ($StartMenuShortcutDir) { Get-NormalizedPath $StartMenuShortcutDir } else { [Environment]::GetFolderPath("Programs") }
+  New-Item -ItemType Directory -Force -Path $desktop | Out-Null
+  New-Item -ItemType Directory -Force -Path $programs | Out-Null
   $shortcutScript = Join-Path $install "scripts\create-gui-shortcut.ps1"
   & powershell -NoProfile -ExecutionPolicy Bypass -File $shortcutScript `
     -ProjectDir $install `

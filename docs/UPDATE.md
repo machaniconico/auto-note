@@ -9,7 +9,8 @@ auto-note の更新手順です。
 3. 新しい配布ZIPを展開する
 4. 展開先の `shortcuts\install-auto-note.bat` を実行する
 5. デスクトップまたはスタートメニューの `auto-note` を開く
-6. `ヘルプ` の `アプリ情報` でバージョンを確認する
+6. 文字や行高が潰れて見える場合は `auto-note safe display` を開く
+7. `ヘルプ` の `アプリ情報` でバージョンを確認する
 
 インストーラーは既存の `articles` と `.auto-note` を削除しません。既存の記事や設定がある場合は、更新前に `.auto-note\install-backups` へバックアップを作成し、`.auto-note\install-info.json` に記録します。
 
