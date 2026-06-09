@@ -3059,6 +3059,13 @@ tags:
                 + "_style_text_widget\n"
                 + '"Yu Gothic UI"\n'
                 + "UI_FONT_CANDIDATES\n"
+                + "UI_TEXT_SIZE = 10\n"
+                + "UI_BADGE_FONT_SIZE = 9\n"
+                + "UI_TREE_ROW_HEIGHT = 38\n"
+                + "UI_NOTEBOOK_TAB_PADDING = (18, 12)\n"
+                + "UI_BUTTON_PADDING = (14, 10)\n"
+                + "spacing3=4\n"
+                + "readability_style_chars=\n"
                 + "_resolve_font_family\n"
                 + "_enable_windows_dpi_awareness\n"
                 + "SetProcessDpiAwareness\n"
@@ -3532,6 +3539,13 @@ tags:
         self.assertIn("GUI modern design tokens:fail", product_details)
         self.assertIn("GUI modern text area styling:fail", product_details)
         self.assertIn("GUI readable Japanese font:fail", product_details)
+        self.assertIn("GUI readable text size tokens:fail", product_details)
+        self.assertIn("GUI readable badge font size:fail", product_details)
+        self.assertIn("GUI readable tree row height:fail", product_details)
+        self.assertIn("GUI readable tab padding:fail", product_details)
+        self.assertIn("GUI readable button padding:fail", product_details)
+        self.assertIn("GUI readable text line spacing:fail", product_details)
+        self.assertIn("GUI smoke readable style metrics:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
         self.assertIn("GUI resolved font family:fail", product_details)
         self.assertIn("GUI Windows DPI awareness:fail", product_details)
@@ -3987,6 +4001,13 @@ tags:
         self.assertIn("GUI modern design tokens:pass", launcher_details)
         self.assertIn("GUI modern text area styling:pass", launcher_details)
         self.assertIn("GUI readable Japanese font:pass", launcher_details)
+        self.assertIn("GUI readable text size tokens:pass", launcher_details)
+        self.assertIn("GUI readable badge font size:pass", launcher_details)
+        self.assertIn("GUI readable tree row height:pass", launcher_details)
+        self.assertIn("GUI readable tab padding:pass", launcher_details)
+        self.assertIn("GUI readable button padding:pass", launcher_details)
+        self.assertIn("GUI readable text line spacing:pass", launcher_details)
+        self.assertIn("GUI smoke readable style metrics:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
         self.assertIn("GUI resolved font family:pass", launcher_details)
         self.assertIn("GUI Windows DPI awareness:pass", launcher_details)

@@ -2011,6 +2011,55 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable text size tokens",
+            "UI_TEXT_SIZE = 10",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable badge font size",
+            "UI_BADGE_FONT_SIZE = 9",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable tree row height",
+            "UI_TREE_ROW_HEIGHT = 38",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable tab padding",
+            "UI_NOTEBOOK_TAB_PADDING = (18, 12)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable button padding",
+            "UI_BUTTON_PADDING = (14, 10)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable text line spacing",
+            "spacing3=4",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke readable style metrics",
+            "readability_style_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI Japanese font fallback",
             "UI_FONT_CANDIDATES",
         )

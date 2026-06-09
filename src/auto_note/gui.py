@@ -192,6 +192,14 @@ UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "MS Gothic", "Segoe
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
+UI_TEXT_SIZE = 10
+UI_SMALL_TEXT_SIZE = 9
+UI_BADGE_FONT_SIZE = 9
+UI_TREE_ROW_HEIGHT = 38
+UI_NOTEBOOK_TAB_PADDING = (18, 12)
+UI_BUTTON_PADDING = (14, 10)
+UI_PRIMARY_BUTTON_PADDING = (16, 10)
+UI_DANGER_BUTTON_PADDING = (12, 9)
 _DPI_AWARENESS_ENABLED = False
 UI_COLORS = {
     "bg": "#eef3f8",
@@ -272,7 +280,9 @@ def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
         highlightcolor=UI_COLORS["focus"],
         padx=10,
         pady=10,
-        font=(CODE_FONT if code else UI_FONT, 10),
+        spacing1=2,
+        spacing3=4,
+        font=(CODE_FONT if code else UI_FONT, UI_TEXT_SIZE),
     )
 
 
@@ -408,6 +418,12 @@ def smoke_gui(project_dir: Path) -> str:
         )
         home_first_run_chars = len(app.home_first_run_var.get()) if hasattr(app, "home_first_run_var") else 0
         home_gui_log_chars = len(app.home_gui_log_var.get()) if hasattr(app, "home_gui_log_var") else 0
+        style = ttk.Style(app)
+        readability_style_chars = len(
+            str(style.lookup("Treeview", "rowheight"))
+            + str(style.lookup("TNotebook.Tab", "padding"))
+            + str(style.lookup("TButton", "padding"))
+        )
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -431,6 +447,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_primary_button_chars={home_primary_button_chars}, "
             f"home_first_run_chars={home_first_run_chars}, "
             f"home_gui_log_chars={home_gui_log_chars}, "
+            f"readability_style_chars={readability_style_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -505,7 +522,7 @@ class AutoNoteApp(tk.Tk):
         UI_FONT = _resolve_font_family(self, UI_FONT_CANDIDATES)
         CODE_FONT = _resolve_font_family(self, CODE_FONT_CANDIDATES)
         font = UI_FONT
-        self.option_add("*Font", f"{{{font}}} 10")
+        self.option_add("*Font", f"{{{font}}} {UI_TEXT_SIZE}")
         bg = UI_COLORS["bg"]
         surface = UI_COLORS["surface"]
         surface_alt = UI_COLORS["surface_alt"]
@@ -528,25 +545,25 @@ class AutoNoteApp(tk.Tk):
         style.configure("Toolbar.TFrame", background=surface_alt)
         style.configure("Chrome.TFrame", background=chrome)
         style.configure("ChromeAlt.TFrame", background=chrome_alt)
-        style.configure("TLabel", background=bg, foreground=primary, font=(font, 10))
-        style.configure("Surface.TLabel", background=surface, foreground=primary, font=(font, 10))
+        style.configure("TLabel", background=bg, foreground=primary, font=(font, UI_TEXT_SIZE))
+        style.configure("Surface.TLabel", background=surface, foreground=primary, font=(font, UI_TEXT_SIZE))
         style.configure(
             "HomeLead.TLabel",
             background=UI_COLORS["surface_strong"],
             foreground=primary,
-            font=(font, 10),
+            font=(font, UI_TEXT_SIZE),
         )
         style.configure(
             "HomeLeadMuted.TLabel",
             background=UI_COLORS["surface_strong"],
             foreground=muted,
-            font=(font, 9),
+            font=(font, UI_SMALL_TEXT_SIZE),
         )
         style.configure(
             "HomeEyebrow.TLabel",
             background=UI_COLORS["surface_strong"],
             foreground=accent,
-            font=(font, 8, "bold"),
+            font=(font, UI_SMALL_TEXT_SIZE),
         )
         style.configure(
             "HomeTitle.TLabel",
@@ -554,35 +571,55 @@ class AutoNoteApp(tk.Tk):
             foreground=primary,
             font=(font, 22, "bold"),
         )
-        style.configure("SurfaceMuted.TLabel", background=surface, foreground=muted, font=(font, 9))
-        style.configure("Muted.TLabel", background=surface, foreground=muted, font=(font, 9))
-        style.configure("SmallMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 8))
-        style.configure("HomeSnapshotTitle.TLabel", background=surface_alt, foreground=muted, font=(font, 8, "bold"))
-        style.configure("HomeSnapshotValue.TLabel", background=surface_alt, foreground=primary, font=(font, 10, "bold"))
-        style.configure("ArticleFocusTitle.TLabel", background=surface_alt, foreground=muted, font=(font, 8, "bold"))
-        style.configure("ArticleFocusValue.TLabel", background=surface_alt, foreground=primary, font=(font, 10, "bold"))
-        style.configure("ArticleFocusMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 9))
+        style.configure("SurfaceMuted.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
+        style.configure("Muted.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
+        style.configure("SmallMuted.TLabel", background=surface_alt, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
+        style.configure(
+            "HomeSnapshotTitle.TLabel",
+            background=surface_alt,
+            foreground=muted,
+            font=(font, UI_SMALL_TEXT_SIZE),
+        )
+        style.configure(
+            "HomeSnapshotValue.TLabel",
+            background=surface_alt,
+            foreground=primary,
+            font=(font, UI_TEXT_SIZE, "bold"),
+        )
+        style.configure(
+            "ArticleFocusTitle.TLabel",
+            background=surface_alt,
+            foreground=muted,
+            font=(font, UI_SMALL_TEXT_SIZE),
+        )
+        style.configure(
+            "ArticleFocusValue.TLabel",
+            background=surface_alt,
+            foreground=primary,
+            font=(font, UI_TEXT_SIZE, "bold"),
+        )
+        style.configure("ArticleFocusMuted.TLabel", background=surface_alt, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, "bold"))
-        style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, 10))
+        style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, UI_TEXT_SIZE))
         style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
-        style.configure("ChromeMuted.TLabel", background=chrome, foreground=chrome_muted, font=(font, 9))
-        style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, 10, "bold"))
+        style.configure("ChromeMuted.TLabel", background=chrome, foreground=chrome_muted, font=(font, UI_SMALL_TEXT_SIZE))
+        style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, UI_TEXT_SIZE, "bold"))
         style.configure(
             "ChromeChip.TLabel",
             background=UI_COLORS["chrome_chip"],
             foreground="#ffffff",
-            font=(font, 8, "bold"),
-            padding=(8, 4),
+            font=(font, UI_SMALL_TEXT_SIZE),
+            padding=(9, 5),
         )
         style.configure("Title.TLabel", background=surface, foreground=primary, font=(font, 16, "bold"))
-        style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, 8, "bold"))
+        style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 20, "bold"))
-        style.configure("KpiHint.TLabel", background=surface, foreground=muted, font=(font, 8))
+        style.configure("KpiHint.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("TNotebook", background=bg, borderwidth=0, tabmargins=(0, 8, 0, 0))
         style.configure(
             "TNotebook.Tab",
-            padding=(18, 10),
-            font=(font, 10),
+            padding=UI_NOTEBOOK_TAB_PADDING,
+            font=(font, UI_TEXT_SIZE),
             background=surface_alt,
             foreground=muted,
             borderwidth=0,
@@ -627,23 +664,23 @@ class AutoNoteApp(tk.Tk):
             bordercolor=[("focus", accent), ("active", line_strong)],
             arrowcolor=[("active", accent), ("pressed", accent)],
         )
-        style.configure("TCheckbutton", background=surface, foreground=primary, font=(font, 10), padding=(2, 4))
+        style.configure("TCheckbutton", background=surface, foreground=primary, font=(font, UI_TEXT_SIZE), padding=(2, 5))
         style.map("TCheckbutton", background=[("active", surface), ("pressed", surface)], foreground=[("active", primary)])
         style.configure(
             "Treeview",
             background=surface,
             fieldbackground=surface,
             foreground=primary,
-            rowheight=34,
+            rowheight=UI_TREE_ROW_HEIGHT,
             borderwidth=0,
-            font=(font, 10),
+            font=(font, UI_TEXT_SIZE),
         )
         style.configure(
             "Treeview.Heading",
             background=surface_alt,
             foreground=muted,
-            font=(font, 9, "bold"),
-            padding=(8, 8),
+            font=(font, UI_SMALL_TEXT_SIZE),
+            padding=(8, 10),
             relief="flat",
         )
         style.map("Treeview", background=[("selected", selected)], foreground=[("selected", primary)])
@@ -668,8 +705,8 @@ class AutoNoteApp(tk.Tk):
         style.configure("TProgressbar", background=accent, troughcolor=surface_alt, borderwidth=0)
         style.configure(
             "TButton",
-            padding=(13, 8),
-            font=(font, 10),
+            padding=UI_BUTTON_PADDING,
+            font=(font, UI_TEXT_SIZE),
             background=surface_alt,
             foreground=primary,
             bordercolor=line,
@@ -679,8 +716,8 @@ class AutoNoteApp(tk.Tk):
         style.map("TButton", background=[("active", selected), ("pressed", "#d9ece8")])
         style.configure(
             "Secondary.TButton",
-            padding=(13, 8),
-            font=(font, 10),
+            padding=UI_BUTTON_PADDING,
+            font=(font, UI_TEXT_SIZE),
             background=surface,
             foreground=primary,
             bordercolor=line,
@@ -693,8 +730,8 @@ class AutoNoteApp(tk.Tk):
         )
         style.configure(
             "Primary.TButton",
-            padding=(16, 9),
-            font=(font, 10, "bold"),
+            padding=UI_PRIMARY_BUTTON_PADDING,
+            font=(font, UI_TEXT_SIZE, "bold"),
             background=accent,
             foreground="#ffffff",
             borderwidth=0,
@@ -708,9 +745,20 @@ class AutoNoteApp(tk.Tk):
             ],
             foreground=[("disabled", "#ecfdf5")],
         )
-        style.configure("Quiet.TButton", padding=(13, 8), font=(font, 10), background=chrome_alt, foreground="#ffffff")
+        style.configure(
+            "Quiet.TButton",
+            padding=UI_BUTTON_PADDING,
+            font=(font, UI_TEXT_SIZE),
+            background=chrome_alt,
+            foreground="#ffffff",
+        )
         style.map("Quiet.TButton", background=[("active", "#2b394c"), ("pressed", "#34445a")])
-        style.configure("Danger.TButton", padding=(11, 7), background=UI_COLORS["danger_soft"], foreground="#991b1b")
+        style.configure(
+            "Danger.TButton",
+            padding=UI_DANGER_BUTTON_PADDING,
+            background=UI_COLORS["danger_soft"],
+            foreground="#991b1b",
+        )
         style.map("Danger.TButton", background=[("active", "#fecaca"), ("pressed", "#fca5a5")])
         style.configure("TLabelframe", background=surface, padding=12, relief="flat", borderwidth=0)
         style.configure("TLabelframe.Label", background=surface, foreground=primary, font=(font, 10, "bold"))
@@ -805,9 +853,9 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg=UI_COLORS["warn"],
             fg="#ffffff",
-            font=(UI_FONT, 8, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
             padx=9,
-            pady=3,
+            pady=4,
             width=12,
         )
         self.home_status_badge.pack(side=tk.LEFT, padx=(10, 0))
@@ -861,9 +909,9 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg=UI_COLORS["warn"],
                 fg="#ffffff",
-                font=(UI_FONT, 8, "bold"),
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
                 padx=7,
-                pady=2,
+                pady=3,
                 width=8,
             )
             pill.pack(side=tk.RIGHT)
@@ -946,9 +994,9 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg="#8a4f00",
                 fg="#ffffff",
-                font=(UI_FONT, 8, "bold"),
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
                 padx=8,
-                pady=3,
+                pady=4,
                 width=8,
             )
             pill.pack(side=tk.LEFT)
@@ -1136,9 +1184,9 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg="#8a4f00",
                 fg="#ffffff",
-                font=(UI_FONT, 8, "bold"),
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
                 padx=8,
-                pady=3,
+                pady=4,
                 width=8,
             )
             pill.pack(side=tk.LEFT)
@@ -1159,9 +1207,9 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=(UI_FONT, 8, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
             padx=8,
-            pady=3,
+            pady=4,
             width=8,
         )
         self.home_buyer_send_status_pill.pack(side=tk.LEFT, padx=(10, 0))
@@ -1671,9 +1719,9 @@ class AutoNoteApp(tk.Tk):
             text="未選択",
             bg="#344054",
             fg="#ffffff",
-            font=(UI_FONT, 8, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
             padx=9,
-            pady=3,
+            pady=4,
             width=9,
         )
         self.article_focus_status_pill.pack(side=tk.RIGHT)
@@ -2417,9 +2465,9 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=(UI_FONT, 8, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
                     padx=6,
-                    pady=1,
+                    pady=3,
                     width=8,
                 )
                 self.support_send_readiness_status_pill.pack(side=tk.LEFT)
@@ -2443,9 +2491,9 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=(UI_FONT, 8, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
                     padx=6,
-                    pady=1,
+                    pady=3,
                     width=8,
                 )
                 self.support_contact_status_pill.pack(side=tk.LEFT)
@@ -2469,9 +2517,9 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=(UI_FONT, 8, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
                     padx=8,
-                    pady=3,
+                    pady=4,
                     width=8,
                 )
                 self.support_bundle_status_pill.pack(side=tk.LEFT)
