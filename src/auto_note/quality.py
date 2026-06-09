@@ -435,6 +435,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README command palette multi-word search guidance",
+            "スペース区切りの複数語",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README first-run actionable filter guidance",
             "要対応だけ",
         )
@@ -1656,6 +1663,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI command palette match count helper",
             "_command_palette_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette multi-word matcher",
+            "_command_palette_matches",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette all token matching",
+            "all(token in haystack for token in tokens)",
         )
     )
     checks.append(

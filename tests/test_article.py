@@ -52,6 +52,7 @@ from auto_note.diagnostics import (
 from auto_note.export import export_article_inventory
 from auto_note.first_run import _top_action_item, format_first_run_report, has_first_run_blockers, run_first_run_checklist
 from auto_note.gui import (
+    _command_palette_matches,
     _command_palette_selection_index,
     _command_palette_status,
     _home_progress_review_text,
@@ -240,7 +241,7 @@ class ArticleTests(unittest.TestCase):
     def test_command_palette_status_describes_results(self) -> None:
         self.assertEqual(
             _command_palette_status(12, 12, ""),
-            "全12件のコマンドを表示しています。入力すると絞り込めます。上下キーで選択できます。",
+            "全12件のコマンドを表示しています。スペース区切りで絞り込めます。上下キーで選択できます。",
         )
         self.assertEqual(
             _command_palette_status(3, 12, "投稿"),
@@ -250,6 +251,12 @@ class ArticleTests(unittest.TestCase):
             _command_palette_status(0, 12, "zzz"),
             "一致するコマンドがありません。別の言葉で検索してください。",
         )
+
+    def test_command_palette_matches_multi_word_queries(self) -> None:
+        self.assertTrue(_command_palette_matches("投稿準備", "選択記事の投稿前チェックを表示", "投稿 準備"))
+        self.assertTrue(_command_palette_matches("販売一式作成", "最新配布ZIPと販売前エビデンスをまとめる", "販売 zip"))
+        self.assertTrue(_command_palette_matches("販売一式作成", "最新配布ZIPと販売前エビデンスをまとめる", "zip 販売"))
+        self.assertFalse(_command_palette_matches("投稿キュー", "全記事を投稿できる順に並べて表示", "販売 zip"))
 
     def test_command_palette_selection_index_wraps(self) -> None:
         self.assertEqual(_command_palette_selection_index(None, 1, 3), 0)
@@ -2764,6 +2771,12 @@ tags:
             )
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "_command_palette_matches\n"
+                + "all(token in haystack for token in tokens)\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
                 + "move_command_palette_selection\n"
                 + "_command_palette_selection_index\n"
                 + 'listbox.bind("<Return>", run_selected)\n',
@@ -2779,7 +2792,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n一致するコマンドがない時\n上下キーで候補を選び\n要対応だけ\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -2978,6 +2991,8 @@ tags:
         self.assertIn("GUI command palette status label:fail", product_details)
         self.assertIn("GUI command palette empty state:fail", product_details)
         self.assertIn("GUI command palette match count helper:fail", product_details)
+        self.assertIn("GUI command palette multi-word matcher:fail", product_details)
+        self.assertIn("GUI command palette all token matching:fail", product_details)
         self.assertIn("GUI command palette keyboard navigation:fail", product_details)
         self.assertIn("GUI command palette keyboard selector helper:fail", product_details)
         self.assertIn("GUI command palette listbox return binding:fail", product_details)
@@ -3030,6 +3045,7 @@ tags:
         self.assertIn("README home progress command palette guidance:fail", product_details)
         self.assertIn("README command palette result state guidance:fail", product_details)
         self.assertIn("README command palette keyboard guidance:fail", product_details)
+        self.assertIn("README command palette multi-word search guidance:fail", product_details)
         self.assertIn("GUI support send checklist action:fail", product_details)
         self.assertIn("GUI support send log summary action:fail", product_details)
         self.assertIn("GUI support send log summary button:fail", product_details)
@@ -3334,6 +3350,8 @@ tags:
         self.assertIn("GUI command palette status label:pass", launcher_details)
         self.assertIn("GUI command palette empty state:pass", launcher_details)
         self.assertIn("GUI command palette match count helper:pass", launcher_details)
+        self.assertIn("GUI command palette multi-word matcher:pass", launcher_details)
+        self.assertIn("GUI command palette all token matching:pass", launcher_details)
         self.assertIn("GUI command palette keyboard navigation:pass", launcher_details)
         self.assertIn("GUI command palette keyboard selector helper:pass", launcher_details)
         self.assertIn("GUI command palette listbox return binding:pass", launcher_details)
@@ -3386,6 +3404,7 @@ tags:
         self.assertIn("README home progress command palette guidance:pass", launcher_details)
         self.assertIn("README command palette result state guidance:pass", launcher_details)
         self.assertIn("README command palette keyboard guidance:pass", launcher_details)
+        self.assertIn("README command palette multi-word search guidance:pass", launcher_details)
         self.assertIn("GUI support send checklist action:pass", launcher_details)
         self.assertIn("GUI support send log summary action:pass", launcher_details)
         self.assertIn("GUI support send log summary button:pass", launcher_details)

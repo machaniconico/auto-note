@@ -199,7 +199,15 @@ def _command_palette_status(match_count: int, total_count: int, query: str) -> s
         return "一致するコマンドがありません。別の言葉で検索してください。"
     if query.strip():
         return f"{match_count}件のコマンドが見つかりました。上下キーで選択、Enterで実行できます。"
-    return f"全{total_count}件のコマンドを表示しています。入力すると絞り込めます。上下キーで選択できます。"
+    return f"全{total_count}件のコマンドを表示しています。スペース区切りで絞り込めます。上下キーで選択できます。"
+
+
+def _command_palette_matches(label: str, hint: str, query: str) -> bool:
+    tokens = query.strip().lower().split()
+    if not tokens:
+        return True
+    haystack = f"{label} {hint}".lower()
+    return all(token in haystack for token in tokens)
 
 
 def _command_palette_selection_index(current: int | None, delta: int, count: int) -> int:
@@ -4431,8 +4439,7 @@ class AutoNoteApp(tk.Tk):
             query = query_var.get().strip().lower()
             listbox.delete(0, tk.END)
             for label, hint, action in actions:
-                haystack = f"{label} {hint}".lower()
-                if query and query not in haystack:
+                if not _command_palette_matches(label, hint, query):
                     continue
                 visible.append((label, hint, action))
                 listbox.insert(tk.END, f"{label}  -  {hint}")
