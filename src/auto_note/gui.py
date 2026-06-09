@@ -474,6 +474,9 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_status_var = tk.StringVar(value="販売準備を確認中です。")
         self.home_sales_detail_var = tk.StringVar(value="")
         self.home_sales_next_var = tk.StringVar(value="")
+        self.home_support_next_button_var = tk.StringVar(
+            value=_home_support_next_button_label("問い合わせ一式を作成")
+        )
         sales_status_row = ttk.Frame(sales_text, style="Surface.TFrame")
         sales_status_row.pack(fill=tk.X)
         self.home_sales_status_pill = tk.Label(
@@ -552,11 +555,15 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
-            ("サポート次実行", self.run_home_support_next_action, None),
+            (self.home_support_next_button_var, self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
         )
         for row_index, (text, command, style_name) in enumerate(sales_action_items):
-            options = {"text": text, "command": command}
+            options = {"command": command}
+            if isinstance(text, tk.Variable):
+                options["textvariable"] = text
+            else:
+                options["text"] = text
             if style_name:
                 options["style"] = style_name
             button = ttk.Button(sales_actions, **options)
@@ -3549,6 +3556,9 @@ class AutoNoteApp(tk.Tk):
         button_var = getattr(self, "support_next_button_var", None)
         if button_var is not None:
             button_var.set(_support_next_button_label(text))
+        home_button_var = getattr(self, "home_support_next_button_var", None)
+        if home_button_var is not None:
+            home_button_var.set(_home_support_next_button_label(text))
 
     def _home_sales_lightweight_next_step(
         self,
@@ -5738,6 +5748,17 @@ def _support_next_button_label(action: str) -> str:
         "送付前リストを確認": "次: リスト確認",
         "送付文コピー": "次: 送付文",
     }.get(action, "次を実行")
+
+
+def _home_support_next_button_label(action: str) -> str:
+    return {
+        "問い合わせ一式を作成": "サポート: 一式作成",
+        "問い合わせ一式を再作成": "サポート: 再作成",
+        "一式ZIP検証で詳細確認": "サポート: ZIP検証",
+        "サポート連絡先を設定": "サポート: 連絡先",
+        "送付前リストを確認": "サポート: リスト",
+        "送付文コピー": "サポート: 送付文",
+    }.get(action, "サポート次実行")
 
 
 def _publish_ready_counts(report: PublishReadyReport) -> dict[str, int]:

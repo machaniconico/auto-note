@@ -2550,8 +2550,12 @@ tags:
                 gui_fixture.read_text(encoding="utf-8")
                 + 'if action == "送付文コピー":\n'
                 + 'self.support_next_action_var.get() != "送付文コピー"\n'
+                + "home_support_next_button_var\n"
+                + "_home_support_next_button_label\n"
+                + "home_button_var.set(_home_support_next_button_label(text))\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
+                + '"送付文コピー": "サポート: 送付文"\n'
                 + 'self._set_support_next_action("送付文コピー")\n',
                 encoding="utf-8",
             )
@@ -2722,6 +2726,9 @@ tags:
         self.assertIn("GUI home support send next action:fail", product_details)
         self.assertIn("GUI home support send next button:fail", product_details)
         self.assertIn("GUI home support send next delegates:fail", product_details)
+        self.assertIn("GUI home support send next button label helper:fail", product_details)
+        self.assertIn("GUI home support send next syncs support state:fail", product_details)
+        self.assertIn("GUI home support send next message label:fail", product_details)
         self.assertIn("GUI home support send next preserves message action:fail", product_details)
         self.assertIn("GUI home support send feedback:fail", product_details)
         self.assertIn("GUI home sales indicator style:fail", product_details)
@@ -2979,6 +2986,9 @@ tags:
         self.assertIn("GUI home support send next action:pass", launcher_details)
         self.assertIn("GUI home support send next button:pass", launcher_details)
         self.assertIn("GUI home support send next delegates:pass", launcher_details)
+        self.assertIn("GUI home support send next button label helper:pass", launcher_details)
+        self.assertIn("GUI home support send next syncs support state:pass", launcher_details)
+        self.assertIn("GUI home support send next message label:pass", launcher_details)
         self.assertIn("GUI home support send next preserves message action:pass", launcher_details)
         self.assertIn("GUI home support send feedback:pass", launcher_details)
         self.assertIn("GUI home sales indicator style:pass", launcher_details)

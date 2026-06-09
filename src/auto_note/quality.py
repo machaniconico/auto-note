@@ -1158,7 +1158,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home support send next button",
-            "サポート次実行",
+            "home_support_next_button_var",
         )
     )
     checks.append(
@@ -1166,6 +1166,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home support send next delegates",
             "self.run_support_next_action()",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send next button label helper",
+            "_home_support_next_button_label",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send next syncs support state",
+            "home_button_var.set(_home_support_next_button_label(text))",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send next message label",
+            '"送付文コピー": "サポート: 送付文"',
         )
     )
     checks.append(
