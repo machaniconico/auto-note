@@ -339,6 +339,16 @@ def main(argv: list[str] | None = None) -> int:
             print(format_repair_report(report))
             return 1 if has_repair_blockers(report, strict=args.strict) else 0
 
+        if args.command == "recovery-kit":
+            from .repair import format_recovery_kit_report, has_recovery_kit_blockers, run_recovery_kit
+
+            report = run_recovery_kit(
+                args.project_dir.resolve(),
+                create_bundle_on_issue=not args.no_support_bundle,
+            )
+            print(format_recovery_kit_report(report))
+            return 1 if has_recovery_kit_blockers(report, strict=args.strict) else 0
+
         if args.command == "troubleshoot":
             from .troubleshoot import (
                 format_troubleshoot_report,
@@ -1186,6 +1196,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Allow cleanup options to include release packages.",
     )
+
+    recovery_kit = subparsers.add_parser(
+        "recovery-kit",
+        help="Apply safe setup repair, rerun troubleshooting, and create a support bundle when issues remain.",
+    )
+    recovery_kit.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
+    recovery_kit.add_argument(
+        "--no-support-bundle",
+        action="store_true",
+        help="Do not create a support bundle when troubleshooting still reports issues.",
+    )
+    recovery_kit.add_argument("--strict", action="store_true", help="Exit with an error on warnings too.")
 
     troubleshoot = subparsers.add_parser("troubleshoot", help="Diagnose common startup/login/support/privacy issues.")
     troubleshoot.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")

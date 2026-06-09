@@ -254,6 +254,12 @@ def has_repair_blockers(report: RepairReport, *, strict: bool = False) -> bool:
     return strict and any(item.status == "warn" for item in report.items)
 
 
+def has_recovery_kit_blockers(report: RecoveryKitReport, *, strict: bool = False) -> bool:
+    if report.status == "fail":
+        return True
+    return strict and report.status == "warn"
+
+
 def _cleanup_detail(result, project_dir: Path, *, label: str, include_releases: bool) -> str:
     count = len(result.items)
     total_size = sum(item.size_bytes for item in result.items)

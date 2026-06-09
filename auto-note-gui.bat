@@ -23,19 +23,21 @@ exit /b 0
 
 :error
 if exist "%ROOT%\.venv\Scripts\python.exe" (
-  echo Creating startup support bundle... >> "%LOG%"
-  call "%ROOT%\.venv\Scripts\python.exe" -m auto_note support --project-dir "%ROOT%" --bundle >> "%LOG%" 2>&1
+  echo Running startup recovery kit... >> "%LOG%"
+  call "%ROOT%\.venv\Scripts\python.exe" -m auto_note recovery-kit --project-dir "%ROOT%" >> "%LOG%" 2>&1
 )
 echo.
 echo Failed to start auto-note GUI.
 echo.
 echo Next steps:
 echo 1. Check the log file: "%LOG%"
-echo 2. If created, send the newest zip in:
+echo 2. Run the recovery kit again if needed:
+echo    "%ROOT%\.venv\Scripts\python.exe" -m auto_note recovery-kit --project-dir "%ROOT%"
+echo 3. If created, send the newest zip in:
 echo    "%ROOT%\.auto-note\support"
-echo 3. Run this GUI check:
+echo 4. Run this GUI check:
 echo    "%ROOT%\.venv\Scripts\python.exe" -m auto_note gui --project-dir "%ROOT%" --smoke
-echo 4. Create a support bundle manually:
+echo 5. Create a support bundle manually:
 echo    "%ROOT%\.venv\Scripts\python.exe" -m auto_note support --project-dir "%ROOT%" --bundle
 echo.
 echo Log:

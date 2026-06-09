@@ -126,6 +126,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "auto-note-gui.bat",
+            "GUI launcher recovery kit guidance",
+            "recovery-kit --project-dir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
             "support bundle send checklist",
             "SUPPORT_SEND_CHECKLIST.txt",
@@ -199,6 +206,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README recovery kit guidance",
             "復旧セット",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README recovery kit CLI guidance",
+            "auto-note recovery-kit",
         )
     )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
@@ -298,6 +312,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "__main__.py",
             "CLI repair command",
             "repair",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI recovery kit command",
+            "recovery-kit",
         )
     )
     checks.append(
