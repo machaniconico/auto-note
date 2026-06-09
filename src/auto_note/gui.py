@@ -270,7 +270,13 @@ def smoke_gui(project_dir: Path) -> str:
             len(app.publish_ready_tree.get_children()) if hasattr(app, "publish_ready_tree") else 0
         )
         home_sales_chars = (
-            len(app.home_sales_status_var.get() + app.home_sales_detail_var.get() + app.home_sales_next_var.get())
+            len(
+                app.home_sales_status_var.get()
+                + app.home_sales_detail_var.get()
+                + app.home_sales_next_var.get()
+                + app.home_buyer_send_var.get()
+                + app.home_buyer_send_next_var.get()
+            )
             if hasattr(app, "home_sales_status_var")
             else 0
         )
@@ -715,6 +721,8 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_status_var = tk.StringVar(value="販売準備を確認中です。")
         self.home_sales_detail_var = tk.StringVar(value="")
         self.home_sales_next_var = tk.StringVar(value="")
+        self.home_buyer_send_var = tk.StringVar(value="購入者送付を確認中です。")
+        self.home_buyer_send_next_var = tk.StringVar(value="")
         self.home_support_next_button_var = tk.StringVar(
             value=_home_support_next_button_label("問い合わせ一式を作成")
         )
@@ -776,6 +784,31 @@ class AutoNoteApp(tk.Tk):
                 expand=True,
                 padx=(6, 0),
             )
+        buyer_send_row = ttk.Frame(sales_text, style="Surface.TFrame")
+        buyer_send_row.pack(fill=tk.X, pady=(8, 0))
+        ttk.Label(buyer_send_row, text="購入者送付", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.home_buyer_send_status_pill = tk.Label(
+            buyer_send_row,
+            text="CHECK",
+            bg="#8a4f00",
+            fg="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            padx=8,
+            pady=3,
+            width=8,
+        )
+        self.home_buyer_send_status_pill.pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(buyer_send_row, textvariable=self.home_buyer_send_var, style="Surface.TLabel").pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            expand=True,
+            padx=(8, 0),
+        )
+        ttk.Label(sales_text, textvariable=self.home_buyer_send_next_var, style="Muted.TLabel", wraplength=820).pack(
+            anchor=tk.W,
+            fill=tk.X,
+            pady=(4, 0),
+        )
         ttk.Label(sales_text, textvariable=self.home_sales_detail_var, style="Muted.TLabel", wraplength=820).pack(
             anchor=tk.W,
             fill=tk.X,
@@ -4078,6 +4111,13 @@ class AutoNoteApp(tk.Tk):
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
             f"サポート {support_text}"
         )
+        buyer_state, buyer_summary, buyer_next = _home_buyer_send_summary(
+            buyer_packages[0] if buyer_packages else None,
+            buyer_messages[0] if buyer_messages else None,
+            seller_receipts[0] if seller_receipts else None,
+        )
+        self._set_home_buyer_send_status(buyer_state, buyer_summary)
+        self.home_buyer_send_next_var.set(buyer_next)
         self._set_home_sales_status_pill("ok" if status == "READY TO VERIFY" else "warn")
         self._set_home_sales_stage(
             "seller",
@@ -4138,6 +4178,13 @@ class AutoNoteApp(tk.Tk):
         if pill is not None:
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
+
+    def _set_home_buyer_send_status(self, state: str, text: str) -> None:
+        if not hasattr(self, "home_buyer_send_var"):
+            return
+        pill_text, bg, fg = _home_sales_indicator_style(state)
+        self.home_buyer_send_status_pill.configure(text=pill_text, bg=bg, fg=fg)
+        self.home_buyer_send_var.set(text)
 
     def _set_support_bundle_status(self, text: str) -> None:
         self.support_bundle_status_var.set(text)
@@ -5328,6 +5375,7 @@ class AutoNoteApp(tk.Tk):
         if has_sales_finalize_blockers(report):
             self.notify(f"{label}でNGが見つかりました", level="error")
             return
+        self._refresh_home_sales_summary()
         level = "warning" if report.has_warnings else "success"
         if report.buyer_delivery_package_path:
             _open_path(report.buyer_delivery_package_path)
@@ -5908,6 +5956,7 @@ class AutoNoteApp(tk.Tk):
             ),
         )
         self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_sales_summary()
         _open_path(result.package_path)
         self.notify(f"購入者向けZIPを作成しました: {result.package_path.name}", level="success")
 
@@ -5929,6 +5978,7 @@ class AutoNoteApp(tk.Tk):
             parts.append(format_buyer_delivery_package_verification(package_path, package_errors))
         self._set_text(self.diagnostics_text, "\n\n".join(parts))
         self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_sales_summary()
         if errors or package_errors:
             self.notify("購入者向けフォルダの検証で問題が見つかりました", level="error")
         else:
@@ -6779,6 +6829,41 @@ def _home_first_run_summary(report: FirstRunReport) -> tuple[str, str]:
                 action = item.action or item.gui or item.command or item.detail
                 return summary, f"次: {item.name} - {action}"
     return summary, "次: 受入保存または販売ナビへ進めます。"
+
+
+def _home_buyer_send_summary(
+    package_path: Path | None,
+    message_path: Path | None,
+    receipt_path: Path | None,
+) -> tuple[str, str, str]:
+    package_ok = bool(package_path and package_path.exists())
+    message_ok = bool(message_path and message_path.exists())
+    receipt_ok = bool(receipt_path and receipt_path.exists())
+    if not package_ok:
+        return (
+            "warn",
+            "購入者送付: ZIPなし / 送付文なし / 記録なし",
+            "次: 販売一括作成 または 購入者ZIP抽出",
+        )
+    package_name = package_path.name if package_path else "未作成"
+    package_detail = f"{package_name} / {_format_file_size(package_path)}"
+    if not message_ok:
+        return (
+            "warn",
+            f"購入者送付: ZIPあり / 送付文なし / 記録 {'あり' if receipt_ok else 'なし'}",
+            "次: 販売一括作成で送付文を作成",
+        )
+    if not receipt_ok:
+        return (
+            "info",
+            f"購入者送付: {package_detail} / 送付文あり / 記録なし",
+            "次: 送付前チェックを確認して送付記録を保存",
+        )
+    return (
+        "ok",
+        f"購入者送付: {package_detail} / 送付文あり / 記録あり",
+        "次: 送付文コピーで購入者へ送る文面を確認",
+    )
 
 
 def _article_selection_rank(article: Article) -> int:

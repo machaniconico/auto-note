@@ -1465,6 +1465,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home sales includes buyer send",
+            "home_buyer_send_var.get()",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home support send stage",
             '"support", "サポート"',
         )
@@ -2375,6 +2382,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send status row",
+            "home_buyer_send_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send summary helper",
+            "_home_buyer_send_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send next action",
+            "home_buyer_send_next_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales handoff action",
             "販売一式作成",
         )
@@ -2587,6 +2615,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home sales summary guidance",
             "販売準備サマリー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home buyer send status guidance",
+            "購入者ZIP/送付文/送付記録",
         )
     )
     checks.append(
