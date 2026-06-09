@@ -723,6 +723,10 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_next_var = tk.StringVar(value="")
         self.home_buyer_send_var = tk.StringVar(value="購入者送付を確認中です。")
         self.home_buyer_send_next_var = tk.StringVar(value="")
+        self.home_buyer_send_action_var = tk.StringVar(value="購入者ZIP作成")
+        self.home_buyer_send_button_var = tk.StringVar(
+            value=_home_buyer_send_button_label(self.home_buyer_send_action_var.get())
+        )
         self.home_support_next_button_var = tk.StringVar(
             value=_home_support_next_button_label("問い合わせ一式を作成")
         )
@@ -798,6 +802,12 @@ class AutoNoteApp(tk.Tk):
             width=8,
         )
         self.home_buyer_send_status_pill.pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Button(
+            buyer_send_row,
+            textvariable=self.home_buyer_send_button_var,
+            command=self.run_home_buyer_send_next_action,
+            style="Primary.TButton",
+        ).pack(side=tk.RIGHT, padx=(8, 0))
         ttk.Label(buyer_send_row, textvariable=self.home_buyer_send_var, style="Surface.TLabel").pack(
             side=tk.LEFT,
             fill=tk.X,
@@ -4116,7 +4126,13 @@ class AutoNoteApp(tk.Tk):
             buyer_messages[0] if buyer_messages else None,
             seller_receipts[0] if seller_receipts else None,
         )
+        buyer_action = _home_buyer_send_action(
+            buyer_packages[0] if buyer_packages else None,
+            buyer_messages[0] if buyer_messages else None,
+            seller_receipts[0] if seller_receipts else None,
+        )
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
+        self._set_home_buyer_send_action(buyer_action)
         self.home_buyer_send_next_var.set(buyer_next)
         self._set_home_sales_status_pill("ok" if status == "READY TO VERIFY" else "warn")
         self._set_home_sales_stage(
@@ -4185,6 +4201,14 @@ class AutoNoteApp(tk.Tk):
         pill_text, bg, fg = _home_sales_indicator_style(state)
         self.home_buyer_send_status_pill.configure(text=pill_text, bg=bg, fg=fg)
         self.home_buyer_send_var.set(text)
+
+    def _set_home_buyer_send_action(self, action: str) -> None:
+        action_var = getattr(self, "home_buyer_send_action_var", None)
+        button_var = getattr(self, "home_buyer_send_button_var", None)
+        if action_var is not None:
+            action_var.set(action)
+        if button_var is not None:
+            button_var.set(_home_buyer_send_button_label(action))
 
     def _set_support_bundle_status(self, text: str) -> None:
         self.support_bundle_status_var.set(text)
@@ -4324,6 +4348,18 @@ class AutoNoteApp(tk.Tk):
             self.verify_latest_buyer_delivery_action()
         else:
             self.run_sales_plan_to_tab()
+
+    def run_home_buyer_send_next_action(self) -> None:
+        self._refresh_home_sales_summary()
+        action = self.home_buyer_send_action_var.get()
+        if action in {"購入者ZIP作成", "送付文作成"}:
+            self.create_sales_finalize_with_template_action()
+        elif action == "送付記録":
+            self.create_seller_delivery_receipt_action()
+        elif action == "送付文コピー":
+            self.copy_latest_buyer_delivery_message_action()
+        else:
+            self.run_buyer_send_readiness_to_tab()
 
     def _home_next_actions(self, action_plan) -> list[str]:
         actions = [
@@ -6748,6 +6784,15 @@ def _home_support_next_button_label(action: str) -> str:
     }.get(action, "サポート次実行")
 
 
+def _home_buyer_send_button_label(action: str) -> str:
+    return {
+        "購入者ZIP作成": "購入者送付: ZIP作成",
+        "送付文作成": "購入者送付: 文作成",
+        "送付記録": "購入者送付: 記録",
+        "送付文コピー": "購入者送付: 文コピー",
+    }.get(action, "購入者送付: 次")
+
+
 def _publish_ready_counts(report: PublishReadyReport) -> dict[str, int]:
     return {
         "OK": sum(1 for item in report.items if item.status == "pass"),
@@ -6864,6 +6909,20 @@ def _home_buyer_send_summary(
         f"購入者送付: {package_detail} / 送付文あり / 記録あり",
         "次: 送付文コピーで購入者へ送る文面を確認",
     )
+
+
+def _home_buyer_send_action(
+    package_path: Path | None,
+    message_path: Path | None,
+    receipt_path: Path | None,
+) -> str:
+    if not (package_path and package_path.exists()):
+        return "購入者ZIP作成"
+    if not (message_path and message_path.exists()):
+        return "送付文作成"
+    if not (receipt_path and receipt_path.exists()):
+        return "送付記録"
+    return "送付文コピー"
 
 
 def _article_selection_rank(article: Article) -> int:

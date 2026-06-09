@@ -63,6 +63,8 @@ from auto_note.gui import (
     _command_palette_selection_index,
     _command_palette_status,
     _gui_runtime_error_message,
+    _home_buyer_send_action,
+    _home_buyer_send_button_label,
     _home_first_run_summary,
     _home_buyer_send_summary,
     _home_gui_log_status,
@@ -304,6 +306,24 @@ class ArticleTests(unittest.TestCase):
             self.assertEqual(state, "ok")
             self.assertIn("記録あり", summary)
             self.assertIn("送付文コピー", next_text)
+
+    def test_home_buyer_send_action_tracks_next_click(self) -> None:
+        self.assertEqual(_home_buyer_send_action(None, None, None), "購入者ZIP作成")
+        self.assertEqual(_home_buyer_send_button_label("購入者ZIP作成"), "購入者送付: ZIP作成")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "auto-note-buyer-delivery-20260609.zip"
+            message = root / "buyer-delivery-message.txt"
+            receipt = root / "seller-delivery-receipt.txt"
+            package.write_bytes(b"zip")
+            self.assertEqual(_home_buyer_send_action(package, None, None), "送付文作成")
+            self.assertEqual(_home_buyer_send_button_label("送付文作成"), "購入者送付: 文作成")
+            message.write_text("message", encoding="utf-8")
+            self.assertEqual(_home_buyer_send_action(package, message, None), "送付記録")
+            self.assertEqual(_home_buyer_send_button_label("送付記録"), "購入者送付: 記録")
+            receipt.write_text("receipt", encoding="utf-8")
+            self.assertEqual(_home_buyer_send_action(package, message, receipt), "送付文コピー")
+            self.assertEqual(_home_buyer_send_button_label("送付文コピー"), "購入者送付: 文コピー")
 
     def test_command_palette_status_describes_results(self) -> None:
         self.assertEqual(
@@ -2852,6 +2872,13 @@ tags:
             )
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "home_buyer_send_button_var\n"
+                + "_home_buyer_send_action\n"
+                + "run_home_buyer_send_next_action\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
                 + "初回セットアップ\n"
                 + "_home_first_run_summary\n"
                 + "open_home_first_run_status\n"
@@ -2910,7 +2937,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n状態に応じた購入者送付ボタン\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3250,6 +3277,9 @@ tags:
         self.assertIn("GUI home buyer send status row:fail", product_details)
         self.assertIn("GUI home buyer send summary helper:fail", product_details)
         self.assertIn("GUI home buyer send next action:fail", product_details)
+        self.assertIn("GUI home buyer send dynamic button:fail", product_details)
+        self.assertIn("GUI home buyer send action helper:fail", product_details)
+        self.assertIn("GUI home buyer send next runner:fail", product_details)
         self.assertIn("README starter pack guidance:fail", product_details)
         self.assertIn("README recovery kit guidance:fail", product_details)
         self.assertIn("README recovery kit CLI guidance:fail", product_details)
@@ -3267,6 +3297,7 @@ tags:
         self.assertIn("README commercial setup guidance:fail", product_details)
         self.assertIn("README home sales summary guidance:fail", product_details)
         self.assertIn("README home buyer send status guidance:fail", product_details)
+        self.assertIn("README home buyer send next button guidance:fail", product_details)
         self.assertIn("README commercial setup template guidance:fail", product_details)
         self.assertIn("README commercial setup template apply guidance:fail", product_details)
         self.assertIn("README commercial setup safe template guidance:fail", product_details)
@@ -3629,6 +3660,9 @@ tags:
         self.assertIn("GUI home buyer send status row:pass", launcher_details)
         self.assertIn("GUI home buyer send summary helper:pass", launcher_details)
         self.assertIn("GUI home buyer send next action:pass", launcher_details)
+        self.assertIn("GUI home buyer send dynamic button:pass", launcher_details)
+        self.assertIn("GUI home buyer send action helper:pass", launcher_details)
+        self.assertIn("GUI home buyer send next runner:pass", launcher_details)
         self.assertIn("README starter pack guidance:pass", launcher_details)
         self.assertIn("README recovery kit guidance:pass", launcher_details)
         self.assertIn("README recovery kit CLI guidance:pass", launcher_details)
@@ -3646,6 +3680,7 @@ tags:
         self.assertIn("README commercial setup guidance:pass", launcher_details)
         self.assertIn("README home sales summary guidance:pass", launcher_details)
         self.assertIn("README home buyer send status guidance:pass", launcher_details)
+        self.assertIn("README home buyer send next button guidance:pass", launcher_details)
         self.assertIn("README commercial setup template guidance:pass", launcher_details)
         self.assertIn("README commercial setup template apply guidance:pass", launcher_details)
         self.assertIn("README commercial setup safe template guidance:pass", launcher_details)

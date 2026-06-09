@@ -2403,6 +2403,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send dynamic button",
+            "home_buyer_send_button_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send action helper",
+            "_home_buyer_send_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send next runner",
+            "run_home_buyer_send_next_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales handoff action",
             "販売一式作成",
         )
@@ -2622,6 +2643,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home buyer send status guidance",
             "購入者ZIP/送付文/送付記録",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home buyer send next button guidance",
+            "状態に応じた購入者送付ボタン",
         )
     )
     checks.append(
