@@ -4097,6 +4097,9 @@ class AutoNoteApp(tk.Tk):
         buyer_messages = list_buyer_delivery_messages(self.project_dir)
         seller_receipts = list_seller_delivery_receipts(self.project_dir)
         materials = list_sales_materials(self.project_dir)
+        latest_buyer_package = buyer_packages[0] if buyer_packages else None
+        latest_buyer_message = buyer_messages[0] if buyer_messages else None
+        latest_seller_receipt = seller_receipts[0] if seller_receipts else None
         support_state, support_text = self._home_support_send_readiness()
         artifact_remaining = sum(
             1
@@ -4123,20 +4126,27 @@ class AutoNoteApp(tk.Tk):
             f"サポート {support_text}"
         )
         buyer_message_matches_package = _home_buyer_send_message_matches_package(
-            buyer_packages[0] if buyer_packages else None,
-            buyer_messages[0] if buyer_messages else None,
+            latest_buyer_package,
+            latest_buyer_message,
+        )
+        buyer_receipt_matches_delivery = _home_buyer_send_receipt_matches_delivery(
+            latest_buyer_package,
+            latest_buyer_message,
+            latest_seller_receipt,
         )
         buyer_state, buyer_summary, buyer_next = _home_buyer_send_summary(
-            buyer_packages[0] if buyer_packages else None,
-            buyer_messages[0] if buyer_messages else None,
-            seller_receipts[0] if seller_receipts else None,
+            latest_buyer_package,
+            latest_buyer_message,
+            latest_seller_receipt,
             message_matches_package=buyer_message_matches_package,
+            receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
         buyer_action = _home_buyer_send_action(
-            buyer_packages[0] if buyer_packages else None,
-            buyer_messages[0] if buyer_messages else None,
-            seller_receipts[0] if seller_receipts else None,
+            latest_buyer_package,
+            latest_buyer_message,
+            latest_seller_receipt,
             message_matches_package=buyer_message_matches_package,
+            receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
@@ -6889,6 +6899,7 @@ def _home_buyer_send_summary(
     receipt_path: Path | None,
     *,
     message_matches_package: bool | None = None,
+    receipt_matches_delivery: bool | None = None,
 ) -> tuple[str, str, str]:
     package_ok = bool(package_path and package_path.exists())
     message_ok = bool(message_path and message_path.exists())
@@ -6919,6 +6930,12 @@ def _home_buyer_send_summary(
             f"購入者送付: {package_detail} / 送付文あり / 記録なし",
             "次: 送付前チェックを確認して送付記録を保存",
         )
+    if receipt_matches_delivery is False:
+        return (
+            "warn",
+            f"購入者送付: {package_detail} / 送付文あり / 記録不一致",
+            "次: 送付記録で最新ZIPと送付文に合わせる",
+        )
     return (
         "ok",
         f"購入者送付: {package_detail} / 送付文あり / 記録あり",
@@ -6932,6 +6949,7 @@ def _home_buyer_send_action(
     receipt_path: Path | None,
     *,
     message_matches_package: bool | None = None,
+    receipt_matches_delivery: bool | None = None,
 ) -> str:
     if not (package_path and package_path.exists()):
         return "購入者ZIP作成"
@@ -6940,6 +6958,8 @@ def _home_buyer_send_action(
     if message_matches_package is False:
         return "送付文作成"
     if not (receipt_path and receipt_path.exists()):
+        return "送付記録"
+    if receipt_matches_delivery is False:
         return "送付記録"
     return "送付文コピー"
 
@@ -6953,6 +6973,32 @@ def _home_buyer_send_message_matches_package(package_path: Path | None, message_
     except OSError:
         return False
     return package_path.name in message_text and package_sha in message_text
+
+
+def _home_buyer_send_receipt_matches_delivery(
+    package_path: Path | None,
+    message_path: Path | None,
+    receipt_path: Path | None,
+) -> bool | None:
+    if not (
+        package_path
+        and package_path.exists()
+        and message_path
+        and message_path.exists()
+        and receipt_path
+        and receipt_path.exists()
+    ):
+        return None
+    try:
+        receipt_text = receipt_path.read_text(encoding="utf-8", errors="replace")
+        package_sha = hashlib.sha256(package_path.read_bytes()).hexdigest()
+    except OSError:
+        return False
+    return (
+        package_path.name in receipt_text
+        and message_path.name in receipt_text
+        and package_sha in receipt_text
+    )
 
 
 def _article_selection_rank(article: Article) -> int:
