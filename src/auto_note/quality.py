@@ -660,6 +660,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(_path_check(project_dir / "shortcuts" / "create-gui-shortcut.bat", "shortcut helper"))
     checks.append(
         _text_contains_check(
+            project_dir / "shortcuts" / "create-gui-shortcut.bat",
+            "shortcut helper safe display shortcut",
+            "SafeDisplayShortcutPath",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "scripts" / "create-gui-shortcut.ps1",
             "shortcut uses hidden launcher",
             "launch-gui.vbs",
@@ -672,7 +679,35 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "IconLocation",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "create-gui-shortcut.ps1",
+            "safe display shortcut path",
+            "SafeDisplayShortcutPath",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "create-gui-shortcut.ps1",
+            "safe display shortcut argument",
+            "--safe-display",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "install-auto-note.ps1", "installer script"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "install-auto-note.ps1",
+            "installer safe display shortcut path",
+            "SafeDisplayShortcutPath",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "install-auto-note.ps1",
+            "installer safe display shortcut name",
+            "auto-note safe display.lnk",
+        )
+    )
     checks.append(_path_check(project_dir / "shortcuts" / "install-auto-note.bat", "installer launcher"))
     checks.append(_path_check(project_dir / "scripts" / "uninstall-auto-note.ps1", "uninstaller script"))
     checks.append(_path_check(project_dir / "shortcuts" / "uninstall-auto-note.bat", "uninstaller launcher"))
@@ -2875,6 +2910,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README safe display guidance",
             "auto-note gui --project-dir . --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README safe display shortcut guidance",
+            "auto-note safe display.lnk",
         )
     )
     checks.append(

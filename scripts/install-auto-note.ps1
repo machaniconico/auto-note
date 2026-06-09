@@ -154,10 +154,12 @@ if (-not $NoShortcuts) {
   $shortcutScript = Join-Path $install "scripts\create-gui-shortcut.ps1"
   & powershell -NoProfile -ExecutionPolicy Bypass -File $shortcutScript `
     -ProjectDir $install `
-    -ShortcutPath (Join-Path $desktop "auto-note.lnk")
+    -ShortcutPath (Join-Path $desktop "auto-note.lnk") `
+    -SafeDisplayShortcutPath (Join-Path $desktop "auto-note safe display.lnk")
   & powershell -NoProfile -ExecutionPolicy Bypass -File $shortcutScript `
     -ProjectDir $install `
-    -ShortcutPath (Join-Path $programs "auto-note.lnk")
+    -ShortcutPath (Join-Path $programs "auto-note.lnk") `
+    -SafeDisplayShortcutPath (Join-Path $programs "auto-note safe display.lnk")
 
   $shell = New-Object -ComObject WScript.Shell
   $uninstallShortcut = $shell.CreateShortcut((Join-Path $programs "auto-note uninstall.lnk"))

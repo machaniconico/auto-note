@@ -3192,8 +3192,21 @@ tags:
             )
             (project / "scripts" / "create-gui-shortcut.ps1").write_text(
                 '$launcher = Join-Path $project "scripts\\launch-gui.vbs"\n'
+                "$SafeDisplayShortcutPath\n"
+                '$safeDisplayArguments = "`"$launcher`" --safe-display"\n'
                 '$shortcut.TargetPath = "$env:SystemRoot\\System32\\wscript.exe"\n'
                 '$shortcut.IconLocation = "$env:SystemRoot\\System32\\imageres.dll,101"\n',
+                encoding="utf-8",
+            )
+            (project / "scripts" / "install-auto-note.ps1").write_text(
+                '-SafeDisplayShortcutPath (Join-Path $desktop "auto-note safe display.lnk")\n'
+                '-SafeDisplayShortcutPath (Join-Path $programs "auto-note safe display.lnk")\n',
+                encoding="utf-8",
+            )
+            (project / "shortcuts").mkdir(exist_ok=True)
+            (project / "shortcuts" / "create-gui-shortcut.bat").write_text(
+                "SafeDisplayShortcutPath\n"
+                "auto-note safe display.lnk\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note").mkdir(parents=True)
@@ -3572,7 +3585,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3626,6 +3639,11 @@ tags:
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("hidden GUI launcher forwards arguments:fail", product_details)
         self.assertIn("hidden GUI launcher quotes arguments:fail", product_details)
+        self.assertIn("shortcut helper safe display shortcut:fail", product_details)
+        self.assertIn("safe display shortcut path:fail", product_details)
+        self.assertIn("safe display shortcut argument:fail", product_details)
+        self.assertIn("installer safe display shortcut path:fail", product_details)
+        self.assertIn("installer safe display shortcut name:fail", product_details)
         self.assertIn("release check script:fail", product_details)
         self.assertIn("release check unit tests:fail", product_details)
         self.assertIn("release check product quality:fail", product_details)
@@ -3929,6 +3947,7 @@ tags:
         self.assertIn("GUI modern settings subtitle:fail", product_details)
         self.assertIn("README UI density guidance:fail", product_details)
         self.assertIn("README safe display guidance:fail", product_details)
+        self.assertIn("README safe display shortcut guidance:fail", product_details)
         self.assertIn("README safe display launcher guidance:fail", product_details)
         self.assertIn("README UI density command guidance:fail", product_details)
         self.assertIn("README UI density header guidance:fail", product_details)
@@ -4507,6 +4526,7 @@ tags:
         self.assertIn("GUI modern settings subtitle:pass", launcher_details)
         self.assertIn("README UI density guidance:pass", launcher_details)
         self.assertIn("README safe display guidance:pass", launcher_details)
+        self.assertIn("README safe display shortcut guidance:pass", launcher_details)
         self.assertIn("README safe display launcher guidance:pass", launcher_details)
         self.assertIn("README UI density command guidance:pass", launcher_details)
         self.assertIn("README UI density header guidance:pass", launcher_details)
@@ -4806,8 +4826,13 @@ tags:
         self.assertIn("hidden GUI launcher check mode:pass", launcher_details)
         self.assertIn("hidden GUI launcher forwards arguments:pass", launcher_details)
         self.assertIn("hidden GUI launcher quotes arguments:pass", launcher_details)
+        self.assertIn("shortcut helper safe display shortcut:pass", launcher_details)
         self.assertIn("shortcut uses hidden launcher:pass", launcher_details)
         self.assertIn("shortcut icon:pass", launcher_details)
+        self.assertIn("safe display shortcut path:pass", launcher_details)
+        self.assertIn("safe display shortcut argument:pass", launcher_details)
+        self.assertIn("installer safe display shortcut path:pass", launcher_details)
+        self.assertIn("installer safe display shortcut name:pass", launcher_details)
         self.assertNotIn("article check", product_details)
         self.assertNotIn("article review", product_details)
 

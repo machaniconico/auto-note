@@ -1,6 +1,7 @@
 param(
   [string]$ProjectDir = (Resolve-Path "$PSScriptRoot\..").Path,
-  [string]$ShortcutPath = ""
+  [string]$ShortcutPath = "",
+  [string]$SafeDisplayShortcutPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,26 +21,33 @@ if (-not $ShortcutPath) {
 }
 
 $shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut($ShortcutPath)
-$shortcut.TargetPath = "$env:SystemRoot\System32\wscript.exe"
-$shortcut.Arguments = "`"$launcher`""
-$shortcut.WorkingDirectory = $project
-$shortcut.Description = "auto-note GUI"
-$shortcut.IconLocation = "$env:SystemRoot\System32\imageres.dll,101"
-$shortcut.WindowStyle = 1
-$shortcut.Save()
+
+function New-AutoNoteShortcut([string]$Path, [string]$Arguments, [string]$Description) {
+  $shortcut = $shell.CreateShortcut($Path)
+  $shortcut.TargetPath = "$env:SystemRoot\System32\wscript.exe"
+  $shortcut.Arguments = $Arguments
+  $shortcut.WorkingDirectory = $project
+  $shortcut.Description = $Description
+  $shortcut.IconLocation = "$env:SystemRoot\System32\imageres.dll,101"
+  $shortcut.WindowStyle = 1
+  $shortcut.Save()
+}
+
+$normalArguments = "`"$launcher`""
+$safeDisplayArguments = "`"$launcher`" --safe-display"
+
+New-AutoNoteShortcut $ShortcutPath $normalArguments "auto-note GUI"
 
 Write-Host "Created shortcut:"
 Write-Host $ShortcutPath
 
 $legacyShortcutPath = Join-Path $project "auto-note GUI.lnk"
 if ($ShortcutPath -ne $legacyShortcutPath) {
-  $legacy = $shell.CreateShortcut($legacyShortcutPath)
-  $legacy.TargetPath = "$env:SystemRoot\System32\wscript.exe"
-  $legacy.Arguments = "`"$launcher`""
-  $legacy.WorkingDirectory = $project
-  $legacy.Description = "auto-note GUI"
-  $legacy.IconLocation = "$env:SystemRoot\System32\imageres.dll,101"
-  $legacy.WindowStyle = 1
-  $legacy.Save()
+  New-AutoNoteShortcut $legacyShortcutPath $normalArguments "auto-note GUI"
+}
+
+if ($SafeDisplayShortcutPath) {
+  New-AutoNoteShortcut $SafeDisplayShortcutPath $safeDisplayArguments "auto-note GUI (safe display)"
+  Write-Host "Created safe display shortcut:"
+  Write-Host $SafeDisplayShortcutPath
 }

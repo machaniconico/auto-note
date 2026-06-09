@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-- GUI起動ショートカット `auto-note.lnk`
+- GUI起動ショートカット `auto-note.lnk` と、文字つぶれ環境向けの `auto-note safe display.lnk`
 - 記事一覧、本文編集、投稿ヘルパー、コピー操作
 - アイデア、予定、公開済み管理
 - 公開前チェック、画像チェック、品質チェック
@@ -52,7 +52,7 @@
 - ホームの準備OK KPIと、アクションプランから作る優先アクション表示
 - GUI投稿ヘルパーで記事未選択の場合、表示中の記事から準備OK/予定/下書き順に自動選択するフォールバック
 - `Ctrl+K` コマンド検索
-- GUIの日本語フォント優先順を横幅に余裕のある `BIZ UDPゴシック` 先頭に直し、文字つぶれ対策として実際の表示フォント名をGUIスモーク/表示診断で追えるようにし、`auto-note gui --safe-display` / `auto-note-gui.bat --safe-display` で一時的に大きめ表示起動できる修正
+- GUIの日本語フォント優先順を横幅に余裕のある `BIZ UDPゴシック` 先頭に直し、文字つぶれ対策として実際の表示フォント名をGUIスモーク/表示診断で追えるようにし、`auto-note safe display.lnk` / `auto-note gui --safe-display` / `auto-note-gui.bat --safe-display` で一時的に大きめ表示起動できる修正
 - GUI編集中Markdownの自動退避と復元/削除
 - 記事Markdown保存の一時ファイル経由の安全な置き換え
 - バックアップ、診断レポート、配布ZIP作成
