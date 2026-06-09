@@ -323,6 +323,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports status column",
+            'heading("status", text="状態")',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports copy path action",
+            "copy_selected_home_report_path_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports copy path clipboard",
+            "self.clipboard_append(str(path.resolve()))",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports verification status",
+            "_home_report_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke recent reports count",
             "home_report_items=",
         )
@@ -360,6 +388,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home recent reports guidance",
             "直近レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home recent reports copy guidance",
+            "パスコピー",
         )
     )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
@@ -2339,6 +2374,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide home recent reports copy guidance",
+            "パスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "docs" / "PRIVACY.md",
             "privacy guide support send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
@@ -2405,6 +2447,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home recent reports guidance",
             "直近レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home recent reports copy guidance",
+            "パスコピー",
         )
     )
     checks.append(

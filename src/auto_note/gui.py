@@ -651,9 +651,13 @@ class AutoNoteApp(tk.Tk):
             side=tk.LEFT,
             padx=(0, 6),
         )
+        ttk.Button(report_actions, text="パスコピー", command=self.copy_selected_home_report_path_action).pack(
+            side=tk.LEFT,
+            padx=(0, 6),
+        )
         ttk.Button(report_actions, text="更新", command=self.refresh_home).pack(side=tk.LEFT)
 
-        report_columns = ("kind", "updated", "location", "name")
+        report_columns = ("kind", "status", "updated", "location", "name")
         self.home_reports_tree = ttk.Treeview(
             reports_box,
             columns=report_columns,
@@ -662,13 +666,15 @@ class AutoNoteApp(tk.Tk):
             height=5,
         )
         self.home_reports_tree.heading("kind", text="種類")
+        self.home_reports_tree.heading("status", text="状態")
         self.home_reports_tree.heading("updated", text="更新")
         self.home_reports_tree.heading("location", text="場所")
         self.home_reports_tree.heading("name", text="ファイル")
         self.home_reports_tree.column("kind", width=110, minwidth=92, stretch=False)
+        self.home_reports_tree.column("status", width=72, minwidth=62, stretch=False)
         self.home_reports_tree.column("updated", width=138, minwidth=120, stretch=False)
-        self.home_reports_tree.column("location", width=210, minwidth=160, stretch=False)
-        self.home_reports_tree.column("name", width=560, minwidth=240)
+        self.home_reports_tree.column("location", width=200, minwidth=150, stretch=False)
+        self.home_reports_tree.column("name", width=520, minwidth=240)
         self.home_reports_tree.pack(fill=tk.X)
         self.home_reports_tree.bind("<Double-1>", lambda _event: self.show_selected_home_report_action())
 
@@ -3525,6 +3531,7 @@ class AutoNoteApp(tk.Tk):
 
         for index, (label, path) in enumerate(items[:8]):
             item_id = f"report-{index}"
+            status = _home_report_status(label, path)
             self._home_report_paths[item_id] = (label, path)
             self.home_reports_tree.insert(
                 "",
@@ -3532,14 +3539,16 @@ class AutoNoteApp(tk.Tk):
                 iid=item_id,
                 values=(
                     label,
+                    status,
                     _format_mtime(path),
                     _relative_parent_label(self.project_dir, path),
                     path.name,
                 ),
             )
         first_label, first_path = items[0]
+        first_status = _home_report_status(first_label, first_path)
         self.home_reports_var.set(
-            f"最新: {first_label} / {_format_mtime(first_path)} / {first_path.name}"
+            f"最新: {first_label} / {first_status} / {_format_mtime(first_path)} / {first_path.name}"
         )
 
     def _latest_home_report_items(self) -> list[tuple[str, Path]]:
@@ -3599,6 +3608,27 @@ class AutoNoteApp(tk.Tk):
             return
         _open_path(path.parent)
         self.notify(f"直近レポートの場所を開きました: {path.name}", level="success")
+
+    def copy_selected_home_report_path_action(self) -> None:
+        item = self._selected_home_report()
+        if item is None:
+            messagebox.showinfo("直近レポート", "まだ保存レポートがありません。")
+            self.notify("直近レポートはまだありません", level="warning")
+            return
+        _label, path = item
+        if not path.exists():
+            self.notify("選択したレポートが見つかりません", level="warning")
+            self._refresh_home_reports()
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(str(path.resolve()))
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("直近レポートのパスをコピーできませんでした", level="error")
+            messagebox.showerror("直近レポート", str(exc))
+            return
+        self.notify(f"直近レポートのパスをコピーしました: {path.name}", level="success")
 
     def _format_home_report_preview(self, label: str, path: Path) -> str:
         header = [
@@ -6306,6 +6336,26 @@ def _relative_parent_label(project_dir: Path, path: Path) -> str:
         return str(path.parent.resolve().relative_to(project_dir.resolve()))
     except ValueError:
         return path.parent.name
+
+
+def _home_report_status(label: str, path: Path) -> str:
+    if not path.exists():
+        return "なし"
+    if label == "問い合わせZIP":
+        return "NG" if verify_support_bundle(path) else "OK"
+    if label == "配布ZIP":
+        return "NG" if verify_release_package(path) else "OK"
+    if path.suffix.lower() == ".zip":
+        try:
+            with zipfile.ZipFile(path) as archive:
+                broken = archive.testzip()
+        except (OSError, zipfile.BadZipFile):
+            return "NG"
+        return "NG" if broken else "OK"
+    try:
+        return "OK" if path.is_file() else "確認"
+    except OSError:
+        return "NG"
 
 
 def _format_zip_report_summary(path: Path) -> list[str]:

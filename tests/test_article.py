@@ -2644,6 +2644,10 @@ tags:
                 + "show_selected_home_report_action\n"
                 + "open_selected_home_report_location_action\n"
                 + "まだ保存レポートがありません\n"
+                + 'heading("status", text="状態")\n'
+                + "copy_selected_home_report_path_action\n"
+                + "self.clipboard_append(str(path.resolve()))\n"
+                + "_home_report_status\n"
                 + "home_report_items=\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
@@ -2656,12 +2660,12 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -2669,7 +2673,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
@@ -2865,6 +2869,10 @@ tags:
         self.assertIn("GUI home recent reports display action:fail", product_details)
         self.assertIn("GUI home recent reports location action:fail", product_details)
         self.assertIn("GUI home recent reports empty state:fail", product_details)
+        self.assertIn("GUI home recent reports status column:fail", product_details)
+        self.assertIn("GUI home recent reports copy path action:fail", product_details)
+        self.assertIn("GUI home recent reports copy path clipboard:fail", product_details)
+        self.assertIn("GUI home recent reports verification status:fail", product_details)
         self.assertIn("GUI smoke recent reports count:fail", product_details)
         self.assertIn("GUI support send checklist action:fail", product_details)
         self.assertIn("GUI support send log summary action:fail", product_details)
@@ -2939,6 +2947,7 @@ tags:
         self.assertIn("README recovery kit report guidance:fail", product_details)
         self.assertIn("README recovery kit GUI report guidance:fail", product_details)
         self.assertIn("README home recent reports guidance:fail", product_details)
+        self.assertIn("README home recent reports copy guidance:fail", product_details)
         self.assertIn("README repair guidance:fail", product_details)
         self.assertIn("README troubleshoot guidance:fail", product_details)
         self.assertIn("README acceptance guidance:fail", product_details)
@@ -2974,6 +2983,7 @@ tags:
         self.assertIn("support guide ZIP log summary action guidance:fail", product_details)
         self.assertIn("support guide recovery report guidance:fail", product_details)
         self.assertIn("support guide home recent reports guidance:fail", product_details)
+        self.assertIn("support guide home recent reports copy guidance:fail", product_details)
         self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
@@ -2984,6 +2994,7 @@ tags:
         self.assertIn("product readiness commercial setup template command:fail", product_details)
         self.assertIn("product readiness recovery report guidance:fail", product_details)
         self.assertIn("product readiness home recent reports guidance:fail", product_details)
+        self.assertIn("product readiness home recent reports copy guidance:fail", product_details)
         self.assertIn("product readiness commercial setup template apply command:fail", product_details)
         self.assertIn("product readiness commercial setup safe template guidance:fail", product_details)
         self.assertIn("product readiness commercial setup GUI next missing guidance:fail", product_details)
@@ -3166,6 +3177,10 @@ tags:
         self.assertIn("GUI home recent reports display action:pass", launcher_details)
         self.assertIn("GUI home recent reports location action:pass", launcher_details)
         self.assertIn("GUI home recent reports empty state:pass", launcher_details)
+        self.assertIn("GUI home recent reports status column:pass", launcher_details)
+        self.assertIn("GUI home recent reports copy path action:pass", launcher_details)
+        self.assertIn("GUI home recent reports copy path clipboard:pass", launcher_details)
+        self.assertIn("GUI home recent reports verification status:pass", launcher_details)
         self.assertIn("GUI smoke recent reports count:pass", launcher_details)
         self.assertIn("GUI support send checklist action:pass", launcher_details)
         self.assertIn("GUI support send log summary action:pass", launcher_details)
@@ -3240,6 +3255,7 @@ tags:
         self.assertIn("README recovery kit report guidance:pass", launcher_details)
         self.assertIn("README recovery kit GUI report guidance:pass", launcher_details)
         self.assertIn("README home recent reports guidance:pass", launcher_details)
+        self.assertIn("README home recent reports copy guidance:pass", launcher_details)
         self.assertIn("README repair guidance:pass", launcher_details)
         self.assertIn("README troubleshoot guidance:pass", launcher_details)
         self.assertIn("README acceptance guidance:pass", launcher_details)
@@ -3275,6 +3291,7 @@ tags:
         self.assertIn("support guide ZIP log summary action guidance:pass", launcher_details)
         self.assertIn("support guide recovery report guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports guidance:pass", launcher_details)
+        self.assertIn("support guide home recent reports copy guidance:pass", launcher_details)
         self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
@@ -3284,6 +3301,7 @@ tags:
         self.assertIn("product readiness home sales lightweight guidance:pass", launcher_details)
         self.assertIn("product readiness recovery report guidance:pass", launcher_details)
         self.assertIn("product readiness home recent reports guidance:pass", launcher_details)
+        self.assertIn("product readiness home recent reports copy guidance:pass", launcher_details)
         self.assertIn("product readiness commercial setup template command:pass", launcher_details)
         self.assertIn("product readiness commercial setup template apply command:pass", launcher_details)
         self.assertIn("product readiness commercial setup safe template guidance:pass", launcher_details)
