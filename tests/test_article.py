@@ -220,6 +220,7 @@ from auto_note.support import (
     create_support_bundle,
     create_support_request,
     format_support_bundle_verification,
+    read_support_display_diagnostics,
     read_support_gui_log_summary,
     read_support_send_checklist,
     verify_support_bundle,
@@ -2542,11 +2543,14 @@ tags: note
         self.assertEqual(bundle_errors, [])
         self.assertIn("[OK] support bundle verified", bundle_verification_text)
         self.assertIn("GUI_LOG_SUMMARY.txt: present", bundle_verification_text)
+        self.assertIn("DISPLAY_DIAGNOSTICS.txt: not included", bundle_verification_text)
         self.assertIn("manifest files: 5", bundle_verification_text)
         self.assertIn("privacy-safe", bundle_readme)
         self.assertIn("問い合わせ一式 送付前チェックリスト", send_checklist)
         self.assertIn("GUI_LOG_SUMMARY.txt", bundle_readme)
         self.assertIn("GUI_LOG_SUMMARY.txt", send_checklist)
+        self.assertIn("DISPLAY_DIAGNOSTICS.txt", bundle_readme)
+        self.assertIn("DISPLAY_DIAGNOSTICS.txt", send_checklist)
         self.assertIn("Send this ZIP only", send_checklist)
         self.assertIn("auto-note support --verify <this zip>", send_checklist)
         self.assertIn("auto-note privacy-audit --project-dir .", send_checklist)
@@ -2586,6 +2590,43 @@ tags: note
         self.assertIn("auto-note:", info)
         self.assertIn("Installed at: 2026-06-06T10:00:00", info)
         self.assertIn("Pre-install backup: backup.zip", info)
+
+    def test_support_bundle_can_include_gui_display_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            create_article("表示診断記事", articles_dir=project / "articles", tags=["note"])
+            display_diagnostics = (
+                "Display diagnostics / 表示診断\n"
+                "- UI font: Meiryo UI\n"
+                "- scaling: 1.50\n"
+                "- recommendation: 表示サイズを大きめにしてください\n"
+            )
+
+            bundle = create_support_bundle(
+                project,
+                extra_entries={"DISPLAY_DIAGNOSTICS.txt": display_diagnostics},
+            )
+            errors = verify_support_bundle(bundle)
+            verification_text = format_support_bundle_verification(bundle, errors)
+            with zipfile.ZipFile(bundle) as archive:
+                names = set(archive.namelist())
+                included_display_diagnostics = archive.read("DISPLAY_DIAGNOSTICS.txt").decode("utf-8")
+                manifest = json.loads(archive.read("SUPPORT_BUNDLE_MANIFEST.json").decode("utf-8"))
+                checksums = archive.read("CHECKSUMS.txt").decode("utf-8")
+            display_diagnostics_from_api = read_support_display_diagnostics(bundle)
+            with self.assertRaises(ValueError):
+                create_support_bundle(project, extra_entries={"../unsafe.txt": "bad"})
+
+        self.assertEqual(errors, [])
+        self.assertIn("DISPLAY_DIAGNOSTICS.txt", names)
+        self.assertIn("[OK] support bundle verified", verification_text)
+        self.assertIn("DISPLAY_DIAGNOSTICS.txt: present", verification_text)
+        self.assertIn("manifest files: 6", verification_text)
+        self.assertIn("Display diagnostics / 表示診断", included_display_diagnostics)
+        self.assertIn("Meiryo UI", included_display_diagnostics)
+        self.assertEqual(display_diagnostics_from_api, included_display_diagnostics)
+        self.assertEqual(manifest["file_count"], 6)
+        self.assertIn("DISPLAY_DIAGNOSTICS.txt", checksums)
 
     def test_support_cli_runs_delivery_checks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3044,7 +3085,10 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nread_support_gui_log_summary\nmask_text(text, project_dir)\nGUI_LOG_SUMMARY.txt: present\nSend this ZIP only\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n"
+                "read_support_gui_log_summary\nread_support_display_diagnostics\n"
+                "mask_text(text, project_dir)\nGUI_LOG_SUMMARY.txt: present\n"
+                "DISPLAY_DIAGNOSTICS.txt: present\n_normalise_extra_entries\nSend this ZIP only\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -3126,6 +3170,7 @@ tags:
                 + "show_display_diagnostics_action\n"
                 + "Display diagnostics / 表示診断\n"
                 + "この表示診断、GUIログ表示、復旧セット\n"
+                + 'extra_entries={"DISPLAY_DIAGNOSTICS.txt": self._format_display_diagnostics()}\n'
                 + "show_gui_log_action\n"
                 + "copy_gui_log_action\n"
                 + "GUIログ表示\n"
@@ -3329,7 +3374,7 @@ tags:
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(

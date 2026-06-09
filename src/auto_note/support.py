@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Mapping
 import hashlib
 import json
 import zipfile
@@ -22,7 +22,12 @@ def create_support_request(project_dir: Path, *, include_private: bool = False) 
     return path
 
 
-def create_support_bundle(project_dir: Path, *, include_private: bool = False) -> Path:
+def create_support_bundle(
+    project_dir: Path,
+    *,
+    include_private: bool = False,
+    extra_entries: Mapping[str, str | bytes] | None = None,
+) -> Path:
     support_dir = project_dir / ".auto-note" / "support"
     support_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -41,6 +46,11 @@ def create_support_bundle(project_dir: Path, *, include_private: bool = False) -
         "GUI_LOG_SUMMARY.txt": _build_gui_log_summary(project_dir, include_private=include_private).encode("utf-8"),
         "diagnostic-report.zip": diagnostic_path.read_bytes(),
     }
+    normalised_extra_entries = _normalise_extra_entries(extra_entries)
+    duplicate_names = sorted(set(entries) & set(normalised_extra_entries))
+    if duplicate_names:
+        raise ValueError(f"support bundle extra entry duplicates built-in file: {', '.join(duplicate_names)}")
+    entries.update(normalised_extra_entries)
     records = [_bundle_record(name, data) for name, data in entries.items()]
     manifest = _build_bundle_manifest(
         created_at=created_at,
@@ -127,6 +137,20 @@ def read_support_gui_log_summary(bundle_path: Path) -> str:
         raise ValueError(f"invalid support bundle zip: {exc}") from exc
 
 
+def read_support_display_diagnostics(bundle_path: Path) -> str:
+    if not bundle_path.exists():
+        raise FileNotFoundError(f"support bundle not found: {bundle_path}")
+    try:
+        with zipfile.ZipFile(bundle_path) as archive:
+            return archive.read("DISPLAY_DIAGNOSTICS.txt").decode("utf-8", errors="replace")
+    except KeyError as exc:
+        raise ValueError(
+            "DISPLAY_DIAGNOSTICS.txt is missing from the support bundle. Recreate it from the GUI to include display details."
+        ) from exc
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"invalid support bundle zip: {exc}") from exc
+
+
 def build_support_request(project_dir: Path, *, include_private: bool = False) -> str:
     privacy = "raw details included" if include_private else "paths, user name, email, and article titles are masked"
     return (
@@ -186,6 +210,7 @@ def _build_bundle_readme(*, include_private: bool = False) -> str:
         "- SUPPORT_SEND_CHECKLIST.txt: Confirm what to review before sending this zip.\n"
         "- support-request.md: Fill in the summary, reproduction steps, and recent changes before sending.\n"
         "- GUI_LOG_SUMMARY.txt: Quick view of the latest GUI startup or operation log.\n"
+        "- DISPLAY_DIAGNOSTICS.txt: Display, font, scaling, and screen snapshot. Included when this bundle is created from the GUI.\n"
         "- diagnostic-report.zip: Attach this nested diagnostic report when support asks for details.\n\n"
         "Verification:\n"
         "- SUPPORT_BUNDLE_MANIFEST.json lists the bundle contents.\n"
@@ -211,6 +236,7 @@ def _build_support_send_checklist(*, bundle_name: str, diagnostic_name: str, inc
         "Before sending / 送付前に確認:\n"
         "[ ] Open support-request.md and fill in Summary, Steps to reproduce, and Recent changes.\n"
         "[ ] Open GUI_LOG_SUMMARY.txt if the issue is GUI startup, login, or operation related.\n"
+        "[ ] Open DISPLAY_DIAGNOSTICS.txt if text looks crushed, clipped, too small, or the window layout feels broken.\n"
         "[ ] Read the Diagnostic preview in support-request.md and confirm it does not contain article text, personal names, emails, order IDs, or purchase details.\n"
         "[ ] Run `auto-note support --verify <this zip>` or GUI `一式ZIP検証` and confirm `[OK] support bundle verified`.\n"
         "[ ] Run `auto-note privacy-audit --project-dir .` or GUI `プライバシー監査` before sending.\n"
@@ -220,6 +246,7 @@ def _build_support_send_checklist(*, bundle_name: str, diagnostic_name: str, inc
         "- SUPPORT_SEND_CHECKLIST.txt\n"
         "- support-request.md\n"
         "- GUI_LOG_SUMMARY.txt\n"
+        "- DISPLAY_DIAGNOSTICS.txt (GUI-created bundles only)\n"
         "- diagnostic-report.zip\n"
         "- SUPPORT_BUNDLE_MANIFEST.json\n"
         "- CHECKSUMS.txt\n"
@@ -265,6 +292,21 @@ def _build_gui_log_summary(project_dir: Path, *, include_private: bool = False, 
     return text if include_private else mask_text(text, project_dir)
 
 
+def _normalise_extra_entries(extra_entries: Mapping[str, str | bytes] | None) -> dict[str, bytes]:
+    if not extra_entries:
+        return {}
+    normalised: dict[str, bytes] = {}
+    for name, data in extra_entries.items():
+        normalised_name = str(name).replace("\\", "/")
+        errors = _verify_bundle_names([normalised_name])
+        if errors:
+            raise ValueError(f"unsafe support bundle extra entry name: {name}")
+        if normalised_name in normalised:
+            raise ValueError(f"duplicate support bundle extra entry name: {normalised_name}")
+        normalised[normalised_name] = data if isinstance(data, bytes) else str(data).encode("utf-8")
+    return normalised
+
+
 def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
     try:
         with zipfile.ZipFile(bundle_path) as archive:
@@ -277,6 +319,10 @@ def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
         lines.append("- GUI_LOG_SUMMARY.txt: present")
     else:
         lines.append("- GUI_LOG_SUMMARY.txt: not included (legacy bundle; recreate for faster GUI troubleshooting)")
+    if "DISPLAY_DIAGNOSTICS.txt" in names:
+        lines.append("- DISPLAY_DIAGNOSTICS.txt: present")
+    else:
+        lines.append("- DISPLAY_DIAGNOSTICS.txt: not included (create the bundle from GUI to capture font and scaling details)")
     lines.append(f"- diagnostic-report.zip: {'present' if 'diagnostic-report.zip' in names else 'missing'}")
     if manifest_count is not None:
         lines.append(f"- manifest files: {manifest_count}")

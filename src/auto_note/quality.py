@@ -169,6 +169,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
+            "support bundle display diagnostics file",
+            "DISPLAY_DIAGNOSTICS.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle display diagnostics verification detail",
+            "DISPLAY_DIAGNOSTICS.txt: present",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle display diagnostics reader",
+            "read_support_display_diagnostics",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle extra entry safety",
+            "_normalise_extra_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
             "support bundle GUI log summary reader",
             "read_support_gui_log_summary",
         )
@@ -2522,6 +2550,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support bundle display diagnostics attachment",
+            'extra_entries={"DISPLAY_DIAGNOSTICS.txt": self._format_display_diagnostics()}',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI display diagnostics report",
             "Display diagnostics / 表示診断",
         )
@@ -3658,6 +3693,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log summary guidance",
             "GUI_LOG_SUMMARY.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide display diagnostics guidance",
+            "DISPLAY_DIAGNOSTICS.txt",
         )
     )
     checks.append(

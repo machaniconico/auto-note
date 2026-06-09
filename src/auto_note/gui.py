@@ -7373,7 +7373,10 @@ class AutoNoteApp(tk.Tk):
 
     def create_support_bundle_action(self) -> None:
         try:
-            path = create_support_bundle(self.project_dir)
+            path = create_support_bundle(
+                self.project_dir,
+                extra_entries={"DISPLAY_DIAGNOSTICS.txt": self._format_display_diagnostics()},
+            )
         except Exception as exc:
             self.notify("問い合わせ一式の作成に失敗しました", level="error")
             messagebox.showerror("問い合わせ一式エラー", str(exc))
