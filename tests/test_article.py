@@ -55,6 +55,7 @@ from auto_note.gui import (
     _command_palette_matches,
     _command_palette_selection_index,
     _command_palette_status,
+    _gui_runtime_error_message,
     _home_progress_review_text,
     _home_progress_state_from_status,
     _home_progress_summary,
@@ -264,6 +265,14 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_command_palette_selection_index(0, -1, 3), 2)
         self.assertEqual(_command_palette_selection_index(2, 1, 3), 0)
         self.assertEqual(_command_palette_selection_index(1, 1, 0), -1)
+
+    def test_gui_runtime_error_message_guides_recovery(self) -> None:
+        message = _gui_runtime_error_message(Path("D:/workspace/auto-note/.auto-note/gui-error.log"))
+        self.assertIn("GUIログ表示", message)
+        self.assertIn("復旧セット", message)
+        self.assertIn("問い合わせ一式", message)
+        self.assertIn("Ctrl+K", message)
+        self.assertIn("gui-error.log", message)
 
     def test_loads_frontmatter_title_and_tags(self) -> None:
         article = _write_and_load(
@@ -2787,12 +2796,19 @@ tags:
                 + 'entry.bind("<Down>", lambda _event: move_command_palette_selection(1))\n',
                 encoding="utf-8",
             )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
+                + "_gui_runtime_error_message\n"
+                + "GUIログ表示または復旧セット\n"
+                + "問い合わせ一式\n",
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "release.py").write_text(
                 "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\nstarter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\n",
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3018,6 +3034,9 @@ tags:
         self.assertIn("GUI diagnostic ZIP path action:fail", product_details)
         self.assertIn("GUI diagnostic ZIP path clipboard:fail", product_details)
         self.assertIn("GUI log preview content:fail", product_details)
+        self.assertIn("GUI runtime error actionable helper:fail", product_details)
+        self.assertIn("GUI runtime error recovery guidance:fail", product_details)
+        self.assertIn("GUI runtime error support bundle guidance:fail", product_details)
         self.assertIn("GUI log clipboard:fail", product_details)
         self.assertIn("GUI recovery kit action:fail", product_details)
         self.assertIn("GUI recovery kit saves report:fail", product_details)
@@ -3153,6 +3172,8 @@ tags:
         self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
         self.assertIn("README GUI log folder guidance:fail", product_details)
+        self.assertIn("README runtime error recovery guidance:fail", product_details)
+        self.assertIn("README runtime error command palette guidance:fail", product_details)
         self.assertIn("README diagnostic ZIP path guidance:fail", product_details)
         self.assertIn("README diagnostic ZIP verification guidance:fail", product_details)
         self.assertIn("support guide send checklist guidance:fail", product_details)
@@ -3377,6 +3398,9 @@ tags:
         self.assertIn("GUI diagnostic ZIP path action:pass", launcher_details)
         self.assertIn("GUI diagnostic ZIP path clipboard:pass", launcher_details)
         self.assertIn("GUI log preview content:pass", launcher_details)
+        self.assertIn("GUI runtime error actionable helper:pass", launcher_details)
+        self.assertIn("GUI runtime error recovery guidance:pass", launcher_details)
+        self.assertIn("GUI runtime error support bundle guidance:pass", launcher_details)
         self.assertIn("GUI log clipboard:pass", launcher_details)
         self.assertIn("GUI recovery kit action:pass", launcher_details)
         self.assertIn("GUI recovery kit saves report:pass", launcher_details)
@@ -3512,6 +3536,8 @@ tags:
         self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
         self.assertIn("README GUI log folder guidance:pass", launcher_details)
+        self.assertIn("README runtime error recovery guidance:pass", launcher_details)
+        self.assertIn("README runtime error command palette guidance:pass", launcher_details)
         self.assertIn("README diagnostic ZIP path guidance:pass", launcher_details)
         self.assertIn("README diagnostic ZIP verification guidance:pass", launcher_details)
         self.assertIn("support guide send checklist guidance:pass", launcher_details)

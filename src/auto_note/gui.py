@@ -218,6 +218,23 @@ def _command_palette_selection_index(current: int | None, delta: int, count: int
     return (current + delta) % count
 
 
+def _gui_runtime_error_message(path: Path) -> str:
+    return "\n".join(
+        [
+            "操作中にエラーが発生しました。",
+            "",
+            f"ログ: {path}",
+            "",
+            "次に試すこと:",
+            "1. 診断タブの「GUIログ表示」で内容を確認",
+            "2. 「復旧セット」で基本修復と再診断を実行",
+            "3. 解決しない場合は「問い合わせ一式」で送付用ZIPを作成",
+            "",
+            "コマンド検索(Ctrl+K)から GUIログ表示 / 復旧セット / 問い合わせ一式 を探せます。",
+        ]
+    )
+
+
 def launch_gui(project_dir: Path) -> int:
     project_dir = _clean_path(project_dir)
     app = AutoNoteApp(project_dir)
@@ -6396,14 +6413,9 @@ class AutoNoteApp(tk.Tk):
         except OSError:
             path = gui_error_log_path(self.project_dir)
         if hasattr(self, "notification"):
-            self.notify("GUI操作中にエラーが発生しました。ログを確認してください。", level="error")
+            self.notify("GUI操作中にエラーが発生しました。GUIログ表示または復旧セットを確認してください。", level="error")
         try:
-            messagebox.showerror(
-                "GUIエラー",
-                "操作中にエラーが発生しました。\n\n"
-                f"ログ: {path}\n\n"
-                "サポートへ送る場合は、ヘルプの問い合わせ一式ZIPを共有してください。",
-            )
+            messagebox.showerror("GUIエラー", _gui_runtime_error_message(path))
         except tk.TclError:
             pass
 

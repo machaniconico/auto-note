@@ -1857,6 +1857,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI runtime error actionable helper",
+            "_gui_runtime_error_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI runtime error recovery guidance",
+            "GUIログ表示または復旧セット",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI runtime error support bundle guidance",
+            "問い合わせ一式",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log clipboard",
             "self.clipboard_append(text)",
         )
@@ -1866,6 +1887,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README GUI log folder guidance",
             "GUIログ場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README runtime error recovery guidance",
+            "GUI操作中にエラー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README runtime error command palette guidance",
+            "`Ctrl+K` のコマンド検索",
         )
     )
     checks.append(
