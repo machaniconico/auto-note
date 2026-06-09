@@ -1628,6 +1628,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
+                ("送付文コピー", self.copy_support_send_message_action),
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
                 ("最新ZIPパス", self.copy_latest_support_bundle_path_action),
                 ("問い合わせ作成", self.create_support_request_action),
@@ -1695,6 +1696,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
+                ("送付文コピー", self.copy_support_send_message_action),
                 ("販売者情報確認", self.show_commercial_setup_status_action),
                 ("販売者テンプレ", self.create_commercial_setup_template_action),
                 ("テンプレ適用", self.apply_latest_commercial_setup_template_action),
@@ -3977,6 +3979,7 @@ class AutoNoteApp(tk.Tk):
             ("サポート次実行", "サポート送付の現在の次アクションを実行", self.run_support_next_action),
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
+            ("送付文コピー", "連絡先と最新問い合わせ一式ZIPを送付メモとしてコピー", self.copy_support_send_message_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
             ("最新ZIPパス", "最新問い合わせ一式ZIPの絶対パスをコピー", self.copy_latest_support_bundle_path_action),
             ("連絡先コピー", "サポート連絡先をクリップボードへコピー", self.copy_support_contact_action),
@@ -5367,6 +5370,51 @@ class AutoNoteApp(tk.Tk):
             messagebox.showerror("最新ZIPパス", str(exc))
             return
         self.notify(f"最新問い合わせ一式ZIPのパスをコピーしました: {latest.name}", level="success")
+
+    def copy_support_send_message_action(self) -> None:
+        self._refresh_support_summary()
+        contact = self.settings.support_contact.strip()
+        if not contact:
+            self.notify("サポート連絡先が未設定です", level="warning")
+            self.focus_support_contact_field()
+            return
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            messagebox.showinfo("送付文コピー", "問い合わせ一式ZIPがまだありません。先に 問い合わせ一式 を作成してください。")
+            self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
+            return
+        latest = bundles[0]
+        errors = verify_support_bundle(latest)
+        self._refresh_support_summary()
+        if errors:
+            self._set_text(self.help_text, format_support_bundle_verification(latest, errors))
+            self.notebook.select(self.help_tab)
+            self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
+            return
+        message = "\n".join(
+            [
+                "auto-note サポート送付メモ",
+                f"連絡先: {contact}",
+                f"問い合わせ一式ZIP: {latest.resolve()}",
+                "",
+                "送付前確認:",
+                "- ヘルプ > 送付前リスト を確認済み",
+                "- ヘルプ > 一式ZIP検証 がOK",
+                "- 添付するのは上記ZIPだけ",
+            ]
+        )
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(message)
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("サポート送付メモをコピーできませんでした", level="error")
+            messagebox.showerror("送付文コピー", str(exc))
+            return
+        self._set_text(self.help_text, message)
+        self.notebook.select(self.help_tab)
+        self.notify(f"サポート送付メモをコピーしました: {latest.name}", level="success")
 
     def show_support_send_checklist_action(self) -> None:
         bundles = list_support_bundles(self.project_dir)
