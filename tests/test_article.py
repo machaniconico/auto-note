@@ -2870,6 +2870,8 @@ tags: note
         self.assertIn("command_palette_support_display_diagnostics_actions=1", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
+        self.assertIn("display_font_linespace=", text)
+        self.assertIn("display_badge_linespace=", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3028,6 +3030,8 @@ tags:
                 "python -m auto_note quality --project-dir . --product-only\n"
                 "AUTO_NOTE_LAUNCHER_CHECK\n"
                 "scripts\\smoke-install.ps1\n"
+                "python -m auto_note release --project-dir .\n"
+                "python -m auto_note release --verify\n"
                 "python -m auto_note gui --project-dir . --smoke\n",
                 encoding="utf-8",
             )
@@ -3118,12 +3122,13 @@ tags:
                 + "_style_text_widget\n"
                 + '"Meiryo UI"\n'
                 + "UI_FONT_CANDIDATES\n"
-                + "UI_TEXT_SIZE = 12\n"
-                + "UI_BADGE_FONT_SIZE = 11\n"
-                + "UI_TREE_ROW_HEIGHT = 50\n"
-                + "UI_NOTEBOOK_TAB_PADDING = (22, 16)\n"
-                + "UI_BUTTON_PADDING = (19, 15)\n"
-                + "UI_TEXT_SPACING_BOTTOM = 6\n"
+                + "UI_TEXT_SIZE = 13\n"
+                + "UI_BADGE_FONT_SIZE = 12\n"
+                + "UI_TREE_ROW_HEIGHT = 58\n"
+                + "UI_NOTEBOOK_TAB_PADDING = (24, 18)\n"
+                + "UI_BUTTON_PADDING = (21, 17)\n"
+                + "UI_TEXT_SPACING_BOTTOM = 7\n"
+                + "_font_linespace\n"
                 + "UI_DENSITY_LABELS\n"
                 + "ui_density_var\n"
                 + "_apply_ui_density\n"
@@ -3154,10 +3159,12 @@ tags:
                 + "command_palette_support_display_diagnostics_actions=\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
+                + "display_font_linespace=\n"
                 + "display_diagnostics_chars=\n"
                 + "Chrome.TCombobox\n"
                 + "_resolve_font_family\n"
                 + "_enable_windows_dpi_awareness\n"
+                + "SetProcessDpiAwarenessContext\n"
                 + "SetProcessDpiAwareness\n"
                 + 'style.configure("TEntry"\n'
                 + "ChromeChip.TLabel\n"
@@ -3452,6 +3459,8 @@ tags:
         self.assertIn("CI product quality gate:fail", product_details)
         self.assertIn("CI hidden launcher syntax check:fail", product_details)
         self.assertIn("CI install smoke:fail", product_details)
+        self.assertIn("CI release smoke create:fail", product_details)
+        self.assertIn("CI release smoke verify:fail", product_details)
         self.assertIn("CI GUI smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
@@ -3654,6 +3663,8 @@ tags:
         self.assertIn("GUI readable tab padding:fail", product_details)
         self.assertIn("GUI readable button padding:fail", product_details)
         self.assertIn("GUI readable text line spacing:fail", product_details)
+        self.assertIn("GUI readable font metrics helper:fail", product_details)
+        self.assertIn("GUI per-monitor DPI awareness:fail", product_details)
         self.assertIn("settings UI density field:fail", product_details)
         self.assertIn("settings UI density options:fail", product_details)
         self.assertIn("settings UI density normalization:fail", product_details)
@@ -3677,6 +3688,7 @@ tags:
         self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
         self.assertIn("GUI smoke display readability status:fail", product_details)
         self.assertIn("GUI smoke display readability warning count:fail", product_details)
+        self.assertIn("GUI smoke display font metrics:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
         self.assertIn("GUI resolved font family:fail", product_details)
         self.assertIn("GUI named font readability defaults:fail", product_details)
@@ -3958,6 +3970,8 @@ tags:
         self.assertIn("CI product quality gate:pass", launcher_details)
         self.assertIn("CI hidden launcher syntax check:pass", launcher_details)
         self.assertIn("CI install smoke:pass", launcher_details)
+        self.assertIn("CI release smoke create:pass", launcher_details)
+        self.assertIn("CI release smoke verify:pass", launcher_details)
         self.assertIn("CI GUI smoke:pass", launcher_details)
         self.assertIn("release check script:pass", launcher_details)
         self.assertIn("release check unit tests:pass", launcher_details)
@@ -4169,6 +4183,8 @@ tags:
         self.assertIn("GUI readable tab padding:pass", launcher_details)
         self.assertIn("GUI readable button padding:pass", launcher_details)
         self.assertIn("GUI readable text line spacing:pass", launcher_details)
+        self.assertIn("GUI readable font metrics helper:pass", launcher_details)
+        self.assertIn("GUI per-monitor DPI awareness:pass", launcher_details)
         self.assertIn("settings UI density field:pass", launcher_details)
         self.assertIn("settings UI density options:pass", launcher_details)
         self.assertIn("settings UI density normalization:pass", launcher_details)
@@ -4192,6 +4208,7 @@ tags:
         self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
         self.assertIn("GUI smoke display readability status:pass", launcher_details)
         self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
+        self.assertIn("GUI smoke display font metrics:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
         self.assertIn("GUI resolved font family:pass", launcher_details)
         self.assertIn("GUI named font readability defaults:pass", launcher_details)

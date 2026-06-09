@@ -111,6 +111,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / ".github" / "workflows" / "ci.yml",
+            "CI release smoke create",
+            "python -m auto_note release --project-dir .",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI release smoke verify",
+            "python -m auto_note release --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
             "CI GUI smoke",
             "python -m auto_note gui --project-dir . --smoke",
         )
@@ -2089,42 +2103,56 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
-            "UI_TEXT_SIZE = 12",
+            "UI_TEXT_SIZE = 13",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable badge font size",
-            "UI_BADGE_FONT_SIZE = 11",
+            "UI_BADGE_FONT_SIZE = 12",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tree row height",
-            "UI_TREE_ROW_HEIGHT = 50",
+            "UI_TREE_ROW_HEIGHT = 58",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tab padding",
-            "UI_NOTEBOOK_TAB_PADDING = (22, 16)",
+            "UI_NOTEBOOK_TAB_PADDING = (24, 18)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable button padding",
-            "UI_BUTTON_PADDING = (19, 15)",
+            "UI_BUTTON_PADDING = (21, 17)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text line spacing",
-            "UI_TEXT_SPACING_BOTTOM = 6",
+            "UI_TEXT_SPACING_BOTTOM = 7",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable font metrics helper",
+            "_font_linespace",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI per-monitor DPI awareness",
+            "SetProcessDpiAwarenessContext",
         )
     )
     checks.append(
@@ -2286,6 +2314,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke display readability warning count",
             "display_readability_warnings=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke display font metrics",
+            "display_font_linespace=",
         )
     )
     checks.append(

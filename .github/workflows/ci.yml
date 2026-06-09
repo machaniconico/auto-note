@@ -51,6 +51,18 @@ jobs:
         shell: pwsh
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-install.ps1 -SourceDir .
 
+      - name: Run release smoke
+        shell: pwsh
+        run: |
+          python -m auto_note release --project-dir .
+          $release = Get-ChildItem -LiteralPath .\.auto-note\releases -Filter "auto-note-release-*.zip" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $release) {
+            throw "Release smoke did not create a release zip."
+          }
+          python -m auto_note release --verify $release.FullName
+
       - name: Run GUI smoke
         shell: pwsh
         run: python -m auto_note gui --project-dir . --smoke

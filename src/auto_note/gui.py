@@ -189,20 +189,20 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "Segoe UI", "MS Gothic")
+UI_FONT_CANDIDATES = ("Meiryo UI", "Meiryo", "Yu Gothic UI", "Segoe UI", "MS Gothic")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_TEXT_SIZE = 12
-UI_SMALL_TEXT_SIZE = 11
-UI_BADGE_FONT_SIZE = 11
-UI_TREE_ROW_HEIGHT = 50
-UI_NOTEBOOK_TAB_PADDING = (22, 16)
-UI_BUTTON_PADDING = (19, 15)
-UI_PRIMARY_BUTTON_PADDING = (21, 15)
-UI_DANGER_BUTTON_PADDING = (17, 13)
-UI_TEXT_SPACING_TOP = 4
-UI_TEXT_SPACING_BOTTOM = 6
+UI_TEXT_SIZE = 13
+UI_SMALL_TEXT_SIZE = 12
+UI_BADGE_FONT_SIZE = 12
+UI_TREE_ROW_HEIGHT = 58
+UI_NOTEBOOK_TAB_PADDING = (24, 18)
+UI_BUTTON_PADDING = (21, 17)
+UI_PRIMARY_BUTTON_PADDING = (23, 17)
+UI_DANGER_BUTTON_PADDING = (19, 15)
+UI_TEXT_SPACING_TOP = 5
+UI_TEXT_SPACING_BOTTOM = 7
 UI_DENSITY_LABELS = {
     "standard": "標準",
     "comfortable": "ゆったり",
@@ -211,22 +211,10 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 11,
-        "small_text_size": 10,
-        "badge_font_size": 10,
-        "tree_row_height": 44,
-        "notebook_tab_padding": (20, 14),
-        "button_padding": (17, 13),
-        "primary_button_padding": (19, 13),
-        "danger_button_padding": (15, 11),
-        "text_spacing_top": 3,
-        "text_spacing_bottom": 5,
-    },
-    "comfortable": {
         "text_size": 12,
         "small_text_size": 11,
         "badge_font_size": 11,
-        "tree_row_height": 50,
+        "tree_row_height": 52,
         "notebook_tab_padding": (22, 16),
         "button_padding": (19, 15),
         "primary_button_padding": (21, 15),
@@ -234,17 +222,29 @@ UI_DENSITY_VALUES = {
         "text_spacing_top": 4,
         "text_spacing_bottom": 6,
     },
-    "large": {
+    "comfortable": {
         "text_size": 13,
         "small_text_size": 12,
         "badge_font_size": 12,
-        "tree_row_height": 56,
+        "tree_row_height": 58,
         "notebook_tab_padding": (24, 18),
         "button_padding": (21, 17),
         "primary_button_padding": (23, 17),
         "danger_button_padding": (19, 15),
         "text_spacing_top": 5,
         "text_spacing_bottom": 7,
+    },
+    "large": {
+        "text_size": 14,
+        "small_text_size": 13,
+        "badge_font_size": 13,
+        "tree_row_height": 64,
+        "notebook_tab_padding": (26, 20),
+        "button_padding": (23, 19),
+        "primary_button_padding": (25, 19),
+        "danger_button_padding": (21, 17),
+        "text_spacing_top": 6,
+        "text_spacing_bottom": 8,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -328,12 +328,18 @@ def _enable_windows_dpi_awareness() -> None:
     if _DPI_AWARENESS_ENABLED or os.name != "nt":
         return
     try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except (AttributeError, OSError):
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+    except (AttributeError, OSError, ValueError):
         try:
-            ctypes.windll.user32.SetProcessDPIAware()
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except (AttributeError, OSError):
-            pass
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            except (AttributeError, OSError):
+                try:
+                    ctypes.windll.user32.SetProcessDPIAware()
+                except (AttributeError, OSError):
+                    pass
     _DPI_AWARENESS_ENABLED = True
 
 
@@ -364,6 +370,14 @@ def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> 
         root.tk.call("tk", "scaling", max(1.0, root.winfo_fpixels("1i") / 72.0))
     except tk.TclError:
         pass
+
+
+def _font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> int | None:
+    try:
+        font = tkfont.Font(root=root, family=family, size=size, weight=weight)
+        return int(font.metrics("linespace"))
+    except (tk.TclError, ValueError):
+        return None
 
 
 def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
@@ -573,6 +587,8 @@ def smoke_gui(project_dir: Path) -> str:
         )
         display_readability_status, display_readability_lines = app._display_readability_checks(style)
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
+        display_font_linespace = _font_linespace(app, UI_FONT, UI_TEXT_SIZE) or 0
+        display_badge_linespace = _font_linespace(app, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold") or 0
         display_diagnostics = app._format_display_diagnostics()
         display_diagnostics_chars = len(display_diagnostics)
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
@@ -609,6 +625,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"command_palette_support_display_diagnostics_actions={command_palette_support_display_diagnostics_actions}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
+            f"display_font_linespace={display_font_linespace}, "
+            f"display_badge_linespace={display_badge_linespace}, "
             f"display_diagnostics_chars={display_diagnostics_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
@@ -834,6 +852,7 @@ class AutoNoteApp(tk.Tk):
             fieldbackground=UI_COLORS["text_bg"],
             background=surface,
             foreground=primary,
+            font=(font, UI_TEXT_SIZE),
             arrowcolor=muted,
             bordercolor=line,
             lightcolor=line,
@@ -939,6 +958,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "Danger.TButton",
             padding=UI_DANGER_BUTTON_PADDING,
+            font=(font, UI_TEXT_SIZE),
             background=UI_COLORS["danger_soft"],
             foreground="#991b1b",
         )
@@ -1041,6 +1061,7 @@ class AutoNoteApp(tk.Tk):
             state="readonly",
             width=8,
             style="Chrome.TCombobox",
+            font=(UI_FONT, UI_SMALL_TEXT_SIZE),
         )
         self.header_ui_density_combo.pack(side=tk.LEFT, padx=(8, 0))
         self.header_ui_density_combo.bind("<<ComboboxSelected>>", self.on_header_ui_density_selected)
@@ -6339,36 +6360,54 @@ class AutoNoteApp(tk.Tk):
         tree_height_number = _first_number(tree_height)
         tab_vertical_padding = _vertical_padding(tab_padding)
         button_vertical_padding = _vertical_padding(button_padding)
+        main_linespace = _font_linespace(self, UI_FONT, UI_TEXT_SIZE)
+        small_linespace = _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE)
+        badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold")
+        tree_target = max(52, (main_linespace or UI_TEXT_SIZE) + 14)
 
         add(
             "main text",
-            UI_TEXT_SIZE >= 12,
-            f"{UI_TEXT_SIZE}pt (target 12+)",
+            UI_TEXT_SIZE >= 13,
+            f"{UI_TEXT_SIZE}pt (target 13+)",
             "ヘッダーの 表示 で ゆったり または 大きめ を選ぶ",
         )
         add(
             "small text",
-            UI_SMALL_TEXT_SIZE >= 11,
-            f"{UI_SMALL_TEXT_SIZE}pt (target 11+)",
+            UI_SMALL_TEXT_SIZE >= 12,
+            f"{UI_SMALL_TEXT_SIZE}pt (target 12+)",
             "表示サイズを ゆったり または 大きめ にする",
         )
         add(
+            "font line height",
+            main_linespace is not None and small_linespace is not None and badge_linespace is not None,
+            f"main {main_linespace or 'unknown'}px / small {small_linespace or 'unknown'}px / badge {badge_linespace or 'unknown'}px",
+            "表示リセット後、改善しない場合は表示診断コピーを送る",
+        )
+        add(
             "tree rows",
-            tree_height_number is not None and tree_height_number >= 50,
-            f"{tree_height or 'unknown'}px (target 50+)",
+            tree_height_number is not None and tree_height_number >= tree_target,
+            f"{tree_height or 'unknown'}px (target {tree_target}+)",
             "表示リセット後、表示サイズを 大きめ にする",
         )
         add(
             "tabs",
-            tab_vertical_padding is not None and tab_vertical_padding >= 14,
-            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target 14+)",
+            tab_vertical_padding is not None and tab_vertical_padding >= 16,
+            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target 16+)",
             "表示リセットを実行する",
         )
         add(
             "buttons",
-            button_vertical_padding is not None and button_vertical_padding >= 13,
-            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target 13+)",
+            button_vertical_padding is not None and button_vertical_padding >= 15,
+            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target 15+)",
             "表示リセットを実行する",
+        )
+        add(
+            "button text room",
+            button_vertical_padding is not None
+            and main_linespace is not None
+            and button_vertical_padding * 2 >= min(main_linespace, 30),
+            f"vertical padding total {button_vertical_padding * 2 if button_vertical_padding is not None else 'unknown'}px / main line {main_linespace or 'unknown'}px",
+            "表示リセットを実行し、改善しない場合は大きめを選ぶ",
         )
         add(
             "tk scaling",
@@ -6405,6 +6444,9 @@ class AutoNoteApp(tk.Tk):
         tree_height = _safe(lambda: style.lookup("Treeview", "rowheight"))
         tab_padding = _safe(lambda: style.lookup("TNotebook.Tab", "padding"))
         button_padding = _safe(lambda: style.lookup("TButton", "padding"))
+        main_linespace = _safe(lambda: _font_linespace(self, UI_FONT, UI_TEXT_SIZE) or "unknown")
+        small_linespace = _safe(lambda: _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE) or "unknown")
+        badge_linespace = _safe(lambda: _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold") or "unknown")
         _status, readability_lines = self._display_readability_checks(style)
         lines = [
             "Display diagnostics / 表示診断",
@@ -6422,6 +6464,9 @@ class AutoNoteApp(tk.Tk):
             f"- text size: {UI_TEXT_SIZE}",
             f"- small text size: {UI_SMALL_TEXT_SIZE}",
             f"- badge font size: {UI_BADGE_FONT_SIZE}",
+            f"- main font linespace: {main_linespace}",
+            f"- small font linespace: {small_linespace}",
+            f"- badge font linespace: {badge_linespace}",
             f"- text spacing: top {UI_TEXT_SPACING_TOP}, bottom {UI_TEXT_SPACING_BOTTOM}",
             "",
             "Window and screen",
