@@ -314,6 +314,12 @@ def smoke_gui(project_dir: Path) -> str:
             else 0
         )
         home_report_items = len(app.home_reports_tree.get_children()) if hasattr(app, "home_reports_tree") else 0
+        home_snapshot_items = len(app.home_snapshot_vars) if hasattr(app, "home_snapshot_vars") else 0
+        home_snapshot_chars = (
+            sum(len(value.get()) for value in app.home_snapshot_vars.values())
+            if hasattr(app, "home_snapshot_vars")
+            else 0
+        )
         home_progress_chars = len(app.home_progress_summary_var.get()) if hasattr(app, "home_progress_summary_var") else 0
         home_progress_stage_chars = (
             sum(len(value.get()) for value in app.home_progress_vars.values())
@@ -341,6 +347,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_report_items={home_report_items}, "
+            f"home_snapshot_items={home_snapshot_items}, "
+            f"home_snapshot_chars={home_snapshot_chars}, "
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
@@ -432,6 +440,8 @@ class AutoNoteApp(tk.Tk):
         style.configure("TFrame", background=bg)
         style.configure("Surface.TFrame", background=surface)
         style.configure("HomeLead.TFrame", background=UI_COLORS["surface_strong"])
+        style.configure("HomeSnapshot.TFrame", background=surface)
+        style.configure("HomeSnapshotTile.TFrame", background=surface_alt)
         style.configure("Elevated.TFrame", background=surface, relief="flat", borderwidth=1)
         style.configure("Toolbar.TFrame", background=surface_alt)
         style.configure("Chrome.TFrame", background=chrome)
@@ -465,6 +475,8 @@ class AutoNoteApp(tk.Tk):
         style.configure("SurfaceMuted.TLabel", background=surface, foreground=muted, font=(font, 9))
         style.configure("Muted.TLabel", background=surface, foreground=muted, font=(font, 9))
         style.configure("SmallMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 8))
+        style.configure("HomeSnapshotTitle.TLabel", background=surface_alt, foreground=muted, font=(font, 8, "bold"))
+        style.configure("HomeSnapshotValue.TLabel", background=surface_alt, foreground=primary, font=(font, 10, "bold"))
         style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, "bold"))
         style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, 10))
         style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
@@ -668,6 +680,49 @@ class AutoNoteApp(tk.Tk):
             style="Secondary.TButton",
             command=lambda: self.notebook.select(self.diagnostics_tab),
         ).pack(side=tk.RIGHT, padx=6)
+
+        snapshot = ttk.Frame(self.home_tab, style="HomeSnapshot.TFrame")
+        snapshot.pack(fill=tk.X, pady=(0, 10))
+        self.home_snapshot_vars: dict[str, tk.StringVar] = {}
+        self.home_snapshot_pills: dict[str, tk.Label] = {}
+        self.home_snapshot_rails: dict[str, tk.Frame] = {}
+        for index, (key, label) in enumerate(
+            (
+                ("readiness", "準備度"),
+                ("next", "次の一手"),
+                ("startup", "初回/復旧"),
+                ("sales", "販売/送付"),
+            )
+        ):
+            tile = ttk.Frame(snapshot, style="HomeSnapshotTile.TFrame", padding=(10, 9))
+            tile.grid(row=0, column=index, sticky="nsew", padx=(0 if index == 0 else 8, 0))
+            snapshot.columnconfigure(index, weight=1, uniform="home_snapshot")
+            rail = tk.Frame(tile, bg=UI_COLORS["line"], height=3)
+            rail.pack(fill=tk.X, pady=(0, 8))
+            self.home_snapshot_rails[key] = rail
+            head = ttk.Frame(tile, style="HomeSnapshotTile.TFrame")
+            head.pack(fill=tk.X)
+            ttk.Label(head, text=label, style="HomeSnapshotTitle.TLabel").pack(side=tk.LEFT)
+            pill = tk.Label(
+                head,
+                text="CHECK",
+                bg=UI_COLORS["warn"],
+                fg="#ffffff",
+                font=("Segoe UI", 8, "bold"),
+                padx=7,
+                pady=2,
+                width=8,
+            )
+            pill.pack(side=tk.RIGHT)
+            self.home_snapshot_pills[key] = pill
+            value = tk.StringVar(value="確認中")
+            self.home_snapshot_vars[key] = value
+            ttk.Label(
+                tile,
+                textvariable=value,
+                style="HomeSnapshotValue.TLabel",
+                wraplength=250,
+            ).pack(anchor=tk.W, fill=tk.X, pady=(5, 0))
 
         self.kpi_frame = ttk.Frame(self.home_tab)
         self.kpi_frame.pack(fill=tk.X, pady=(0, 10))
@@ -3971,6 +4026,7 @@ class AutoNoteApp(tk.Tk):
         self._refresh_home_first_run_summary(first_run_report)
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
         self._refresh_home_gui_log_status()
+        self._refresh_home_snapshot_strip(readiness, action_plan, first_run_report)
         self._refresh_home_reports()
 
         lines = [
@@ -4062,6 +4118,50 @@ class AutoNoteApp(tk.Tk):
         value = getattr(self, "home_progress_vars", {}).get(key)
         pill = getattr(self, "home_progress_pills", {}).get(key)
         rail = getattr(self, "home_progress_rails", {}).get(key)
+        if value is not None:
+            value.set(text)
+        if pill is not None:
+            pill_text, bg, fg = _home_sales_indicator_style(state)
+            pill.configure(text=pill_text, bg=bg, fg=fg)
+        if rail is not None:
+            rail.configure(bg=_home_state_accent_color(state))
+
+    def _refresh_home_snapshot_strip(self, readiness, action_plan, first_run_report: FirstRunReport) -> None:
+        if not hasattr(self, "home_snapshot_vars"):
+            return
+        next_step = action_plan.steps[0] if action_plan.steps else None
+        next_title = next_step.title if next_step else "出荷前チェック"
+        first_run_summary, _next_text = _home_first_run_summary(first_run_report)
+        values = _home_snapshot_values(
+            readiness_score=readiness.score,
+            action_status=action_plan.status,
+            next_title=next_title,
+            first_run_summary=first_run_summary,
+            gui_log_text=self.home_gui_log_var.get() if hasattr(self, "home_gui_log_var") else "",
+            sales_status=self.home_sales_status_var.get() if hasattr(self, "home_sales_status_var") else "",
+            buyer_send_summary=self.home_buyer_send_var.get() if hasattr(self, "home_buyer_send_var") else "",
+        )
+        next_state = _home_snapshot_next_state(getattr(next_step, "severity", "") if next_step else "")
+        startup_state = _home_snapshot_worst_state(
+            _home_progress_state_from_status(first_run_report.status),
+            _home_gui_log_status(gui_error_log_path(self.project_dir))[0],
+        )
+        sales_state = "ok" if "READY TO VERIFY" in values["sales"] else "warn"
+        if "ZIP検証NG" in values["sales"] or "NG" in values["sales"]:
+            sales_state = "fail"
+        states = {
+            "readiness": _home_snapshot_readiness_state(readiness.score),
+            "next": next_state,
+            "startup": startup_state,
+            "sales": sales_state,
+        }
+        for key, text in values.items():
+            self._set_home_snapshot_item(key, states.get(key, "info"), text)
+
+    def _set_home_snapshot_item(self, key: str, state: str, text: str) -> None:
+        value = getattr(self, "home_snapshot_vars", {}).get(key)
+        pill = getattr(self, "home_snapshot_pills", {}).get(key)
+        rail = getattr(self, "home_snapshot_rails", {}).get(key)
         if value is not None:
             value.set(text)
         if pill is not None:
@@ -6947,6 +7047,59 @@ def _home_progress_summary(stages: dict[str, str], next_title: str) -> str:
     else:
         status = f"READY {ready}/{len(stages)} / CHECK {check}"
     return f"{status} - 次: {next_title}"
+
+
+def _home_snapshot_values(
+    *,
+    readiness_score: int,
+    action_status: str,
+    next_title: str,
+    first_run_summary: str,
+    gui_log_text: str,
+    sales_status: str,
+    buyer_send_summary: str,
+) -> dict[str, str]:
+    gui_log = gui_log_text.replace("GUIログ: ", "").strip()
+    sales = sales_status.replace("販売準備: ", "").strip()
+    buyer = buyer_send_summary.replace("購入者送付: ", "").strip()
+    return {
+        "readiness": _home_snapshot_brief(f"{readiness_score}/100 / {action_status}", 54),
+        "next": _home_snapshot_brief(next_title or "詳細確認", 54),
+        "startup": _home_snapshot_brief(f"{first_run_summary} / {gui_log}", 58),
+        "sales": _home_snapshot_brief(f"{sales} / {buyer}", 58),
+    }
+
+
+def _home_snapshot_brief(text: str, limit: int) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _home_snapshot_readiness_state(readiness_score: int) -> str:
+    if readiness_score >= 90:
+        return "ok"
+    if readiness_score >= 75:
+        return "info"
+    if readiness_score >= 60:
+        return "warn"
+    return "fail"
+
+
+def _home_snapshot_next_state(severity: str) -> str:
+    return {
+        "blocker": "fail",
+        "warning": "warn",
+        "maintenance": "info",
+        "info": "info",
+        "ready": "ok",
+    }.get(severity, "info")
+
+
+def _home_snapshot_worst_state(*states: str) -> str:
+    rank = {"fail": 3, "warn": 2, "info": 1, "ok": 0}
+    return max(states or ("info",), key=lambda state: rank.get(state, 1))
 
 
 def _home_primary_button_label(step: ActionPlanStep | None) -> str:

@@ -484,6 +484,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README home compact snapshot guidance",
+            "コンパクト概要",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README home progress direct open guidance",
             "作業進行レーンの各工程の `開く`",
         )
@@ -2013,6 +2020,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern home overview badge helper",
             "_home_overview_badge",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern home compact snapshot strip",
+            "home_snapshot_vars",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern home compact snapshot refresh",
+            "_refresh_home_snapshot_strip",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern home compact snapshot helper",
+            "_home_snapshot_values",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home compact snapshot",
+            "home_snapshot_chars=",
         )
     )
     checks.append(

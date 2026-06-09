@@ -79,6 +79,11 @@ from auto_note.gui import (
     _home_report_status,
     _home_report_status_tag,
     _home_report_summary,
+    _home_snapshot_brief,
+    _home_snapshot_next_state,
+    _home_snapshot_readiness_state,
+    _home_snapshot_values,
+    _home_snapshot_worst_state,
     _home_state_accent_color,
     _support_bundle_indicator_style,
     _support_send_readiness_indicator_style,
@@ -265,6 +270,27 @@ class ArticleTests(unittest.TestCase):
             "NG 1 / CHECK 1 / READY 1",
             _home_progress_summary({"setup": "ok", "article": "fail", "publish": "warn"}, "自動修復"),
         )
+
+    def test_home_snapshot_helpers_keep_status_compact(self) -> None:
+        values = _home_snapshot_values(
+            readiness_score=87,
+            action_status="NEEDS ATTENTION",
+            next_title="販売者情報を整える",
+            first_run_summary="初回: 92/100 / NG 0 / WARN 1 / OK 8",
+            gui_log_text="GUIログ: 直近エラーはありません。",
+            sales_status="販売準備: NEEDS ATTENTION / 軽量 64/100",
+            buyer_send_summary="購入者送付: ZIPなし / 送付文なし / 記録なし",
+        )
+
+        self.assertEqual(values["readiness"], "87/100 / NEEDS ATTENTION")
+        self.assertEqual(values["next"], "販売者情報を整える")
+        self.assertLessEqual(len(values["startup"]), 58)
+        self.assertLessEqual(len(values["sales"]), 58)
+        self.assertEqual(_home_snapshot_brief("a " * 40, 18), "a a a a a a a a...")
+        self.assertEqual(_home_snapshot_readiness_state(92), "ok")
+        self.assertEqual(_home_snapshot_readiness_state(58), "fail")
+        self.assertEqual(_home_snapshot_next_state("blocker"), "fail")
+        self.assertEqual(_home_snapshot_worst_state("ok", "warn", "info"), "warn")
 
     def test_home_primary_button_label_names_next_action(self) -> None:
         self.assertEqual(_home_primary_button_label(None), "詳細を見る")
@@ -3080,6 +3106,19 @@ tags:
             )
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "HomeSnapshot.TFrame\n"
+                + "HomeSnapshotTile.TFrame\n"
+                + "home_snapshot_vars\n"
+                + "home_snapshot_pills\n"
+                + "home_snapshot_rails\n"
+                + "_refresh_home_snapshot_strip\n"
+                + "_set_home_snapshot_item\n"
+                + "_home_snapshot_values\n"
+                + "home_snapshot_chars=\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
                 + "home_buyer_send_var.get()\n"
                 + "home_buyer_send_var\n"
                 + "_home_buyer_send_summary\n"
@@ -3159,7 +3198,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3363,6 +3402,10 @@ tags:
         self.assertIn("GUI modern home status badge:fail", product_details)
         self.assertIn("GUI modern home freshness:fail", product_details)
         self.assertIn("GUI modern home overview badge helper:fail", product_details)
+        self.assertIn("GUI modern home compact snapshot strip:fail", product_details)
+        self.assertIn("GUI modern home compact snapshot refresh:fail", product_details)
+        self.assertIn("GUI modern home compact snapshot helper:fail", product_details)
+        self.assertIn("GUI smoke home compact snapshot:fail", product_details)
         self.assertIn("GUI home first-run setup lane:fail", product_details)
         self.assertIn("GUI home first-run summary helper:fail", product_details)
         self.assertIn("GUI home first-run opener:fail", product_details)
@@ -3453,6 +3496,7 @@ tags:
         self.assertIn("GUI home recent reports seller receipt:fail", product_details)
         self.assertIn("GUI smoke recent reports count:fail", product_details)
         self.assertIn("README home progress lane guidance:fail", product_details)
+        self.assertIn("README home compact snapshot guidance:fail", product_details)
         self.assertIn("README home progress direct open guidance:fail", product_details)
         self.assertIn("README home progress command palette guidance:fail", product_details)
         self.assertIn("README home first-run setup guidance:fail", product_details)
@@ -3790,6 +3834,10 @@ tags:
         self.assertIn("GUI modern home status badge:pass", launcher_details)
         self.assertIn("GUI modern home freshness:pass", launcher_details)
         self.assertIn("GUI modern home overview badge helper:pass", launcher_details)
+        self.assertIn("GUI modern home compact snapshot strip:pass", launcher_details)
+        self.assertIn("GUI modern home compact snapshot refresh:pass", launcher_details)
+        self.assertIn("GUI modern home compact snapshot helper:pass", launcher_details)
+        self.assertIn("GUI smoke home compact snapshot:pass", launcher_details)
         self.assertIn("GUI home first-run setup lane:pass", launcher_details)
         self.assertIn("GUI home first-run summary helper:pass", launcher_details)
         self.assertIn("GUI home first-run opener:pass", launcher_details)
@@ -3880,6 +3928,7 @@ tags:
         self.assertIn("GUI home recent reports seller receipt:pass", launcher_details)
         self.assertIn("GUI smoke recent reports count:pass", launcher_details)
         self.assertIn("README home progress lane guidance:pass", launcher_details)
+        self.assertIn("README home compact snapshot guidance:pass", launcher_details)
         self.assertIn("README home progress direct open guidance:pass", launcher_details)
         self.assertIn("README home progress command palette guidance:pass", launcher_details)
         self.assertIn("README home first-run setup guidance:pass", launcher_details)
