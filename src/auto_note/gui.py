@@ -4,6 +4,7 @@ import ctypes
 from dataclasses import replace
 from datetime import datetime
 import hashlib
+import math
 from pathlib import Path
 import os
 import sys
@@ -137,6 +138,12 @@ from .sales_materials import (
     verify_sales_materials,
 )
 from .sales_plan import SalesPlanStep, build_sales_plan, format_sales_plan, write_sales_plan_report
+from .sales_review import (
+    format_sales_review,
+    has_sales_review_blockers,
+    run_sales_review,
+    write_sales_review_report,
+)
 from .settings import AppSettings, DEFAULT_SETTINGS, UI_DENSITY_OPTIONS, load_settings, parse_tags, save_settings
 from .selftest import format_self_test_report, run_self_test, write_self_test_report
 from .setup_check import format_setup_report, run_setup_check
@@ -189,7 +196,7 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-UI_FONT_CANDIDATES = ("Meiryo UI", "Meiryo", "Yu Gothic UI", "Segoe UI", "MS Gothic")
+UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "Segoe UI", "MS Gothic")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
@@ -356,6 +363,10 @@ def _resolve_font_family(root: tk.Misc, candidates: tuple[str, ...]) -> str:
 
 
 def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> None:
+    try:
+        root.tk.call("tk", "scaling", max(1.0, root.winfo_fpixels("1i") / 72.0))
+    except tk.TclError:
+        pass
     for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkTooltipFont"):
         try:
             tkfont.nametofont(name).configure(family=ui_font, size=UI_TEXT_SIZE)
@@ -366,10 +377,6 @@ def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> 
             tkfont.nametofont(name).configure(family=code_font, size=UI_TEXT_SIZE)
         except tk.TclError:
             continue
-    try:
-        root.tk.call("tk", "scaling", max(1.0, root.winfo_fpixels("1i") / 72.0))
-    except tk.TclError:
-        pass
 
 
 def _font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> int | None:
@@ -378,6 +385,63 @@ def _font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "nor
         return int(font.metrics("linespace"))
     except (tk.TclError, ValueError):
         return None
+
+
+def _readable_vertical_padding(
+    current_padding: object,
+    line_space: int | None,
+    *,
+    minimum: int,
+    ratio: float,
+) -> int:
+    current = _vertical_padding(current_padding) or 0
+    measured = math.ceil(line_space * ratio) if line_space is not None else 0
+    return max(int(math.ceil(current)), minimum, int(measured))
+
+
+def _padding_with_vertical(current_padding: object, vertical: int) -> tuple[int, ...]:
+    numbers = [int(math.ceil(number)) for number in _numeric_tokens(current_padding)]
+    if len(numbers) >= 4:
+        return (numbers[0], vertical, numbers[2], vertical)
+    horizontal = numbers[0] if numbers else 0
+    return (horizontal, vertical)
+
+
+def _guard_ui_readability_metrics(root: tk.Misc, ui_font: str) -> None:
+    global UI_TREE_ROW_HEIGHT, UI_NOTEBOOK_TAB_PADDING, UI_BUTTON_PADDING
+    global UI_PRIMARY_BUTTON_PADDING, UI_DANGER_BUTTON_PADDING
+
+    main_linespace = _font_linespace(root, ui_font, UI_TEXT_SIZE) or (UI_TEXT_SIZE + 9)
+    button_vertical = _readable_vertical_padding(
+        UI_BUTTON_PADDING,
+        main_linespace,
+        minimum=17,
+        ratio=0.62,
+    )
+    primary_vertical = _readable_vertical_padding(
+        UI_PRIMARY_BUTTON_PADDING,
+        main_linespace,
+        minimum=17,
+        ratio=0.62,
+    )
+    danger_vertical = _readable_vertical_padding(
+        UI_DANGER_BUTTON_PADDING,
+        main_linespace,
+        minimum=15,
+        ratio=0.58,
+    )
+    tab_vertical = _readable_vertical_padding(
+        UI_NOTEBOOK_TAB_PADDING,
+        main_linespace,
+        minimum=18,
+        ratio=0.58,
+    )
+
+    UI_BUTTON_PADDING = _padding_with_vertical(UI_BUTTON_PADDING, button_vertical)
+    UI_PRIMARY_BUTTON_PADDING = _padding_with_vertical(UI_PRIMARY_BUTTON_PADDING, primary_vertical)
+    UI_DANGER_BUTTON_PADDING = _padding_with_vertical(UI_DANGER_BUTTON_PADDING, danger_vertical)
+    UI_NOTEBOOK_TAB_PADDING = _padding_with_vertical(UI_NOTEBOOK_TAB_PADDING, tab_vertical)
+    UI_TREE_ROW_HEIGHT = max(UI_TREE_ROW_HEIGHT, int(math.ceil(main_linespace * 2.05)), main_linespace + 24)
 
 
 def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
@@ -703,6 +767,7 @@ class AutoNoteApp(tk.Tk):
         UI_FONT = _resolve_font_family(self, UI_FONT_CANDIDATES)
         CODE_FONT = _resolve_font_family(self, CODE_FONT_CANDIDATES)
         _configure_tk_font_defaults(self, UI_FONT, CODE_FONT)
+        _guard_ui_readability_metrics(self, UI_FONT)
         font = UI_FONT
         self.option_add("*Font", f"{{{font}}} {UI_TEXT_SIZE}")
         bg = UI_COLORS["bg"]
@@ -996,11 +1061,13 @@ class AutoNoteApp(tk.Tk):
         return widgets
 
     def _refresh_manual_readability_widgets(self) -> None:
+        badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold")
+        badge_padding = max(5, math.ceil((badge_linespace or UI_BADGE_FONT_SIZE + 7) * 0.34))
         for widget in self._manual_status_widgets():
             try:
                 widget.configure(
                     font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
-                    pady=max(3, UI_BADGE_FONT_SIZE - 5),
+                    pady=badge_padding,
                 )
             except tk.TclError:
                 continue
@@ -1112,6 +1179,7 @@ class AutoNoteApp(tk.Tk):
         self._build_diagnostics_tab()
         self._build_help_tab()
         self._build_notification_bar(shell)
+        self._refresh_manual_readability_widgets()
 
     def _bind_shortcuts(self) -> None:
         self.bind_all("<Control-n>", lambda _event: self.new_article())
@@ -1532,6 +1600,8 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
+            ("最終レビュー", self.run_sales_review_to_tab, None),
+            ("レビュー保存", self.create_sales_review_report_action, None),
             (self.home_support_next_button_var, self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
         )
@@ -1670,6 +1740,8 @@ class AutoNoteApp(tk.Tk):
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
+                ("最終レビュー", self.run_sales_review_to_tab),
+                ("レビュー保存", self.create_sales_review_report_action),
                 ("アクションプラン", self.run_action_plan_to_tab),
                 ("クイック確認", self.run_quickstart_to_tab),
                 ("スターター一式", self.create_starter_pack_action),
@@ -2658,6 +2730,8 @@ class AutoNoteApp(tk.Tk):
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
+                ("最終レビュー", self.run_sales_review_to_tab),
+                ("レビュー保存", self.create_sales_review_report_action),
                 ("セルフテスト", self.run_self_test_to_tab),
                 ("セルフテスト保存", self.create_self_test_report_action),
                 ("運用サマリー", self.run_overview_to_tab),
@@ -2937,6 +3011,8 @@ class AutoNoteApp(tk.Tk):
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
+                ("最終レビュー", self.run_sales_review_to_tab),
+                ("レビュー保存", self.create_sales_review_report_action),
                 ("記事CSV出力", self.export_inventory_action),
                 ("診断プレビュー", self.preview_diagnostic_report_action),
                 ("診断レポート作成", self.create_diagnostic_report_action),
@@ -3138,6 +3214,8 @@ class AutoNoteApp(tk.Tk):
             "送付前保存": self.create_buyer_send_readiness_report_action,
             "送付記録": self.create_seller_delivery_receipt_action,
             "送付文コピー": self.copy_latest_buyer_delivery_message_action,
+            "最終レビュー": self.run_sales_review_to_tab,
+            "レビュー保存": self.create_sales_review_report_action,
             "noteログイン": lambda: webbrowser.open(NOTE_LOGIN_URL),
             "次の一手": self.run_home_primary_action,
         }
@@ -5389,6 +5467,8 @@ class AutoNoteApp(tk.Tk):
             self.create_seller_delivery_receipt_action()
         elif action == "送付文コピー":
             self.copy_latest_buyer_delivery_message_action()
+        elif action == "最終レビュー":
+            self.run_sales_review_to_tab()
         else:
             self.run_buyer_send_readiness_to_tab()
 
@@ -5859,6 +5939,8 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", "購入者送付前チェックを時刻付きレポートとして保存", self.create_buyer_send_readiness_report_action),
             ("送付記録", "検証済みZIP名とSHA-256入りの販売者向け納品記録を保存", self.create_seller_delivery_receipt_action),
             ("送付文コピー", "最新の購入者向け送付文をZIP検証後にクリップボードへコピー", self.copy_latest_buyer_delivery_message_action),
+            ("最終レビュー", "販売ページ文案、送付文、購入者ZIP、納品記録の整合性を確認", self.run_sales_review_to_tab),
+            ("レビュー保存", "販売ページ・納品最終レビューを時刻付きレポートとして保存", self.create_sales_review_report_action),
             ("アクションプラン", "いま優先すべき操作を表示", self.run_action_plan_to_tab),
             ("セルフテスト", "インストール後の基本動作を確認", self.run_self_test_to_tab),
             ("セルフテスト保存", "セルフテスト結果をテキスト保存", self.create_self_test_report_action),
@@ -6363,7 +6445,11 @@ class AutoNoteApp(tk.Tk):
         main_linespace = _font_linespace(self, UI_FONT, UI_TEXT_SIZE)
         small_linespace = _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE)
         badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold")
-        tree_target = max(52, (main_linespace or UI_TEXT_SIZE) + 14)
+        line_target = main_linespace or (UI_TEXT_SIZE + 9)
+        tree_target = max(52, int(math.ceil(line_target * 2.05)), line_target + 24)
+        tab_target = _readable_vertical_padding((0, 0), main_linespace, minimum=18, ratio=0.58)
+        button_target = _readable_vertical_padding((0, 0), main_linespace, minimum=17, ratio=0.62)
+        text_room_target = math.ceil((main_linespace or UI_TEXT_SIZE) * 1.2)
 
         add(
             "main text",
@@ -6391,22 +6477,22 @@ class AutoNoteApp(tk.Tk):
         )
         add(
             "tabs",
-            tab_vertical_padding is not None and tab_vertical_padding >= 16,
-            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target 16+)",
+            tab_vertical_padding is not None and tab_vertical_padding >= tab_target,
+            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target {tab_target}+)",
             "表示リセットを実行する",
         )
         add(
             "buttons",
-            button_vertical_padding is not None and button_vertical_padding >= 15,
-            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target 15+)",
+            button_vertical_padding is not None and button_vertical_padding >= button_target,
+            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target {button_target}+)",
             "表示リセットを実行する",
         )
         add(
             "button text room",
             button_vertical_padding is not None
             and main_linespace is not None
-            and button_vertical_padding * 2 >= min(main_linespace, 30),
-            f"vertical padding total {button_vertical_padding * 2 if button_vertical_padding is not None else 'unknown'}px / main line {main_linespace or 'unknown'}px",
+            and button_vertical_padding * 2 >= text_room_target,
+            f"vertical padding total {button_vertical_padding * 2 if button_vertical_padding is not None else 'unknown'}px / target {text_room_target}px / main line {main_linespace or 'unknown'}px",
             "表示リセットを実行し、改善しない場合は大きめを選ぶ",
         )
         add(
@@ -6468,6 +6554,9 @@ class AutoNoteApp(tk.Tk):
             f"- small font linespace: {small_linespace}",
             f"- badge font linespace: {badge_linespace}",
             f"- text spacing: top {UI_TEXT_SPACING_TOP}, bottom {UI_TEXT_SPACING_BOTTOM}",
+            f"- protected tree rowheight: {UI_TREE_ROW_HEIGHT}",
+            f"- protected notebook tab padding: {UI_NOTEBOOK_TAB_PADDING}",
+            f"- protected button padding: {UI_BUTTON_PADDING}",
             "",
             "Window and screen",
             f"- window geometry: {self.geometry()}",
@@ -6830,6 +6919,35 @@ class AutoNoteApp(tk.Tk):
         )
         self.notebook.select(self.diagnostics_tab)
         self.notify(f"方針レビューを保存しました: {path.name}", level="success")
+
+    def run_sales_review_to_tab(self) -> None:
+        report = run_sales_review(self.project_dir)
+        self._set_text(self.diagnostics_text, format_sales_review(report))
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("販売ページ・納品最終レビューを表示しました", level=self._sales_review_notify_level(report))
+
+    def create_sales_review_report_action(self) -> None:
+        try:
+            report = run_sales_review(self.project_dir)
+            path = write_sales_review_report(self.project_dir, report=report)
+        except OSError as exc:
+            self.notify("最終レビュー保存に失敗しました", level="error")
+            messagebox.showerror("最終レビュー保存エラー", str(exc))
+            return
+        self._set_text(
+            self.diagnostics_text,
+            format_sales_review(report) + f"\n\nsaved: {path}",
+        )
+        self.notebook.select(self.diagnostics_tab)
+        _open_path(path)
+        self.notify(f"最終レビューを保存しました: {path.name}", level=self._sales_review_notify_level(report))
+
+    def _sales_review_notify_level(self, report) -> str:
+        if has_sales_review_blockers(report):
+            return "error"
+        if report.has_warnings:
+            return "warning"
+        return "success"
 
     def _commercial_readiness_notify_level(self, report) -> str:
         if not report.ok:
@@ -8446,6 +8564,7 @@ def _home_buyer_send_button_label(action: str) -> str:
         "送付文作成": "購入者送付: 文作成",
         "送付記録": "購入者送付: 記録",
         "送付文コピー": "購入者送付: 文コピー",
+        "最終レビュー": "購入者送付: 最終確認",
     }.get(action, "購入者送付: 次")
 
 
@@ -8587,7 +8706,7 @@ def _home_buyer_send_summary(
     return (
         "ok",
         f"購入者送付: {package_detail} / 送付文あり / 記録あり",
-        "次: 送付文コピーで購入者へ送る文面を確認",
+        "次: 最終レビューで販売ページ文案と納品物の整合性を確認",
     )
 
 
@@ -8612,7 +8731,7 @@ def _home_buyer_send_action(
         return "送付記録"
     if receipt_matches_delivery is False:
         return "送付記録"
-    return "送付文コピー"
+    return "最終レビュー"
 
 
 def _home_buyer_send_message_matches_package(package_path: Path | None, message_path: Path | None) -> bool | None:

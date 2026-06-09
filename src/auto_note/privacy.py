@@ -83,6 +83,7 @@ def run_privacy_audit(
     items.extend(_commercial_setup_template_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_sales_material_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_sales_plan_report_items(project_dir, sensitive, all_artifacts=all_artifacts))
+    items.extend(_sales_review_report_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_sales_finalize_report_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_seller_send_checklist_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_buyer_delivery_message_items(project_dir, sensitive, all_artifacts=all_artifacts))
@@ -376,6 +377,34 @@ def _sales_plan_report_items(
             path,
             sensitive,
             name=f"sales plan report privacy: {path.name}",
+            action=action,
+        )
+        for path in selected
+    ]
+
+
+def _sales_review_report_items(
+    project_dir: Path,
+    sensitive: list[SensitiveValue],
+    *,
+    all_artifacts: bool,
+) -> list[PrivacyAuditItem]:
+    from .sales_review import list_sales_review_reports
+
+    reports = list_sales_review_reports(project_dir)
+    if not reports:
+        return [PrivacyAuditItem("sales review report privacy", "info", "no sales review reports found")]
+    selected = reports if all_artifacts else reports[:1]
+    action = (
+        "`auto-note cleanup --project-dir . --privacy-failed` でプライバシー監査NGの整理候補を確認してください。"
+        if all_artifacts
+        else "`auto-note sales-review --project-dir . --report` で最終レビューレポートを作り直してください。"
+    )
+    return [
+        _file_privacy_item(
+            path,
+            sensitive,
+            name=f"sales review report privacy: {path.name}",
             action=action,
         )
         for path in selected

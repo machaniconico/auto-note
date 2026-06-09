@@ -104,6 +104,14 @@ def collect_generated_artifacts(
         )
         items.extend(
             _old_items(
+                list((output_dir / "sales").glob("sales-review-*.txt")),
+                cutoff,
+                reason="sales final review report",
+                keep_latest=keep_latest,
+            )
+        )
+        items.extend(
+            _old_items(
                 list((output_dir / "sales").glob("sales-finalize-*.txt")),
                 cutoff,
                 reason="sales finalize report",

@@ -1367,6 +1367,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales review command",
+            "sales-review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales review report command",
+            "sales review report created",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_plan.py",
             "sales plan buyer delivery package list",
             "list_buyer_delivery_packages",
@@ -1451,6 +1465,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review runner",
+            "run_sales_review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review report writer",
+            "write_sales_review_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review buyer send readiness",
+            "run_buyer_send_readiness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review listing copy limits",
+            "note official API limitation",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit sales review report",
+            "sales review report privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "maintenance.py",
             "cleanup sales plan report",
             "sales-plan-*.txt",
@@ -1458,9 +1507,23 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup sales review report",
+            "sales-review-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "diagnostics.py",
             "maintenance sales plan report summary",
             "sales_plan_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "maintenance sales review report summary",
+            "sales_review_reports",
         )
     )
     checks.append(
@@ -3545,6 +3608,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales review action",
+            "run_sales_review_to_tab",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales review report action",
+            "create_sales_review_report_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI RC handoff help action",
             "RC引き渡し",
         )
@@ -3799,6 +3876,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README sales plan report guidance",
             "sales-plan --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales review guidance",
+            "auto-note sales-review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales review report guidance",
+            "sales-review --project-dir . --report",
         )
     )
     checks.append(
@@ -4156,6 +4247,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness sales plan report guidance",
             "sales-plan --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales review command",
+            "sales-review",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales review report guidance",
+            "sales-review --project-dir . --report",
         )
     )
     checks.append(

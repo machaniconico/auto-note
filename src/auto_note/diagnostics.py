@@ -885,6 +885,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     from .sales_handoff import list_sales_handoffs, verify_sales_handoff
     from .sales_materials import list_sales_materials, verify_sales_materials
     from .sales_plan import list_sales_plan_reports
+    from .sales_review import list_sales_review_reports
     from .selftest import list_self_test_reports
     from .support import list_support_bundles, list_support_requests, verify_support_bundle
     from .improvement_plan import list_improvement_plan_reports
@@ -912,6 +913,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     sales_handoffs = list_sales_handoffs(project_dir)
     sales_materials = list_sales_materials(project_dir)
     sales_plan_reports = list_sales_plan_reports(project_dir)
+    sales_review_reports = list_sales_review_reports(project_dir)
     sales_finalize_reports = list_sales_finalize_reports(project_dir)
     seller_send_checklists = list_seller_send_checklists(project_dir)
     buyer_delivery_messages = list_buyer_delivery_messages(project_dir)
@@ -939,6 +941,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
         f"sales_handoffs: {len(sales_handoffs)}",
         f"sales_materials: {len(sales_materials)}",
         f"sales_plan_reports: {len(sales_plan_reports)}",
+        f"sales_review_reports: {len(sales_review_reports)}",
         f"sales_finalize_reports: {len(sales_finalize_reports)}",
         f"seller_send_checklists: {len(seller_send_checklists)}",
         f"buyer_delivery_messages: {len(buyer_delivery_messages)}",
@@ -1025,6 +1028,8 @@ def _build_maintenance_summary(project_dir: Path) -> str:
             lines.append(f"latest_sales_handoff_errors: {len(sales_errors)}")
     if sales_plan_reports:
         lines.append(f"latest_sales_plan_report: {sales_plan_reports[0].name}")
+    if sales_review_reports:
+        lines.append(f"latest_sales_review_report: {sales_review_reports[0].name}")
     if sales_finalize_reports:
         lines.append(f"latest_sales_finalize_report: {sales_finalize_reports[0].name}")
     if seller_send_checklists:

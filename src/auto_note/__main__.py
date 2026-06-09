@@ -682,6 +682,17 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"sales plan report created: {path}")
             return 1 if has_sales_plan_blockers(report, strict=args.strict) else 0
 
+        if args.command == "sales-review":
+            from .sales_review import format_sales_review, has_sales_review_blockers, run_sales_review, write_sales_review_report
+
+            report = run_sales_review(args.project_dir.resolve())
+            print(format_sales_review(report))
+            if args.report:
+                path = write_sales_review_report(args.project_dir.resolve(), report=report)
+                print()
+                print(f"sales review report created: {path}")
+            return 1 if has_sales_review_blockers(report, strict=args.strict) else 0
+
         if args.command == "self-test":
             from .selftest import format_self_test_report, has_self_test_blockers, run_self_test, write_self_test_report
 
@@ -1429,6 +1440,14 @@ def build_parser() -> argparse.ArgumentParser:
     sales_plan.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
     sales_plan.add_argument("--strict", action="store_true", help="Exit with an error while warnings remain.")
     sales_plan.add_argument("--report", action="store_true", help="Save the sales plan report under .auto-note/sales.")
+
+    sales_review = subparsers.add_parser(
+        "sales-review",
+        help="Review marketplace listing copy, buyer delivery message, and seller evidence before selling.",
+    )
+    sales_review.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
+    sales_review.add_argument("--strict", action="store_true", help="Exit with an error while warnings remain.")
+    sales_review.add_argument("--report", action="store_true", help="Save the sales final review under .auto-note/sales.")
 
     self_test = subparsers.add_parser("self-test", help="Run a user-facing local health check after install.")
     self_test.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
