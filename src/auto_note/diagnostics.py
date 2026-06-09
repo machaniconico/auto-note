@@ -34,6 +34,38 @@ class DiagnosticItem:
     detail: str
 
 
+REQUIRED_DIAGNOSTIC_REPORT_FILES = (
+    "diagnostics.txt",
+    "article-index.txt",
+    "article-review.txt",
+    "first-run.txt",
+    "acceptance.txt",
+    "self-test.txt",
+    "action-plan.txt",
+    "overview.txt",
+    "calendar.txt",
+    "quickstart.txt",
+    "publish-ready.txt",
+    "improvement-plan.txt",
+    "publish-queue.txt",
+    "gui-smoke.txt",
+    "preflight.txt",
+    "troubleshoot.txt",
+    "settings-summary.txt",
+    "readiness.txt",
+    "commercial-readiness.txt",
+    "commercial-setup-template.txt",
+    "sales-plan.txt",
+    "sales-materials.txt",
+    "sales-finalize.txt",
+    "seller-send-checklist.txt",
+    "sales-evidence-manifest.json",
+    "product-quality.txt",
+    "quality.txt",
+    "maintenance-summary.txt",
+)
+
+
 def run_diagnostics(project_dir: Path) -> list[DiagnosticItem]:
     items = [
         DiagnosticItem("auto-note version", True, __version__),
@@ -390,6 +422,72 @@ def list_diagnostic_reports(project_dir: Path) -> list[Path]:
     if not reports_dir.exists():
         return []
     return sorted(reports_dir.glob("*.zip"), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def verify_diagnostic_report(report_path: Path) -> list[str]:
+    if not report_path.exists():
+        return [f"diagnostic report not found: {report_path}"]
+    errors: list[str] = []
+    try:
+        with zipfile.ZipFile(report_path) as archive:
+            names = archive.namelist()
+            name_set = set(names)
+            errors.extend(_verify_diagnostic_archive_names(names))
+            bad_member = archive.testzip()
+            if bad_member:
+                errors.append(f"CRC check failed: {bad_member}")
+            for required in REQUIRED_DIAGNOSTIC_REPORT_FILES:
+                if required not in name_set:
+                    errors.append(f"missing required file: {required}")
+    except (OSError, zipfile.BadZipFile) as exc:
+        return [f"unreadable diagnostic report: {exc}"]
+    return errors
+
+
+def format_diagnostic_report_verification(report_path: Path, errors: list[str]) -> str:
+    details = _format_diagnostic_report_verification_details(report_path)
+    if not errors:
+        return "\n".join([f"[OK] diagnostic report verified: {report_path}", *details])
+    lines = [f"[NG] diagnostic report verification failed: {report_path}"]
+    lines.extend(f"- {error}" for error in errors)
+    lines.extend(details)
+    return "\n".join(lines)
+
+
+def _verify_diagnostic_archive_names(names: list[str]) -> list[str]:
+    errors: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        normalized = name.replace("\\", "/")
+        parts = [part for part in normalized.split("/") if part]
+        if not normalized or normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
+            errors.append(f"unsafe file name: {name}")
+        if any(part == ".." or ":" in part for part in parts):
+            errors.append(f"unsafe file name: {name}")
+        if normalized != name:
+            errors.append(f"non-normalized file name: {name}")
+        if name in seen:
+            errors.append(f"duplicate file name: {name}")
+        seen.add(name)
+    return errors
+
+
+def _format_diagnostic_report_verification_details(report_path: Path) -> list[str]:
+    try:
+        size = report_path.stat().st_size
+        with zipfile.ZipFile(report_path) as archive:
+            names = set(archive.namelist())
+    except (OSError, zipfile.BadZipFile):
+        return ["Details / 詳細: unavailable"]
+    required_present = sum(1 for name in REQUIRED_DIAGNOSTIC_REPORT_FILES if name in names)
+    return [
+        "Details / 詳細:",
+        f"- files: {len(names)}",
+        f"- required files: {required_present}/{len(REQUIRED_DIAGNOSTIC_REPORT_FILES)}",
+        f"- size: {size} bytes",
+        f"- GUI log: {'present' if '.auto-note/gui-error.log' in names else 'not included'}",
+        f"- pyproject.toml: {'present' if 'pyproject.toml' in names else 'not included'}",
+    ]
 
 
 def _check_import(module_name: str) -> DiagnosticItem:

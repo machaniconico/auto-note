@@ -1003,6 +1003,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic report verifier",
+            "verify_diagnostic_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic report verification formatter",
+            "format_diagnostic_report_verification",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
             "diagnostic buyer delivery message summary",
             "buyer_delivery_messages",
         )
@@ -1591,6 +1605,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP verify button",
+            "診断ZIP検証",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP verify action",
+            "verify_latest_diagnostic_report_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI diagnostic ZIP path button",
             "診断ZIPパス",
         )
@@ -1642,6 +1670,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README diagnostic ZIP path guidance",
             "診断ZIPパス",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README diagnostic ZIP verification guidance",
+            "診断ZIP検証",
         )
     )
     checks.append(
@@ -2447,6 +2482,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide diagnostic ZIP path guidance",
             "診断ZIPパス",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide diagnostic ZIP verification guidance",
+            "診断ZIP検証",
         )
     )
     checks.append(
