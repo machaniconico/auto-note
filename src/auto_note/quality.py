@@ -421,6 +421,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README home first-run setup guidance",
+            "初回セットアップのスコアと次項目",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README command palette result state guidance",
             "一致するコマンドがない時",
         )
@@ -1591,8 +1598,36 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home first-run setup lane",
+            "初回セットアップ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home first-run summary helper",
+            "_home_first_run_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home first-run opener",
+            "open_home_first_run_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke home progress count",
             "home_progress_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home first-run count",
+            "home_first_run_chars=",
         )
     )
     checks.append(

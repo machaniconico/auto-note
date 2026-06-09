@@ -289,6 +289,7 @@ def smoke_gui(project_dir: Path) -> str:
         home_progress_action_items = (
             len(app.home_progress_buttons) if hasattr(app, "home_progress_buttons") else 0
         )
+        home_first_run_chars = len(app.home_first_run_var.get()) if hasattr(app, "home_first_run_var") else 0
         home_gui_log_chars = len(app.home_gui_log_var.get()) if hasattr(app, "home_gui_log_var") else 0
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
@@ -302,6 +303,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
+            f"home_first_run_chars={home_first_run_chars}, "
             f"home_gui_log_chars={home_gui_log_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
@@ -602,6 +604,50 @@ class AutoNoteApp(tk.Tk):
             )
             button.pack(anchor=tk.W, pady=(5, 0))
             self.home_progress_buttons[key] = button
+
+        first_run_box = ttk.LabelFrame(self.home_tab, text="初回セットアップ", padding=10)
+        first_run_box.pack(fill=tk.X, pady=(0, 10))
+        first_run_text = ttk.Frame(first_run_box, style="Surface.TFrame")
+        first_run_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        first_run_row = ttk.Frame(first_run_text, style="Surface.TFrame")
+        first_run_row.pack(fill=tk.X)
+        self.home_first_run_status_pill = tk.Label(
+            first_run_row,
+            text="CHECK",
+            bg="#8a4f00",
+            fg="#ffffff",
+            font=("Segoe UI", 9, "bold"),
+            padx=10,
+            pady=4,
+            width=12,
+        )
+        self.home_first_run_status_pill.pack(side=tk.LEFT)
+        self.home_first_run_var = tk.StringVar(value="初回チェックを確認中です。")
+        ttk.Label(first_run_row, textvariable=self.home_first_run_var, style="Surface.TLabel").pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            expand=True,
+            padx=(10, 0),
+        )
+        self.home_first_run_next_var = tk.StringVar(value="")
+        ttk.Label(
+            first_run_text,
+            textvariable=self.home_first_run_next_var,
+            style="Muted.TLabel",
+            wraplength=820,
+        ).pack(anchor=tk.W, pady=(6, 0))
+        first_run_actions = ttk.Frame(first_run_box, style="Surface.TFrame")
+        first_run_actions.pack(side=tk.RIGHT, padx=(12, 0))
+        self._build_button_bar(
+            first_run_actions,
+            [
+                ("初回を開く", self.open_home_first_run_status, "Primary.TButton"),
+                ("再チェック", self.run_first_run_to_tab),
+                ("セットアップ", lambda: self.show_setup_wizard(force=True)),
+                ("スターター", self.create_starter_pack_action),
+            ],
+            columns=2,
+        )
 
         focus = ttk.Frame(self.home_tab, style="Surface.TFrame", padding=12)
         focus.pack(fill=tk.X, pady=(0, 10))
@@ -2081,6 +2127,7 @@ class AutoNoteApp(tk.Tk):
             return None
         report = run_first_run_checklist(self.project_dir)
         self._last_first_run_report = report
+        self._refresh_home_first_run_summary(report)
 
         verdict = _first_run_verdict(report.status)
         bg, fg = _first_run_status_colors(report.status)
@@ -3712,6 +3759,8 @@ class AutoNoteApp(tk.Tk):
             self.home_focus_var.set(self._format_home_focus(action_plan))
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
+        first_run_report = run_first_run_checklist(self.project_dir)
+        self._refresh_home_first_run_summary(first_run_report)
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
         self._refresh_home_gui_log_status()
         self._refresh_home_reports()
@@ -3824,6 +3873,20 @@ class AutoNoteApp(tk.Tk):
             self.run_action_plan_to_tab()
             return
         action()
+
+    def _refresh_home_first_run_summary(self, report: FirstRunReport) -> None:
+        if not hasattr(self, "home_first_run_var"):
+            return
+        verdict = _first_run_verdict(report.status)
+        bg, fg = _first_run_status_colors(report.status)
+        self.home_first_run_status_pill.configure(text=verdict, bg=bg, fg=fg)
+        summary, next_text = _home_first_run_summary(report)
+        self.home_first_run_var.set(summary)
+        self.home_first_run_next_var.set(next_text)
+
+    def open_home_first_run_status(self) -> None:
+        self.refresh_first_run_panel(select_tab=True)
+        self.notify("初回チェックの未完了項目を開きました", level="info")
 
     def _select_home_progress_tab(self, tab: ttk.Frame, message: str) -> None:
         self.notebook.select(tab)
@@ -6705,6 +6768,17 @@ def _first_run_summary(report: FirstRunReport) -> str:
     if report.status == "warn":
         return f"投稿は進められますが、販売前または本番投稿前にWARN {counts['WARN']}件を確認してください。"
     return "初回導線は整っています。記事レビュー、バックアップ、投稿ヘルパーの流れで進められます。"
+
+
+def _home_first_run_summary(report: FirstRunReport) -> tuple[str, str]:
+    counts = _first_run_counts(report)
+    summary = f"初回: {report.score}/100 / NG {counts['NG']} / WARN {counts['WARN']} / OK {counts['OK']}"
+    for status in ("fail", "warn", "info"):
+        for item in report.items:
+            if item.status == status:
+                action = item.action or item.gui or item.command or item.detail
+                return summary, f"次: {item.name} - {action}"
+    return summary, "次: 受入保存または販売ナビへ進めます。"
 
 
 def _article_selection_rank(article: Article) -> int:
