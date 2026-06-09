@@ -1941,6 +1941,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette display diagnostics action",
+            "表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI display reset helper",
             "reset_display_action",
         )
@@ -2207,6 +2214,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke display diagnostics command metrics",
+            "command_palette_display_diagnostics_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke display diagnostics metrics",
+            "display_diagnostics_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI Japanese font fallback",
             "UI_FONT_CANDIDATES",
         )
@@ -2465,6 +2486,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "README.md",
+            "README display diagnostics guidance",
+            "表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern diagnostics subtitle",
             "品質チェック、配布ZIP",
@@ -2487,6 +2515,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics action",
+            "show_display_diagnostics_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics report",
+            "Display diagnostics / 表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics support guidance",
+            "この表示診断、GUIログ表示、復旧セット",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log copy action",
             "copy_gui_log_action",
         )
@@ -2503,6 +2552,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI log display button",
             "GUIログ表示",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics button",
+            "表示診断",
         )
     )
     checks.append(

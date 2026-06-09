@@ -536,6 +536,10 @@ def smoke_gui(project_dir: Path) -> str:
         command_palette_display_reset_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "表示リセット"
         )
+        command_palette_display_diagnostics_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "表示診断"
+        )
+        display_diagnostics_chars = len(app._format_display_diagnostics())
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -565,6 +569,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"header_display_reset_chars={header_display_reset_chars}, "
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
             f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
+            f"command_palette_display_diagnostics_actions={command_palette_display_diagnostics_actions}, "
+            f"display_diagnostics_chars={display_diagnostics_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -2626,6 +2632,7 @@ class AutoNoteApp(tk.Tk):
                 ("配布ZIP作成", self.create_release_action),
                 ("最新ZIP検証", self.verify_latest_release_action),
                 ("生成物確認", self.preview_cleanup_action),
+                ("表示診断", self.show_display_diagnostics_action),
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
                 ("ログを開く", self.open_gui_log),
@@ -5741,6 +5748,7 @@ class AutoNoteApp(tk.Tk):
             ("表示サイズ: 標準", "表示密度を標準に戻す", lambda: self.set_ui_density_action("standard")),
             ("表示サイズ設定へ", "設定タブの表示サイズを開く", self.focus_ui_density_setting_action),
             ("表示リセット", "表示サイズとウィンドウを初期状態へ戻す", self.reset_display_action),
+            ("表示診断", "フォント、倍率、画面サイズ、表示スタイルを診断タブに表示", self.show_display_diagnostics_action),
             ("作業進行: 初回", "ホームの初回工程を開く", lambda: self.open_home_progress_stage("setup")),
             ("作業進行: 記事", "ホームの記事工程を開く", lambda: self.open_home_progress_stage("article")),
             ("作業進行: 仕上げ", "ホームの仕上げ工程を開く", lambda: self.open_home_progress_stage("review")),
@@ -6238,6 +6246,60 @@ class AutoNoteApp(tk.Tk):
         else:
             text += "(none)"
         self._set_text(self.diagnostics_text, text)
+
+    def show_display_diagnostics_action(self) -> None:
+        self._set_text(self.diagnostics_text, self._format_display_diagnostics())
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("表示診断を表示しました", level="success")
+
+    def _format_display_diagnostics(self) -> str:
+        def _safe(callback) -> str:
+            try:
+                return str(callback())
+            except tk.TclError as exc:
+                return f"unavailable ({exc})"
+
+        style = ttk.Style(self)
+        density = _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+        scaling = _safe(lambda: self.tk.call("tk", "scaling"))
+        fpixels = _safe(lambda: round(float(self.winfo_fpixels("1i")), 2))
+        tree_height = _safe(lambda: style.lookup("Treeview", "rowheight"))
+        tab_padding = _safe(lambda: style.lookup("TNotebook.Tab", "padding"))
+        button_padding = _safe(lambda: style.lookup("TButton", "padding"))
+        lines = [
+            "Display diagnostics / 表示診断",
+            "",
+            f"generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"project: {self.project_dir}",
+            "",
+            "Current display settings",
+            f"- display density: {density} / {_ui_density_label(density)}",
+            f"- UI font: {UI_FONT}",
+            f"- code font: {CODE_FONT}",
+            f"- text size: {UI_TEXT_SIZE}",
+            f"- small text size: {UI_SMALL_TEXT_SIZE}",
+            f"- badge font size: {UI_BADGE_FONT_SIZE}",
+            f"- text spacing: top {UI_TEXT_SPACING_TOP}, bottom {UI_TEXT_SPACING_BOTTOM}",
+            "",
+            "Window and screen",
+            f"- window geometry: {self.geometry()}",
+            f"- minimum size: {self.minsize()}",
+            f"- screen: {self.winfo_screenwidth()}x{self.winfo_screenheight()}",
+            f"- tk scaling: {scaling}",
+            f"- pixels per inch: {fpixels}",
+            f"- Windows DPI awareness requested: {_DPI_AWARENESS_ENABLED}",
+            "",
+            "Style metrics",
+            f"- Treeview rowheight: {tree_height}",
+            f"- Notebook tab padding: {tab_padding}",
+            f"- Button padding: {button_padding}",
+            "",
+            "Recommended actions",
+            "- 文字が潰れる時: ヘッダーの 表示 で 大きめ を選ぶ",
+            "- 画面位置やサイズが扱いにくい時: 表示リセット を実行する",
+            "- サポートへ送る時: この表示診断、GUIログ表示、復旧セットの結果を確認する",
+        ]
+        return "\n".join(lines)
 
     def run_overview_to_tab(self) -> None:
         try:

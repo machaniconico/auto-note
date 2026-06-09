@@ -3093,11 +3093,14 @@ tags:
                 + "表示サイズ: ゆったり\n"
                 + "表示サイズ設定へ\n"
                 + "表示リセット\n"
+                + "表示診断\n"
                 + "set_ui_density_action\n"
                 + "focus_ui_density_setting_action\n"
                 + "reset_display_action\n"
                 + "command_palette_ui_density_actions=\n"
                 + "command_palette_display_reset_actions=\n"
+                + "command_palette_display_diagnostics_actions=\n"
+                + "display_diagnostics_chars=\n"
                 + "Chrome.TCombobox\n"
                 + "_resolve_font_family\n"
                 + "_enable_windows_dpi_awareness\n"
@@ -3120,6 +3123,9 @@ tags:
                 + "home_support_next_button_var\n"
                 + "_home_support_next_button_label\n"
                 + "home_button_var.set(_home_support_next_button_label(text))\n"
+                + "show_display_diagnostics_action\n"
+                + "Display diagnostics / 表示診断\n"
+                + "この表示診断、GUIログ表示、復旧セット\n"
                 + "show_gui_log_action\n"
                 + "copy_gui_log_action\n"
                 + "GUIログ表示\n"
@@ -3318,7 +3324,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\n表示診断\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3562,6 +3568,7 @@ tags:
         self.assertIn("GUI command palette UI density quick apply:fail", product_details)
         self.assertIn("GUI command palette UI density settings focus:fail", product_details)
         self.assertIn("GUI command palette display reset action:fail", product_details)
+        self.assertIn("GUI command palette display diagnostics action:fail", product_details)
         self.assertIn("GUI display reset helper:fail", product_details)
         self.assertIn("GUI command palette empty state:fail", product_details)
         self.assertIn("GUI command palette match count helper:fail", product_details)
@@ -3600,6 +3607,8 @@ tags:
         self.assertIn("GUI smoke header display reset metrics:fail", product_details)
         self.assertIn("GUI smoke UI density command metrics:fail", product_details)
         self.assertIn("GUI smoke display reset command metrics:fail", product_details)
+        self.assertIn("GUI smoke display diagnostics command metrics:fail", product_details)
+        self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
         self.assertIn("GUI resolved font family:fail", product_details)
         self.assertIn("GUI named font readability defaults:fail", product_details)
@@ -3618,12 +3627,17 @@ tags:
         self.assertIn("README UI density command guidance:fail", product_details)
         self.assertIn("README UI density header guidance:fail", product_details)
         self.assertIn("README display reset guidance:fail", product_details)
+        self.assertIn("README display diagnostics guidance:fail", product_details)
         self.assertIn("GUI modern diagnostics subtitle:fail", product_details)
         self.assertIn("GUI modern help subtitle:fail", product_details)
         self.assertIn("GUI log display action:fail", product_details)
+        self.assertIn("GUI display diagnostics action:fail", product_details)
+        self.assertIn("GUI display diagnostics report:fail", product_details)
+        self.assertIn("GUI display diagnostics support guidance:fail", product_details)
         self.assertIn("GUI log copy action:fail", product_details)
         self.assertIn("GUI log folder action:fail", product_details)
         self.assertIn("GUI log display button:fail", product_details)
+        self.assertIn("GUI display diagnostics button:fail", product_details)
         self.assertIn("GUI log copy button:fail", product_details)
         self.assertIn("GUI log folder button:fail", product_details)
         self.assertIn("GUI diagnostic ZIP folder button:fail", product_details)
@@ -4051,6 +4065,7 @@ tags:
         self.assertIn("GUI command palette UI density quick apply:pass", launcher_details)
         self.assertIn("GUI command palette UI density settings focus:pass", launcher_details)
         self.assertIn("GUI command palette display reset action:pass", launcher_details)
+        self.assertIn("GUI command palette display diagnostics action:pass", launcher_details)
         self.assertIn("GUI display reset helper:pass", launcher_details)
         self.assertIn("GUI command palette empty state:pass", launcher_details)
         self.assertIn("GUI command palette match count helper:pass", launcher_details)
@@ -4089,6 +4104,8 @@ tags:
         self.assertIn("GUI smoke header display reset metrics:pass", launcher_details)
         self.assertIn("GUI smoke UI density command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display reset command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke display diagnostics command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
         self.assertIn("GUI resolved font family:pass", launcher_details)
         self.assertIn("GUI named font readability defaults:pass", launcher_details)
@@ -4107,12 +4124,17 @@ tags:
         self.assertIn("README UI density command guidance:pass", launcher_details)
         self.assertIn("README UI density header guidance:pass", launcher_details)
         self.assertIn("README display reset guidance:pass", launcher_details)
+        self.assertIn("README display diagnostics guidance:pass", launcher_details)
         self.assertIn("GUI modern diagnostics subtitle:pass", launcher_details)
         self.assertIn("GUI modern help subtitle:pass", launcher_details)
         self.assertIn("GUI log display action:pass", launcher_details)
+        self.assertIn("GUI display diagnostics action:pass", launcher_details)
+        self.assertIn("GUI display diagnostics report:pass", launcher_details)
+        self.assertIn("GUI display diagnostics support guidance:pass", launcher_details)
         self.assertIn("GUI log copy action:pass", launcher_details)
         self.assertIn("GUI log folder action:pass", launcher_details)
         self.assertIn("GUI log display button:pass", launcher_details)
+        self.assertIn("GUI display diagnostics button:pass", launcher_details)
         self.assertIn("GUI log copy button:pass", launcher_details)
         self.assertIn("GUI log folder button:pass", launcher_details)
         self.assertIn("GUI diagnostic ZIP folder button:pass", launcher_details)
