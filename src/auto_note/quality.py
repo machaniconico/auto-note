@@ -1878,6 +1878,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recovery status lane",
+            "復旧ステータス",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recovery log status helper",
+            "_home_gui_log_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recovery log status refresh",
+            "_refresh_home_gui_log_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recovery status smoke",
+            "home_gui_log_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log clipboard",
             "self.clipboard_append(text)",
         )
@@ -1901,6 +1929,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README runtime error command palette guidance",
             "`Ctrl+K` のコマンド検索",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home recovery status guidance",
+            "ホームの `復旧ステータス`",
         )
     )
     checks.append(

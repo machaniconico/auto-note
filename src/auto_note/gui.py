@@ -235,6 +235,18 @@ def _gui_runtime_error_message(path: Path) -> str:
     )
 
 
+def _home_gui_log_status(path: Path) -> tuple[str, str]:
+    if not path.exists():
+        return "ok", "GUIログ: 直近エラーはありません。"
+    try:
+        size = path.stat().st_size
+    except OSError as exc:
+        return "fail", f"GUIログ: 確認不可 / {exc}"
+    if size <= 0:
+        return "ok", "GUIログ: 空です。直近エラーはありません。"
+    return "warn", f"GUIログ: 要確認 / {_format_mtime(path)} / {_format_file_size(path)}"
+
+
 def launch_gui(project_dir: Path) -> int:
     project_dir = _clean_path(project_dir)
     app = AutoNoteApp(project_dir)
@@ -277,6 +289,7 @@ def smoke_gui(project_dir: Path) -> str:
         home_progress_action_items = (
             len(app.home_progress_buttons) if hasattr(app, "home_progress_buttons") else 0
         )
+        home_gui_log_chars = len(app.home_gui_log_var.get()) if hasattr(app, "home_gui_log_var") else 0
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -289,6 +302,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
+            f"home_gui_log_chars={home_gui_log_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -604,6 +618,49 @@ class AutoNoteApp(tk.Tk):
             padx=(8, 0),
         )
         ttk.Button(focus, text="詳細", command=self.run_action_plan_to_tab).pack(side=tk.RIGHT)
+
+        recovery_box = ttk.LabelFrame(self.home_tab, text="復旧ステータス", padding=10)
+        recovery_box.pack(fill=tk.X, pady=(0, 10))
+        recovery_text = ttk.Frame(recovery_box, style="Surface.TFrame")
+        recovery_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        recovery_row = ttk.Frame(recovery_text, style="Surface.TFrame")
+        recovery_row.pack(fill=tk.X)
+        self.home_gui_log_status_pill = tk.Label(
+            recovery_row,
+            text="OK",
+            bg="#047857",
+            fg="#ffffff",
+            font=("Segoe UI", 9, "bold"),
+            padx=10,
+            pady=4,
+            width=12,
+        )
+        self.home_gui_log_status_pill.pack(side=tk.LEFT)
+        self.home_gui_log_var = tk.StringVar(value="GUIログを確認中です。")
+        ttk.Label(recovery_row, textvariable=self.home_gui_log_var, style="Surface.TLabel").pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            expand=True,
+            padx=(10, 0),
+        )
+        ttk.Label(
+            recovery_text,
+            text="ログがある時は、内容確認、復旧セット、問い合わせ一式までここから進めます。",
+            style="Muted.TLabel",
+            wraplength=820,
+        ).pack(anchor=tk.W, pady=(6, 0))
+        recovery_actions = ttk.Frame(recovery_box, style="Surface.TFrame")
+        recovery_actions.pack(side=tk.RIGHT, padx=(12, 0))
+        self._build_button_bar(
+            recovery_actions,
+            [
+                ("GUIログ表示", self.show_gui_log_action, "Primary.TButton"),
+                ("復旧セット", self.run_recovery_kit_to_tab),
+                ("問い合わせ一式", self.create_support_bundle_action),
+                ("場所", self.open_gui_log_folder_action),
+            ],
+            columns=2,
+        )
 
         sales_box = ttk.LabelFrame(self.home_tab, text="販売準備", padding=10)
         sales_box.pack(fill=tk.X, pady=(0, 10))
@@ -3656,6 +3713,7 @@ class AutoNoteApp(tk.Tk):
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
+        self._refresh_home_gui_log_status()
         self._refresh_home_reports()
 
         lines = [
@@ -3806,6 +3864,14 @@ class AutoNoteApp(tk.Tk):
         self.home_reports_var.set(
             f"最新: {first_label} / {first_status} / {_format_mtime(first_path)} / {first_path.name}"
         )
+
+    def _refresh_home_gui_log_status(self) -> None:
+        if not hasattr(self, "home_gui_log_var"):
+            return
+        state, text = _home_gui_log_status(gui_error_log_path(self.project_dir))
+        pill_text, bg, fg = _home_sales_indicator_style(state)
+        self.home_gui_log_status_pill.configure(text=pill_text, bg=bg, fg=fg)
+        self.home_gui_log_var.set(text)
 
     def _latest_home_report_items(self) -> list[tuple[str, Path]]:
         groups = [
@@ -6414,6 +6480,7 @@ class AutoNoteApp(tk.Tk):
             path = gui_error_log_path(self.project_dir)
         if hasattr(self, "notification"):
             self.notify("GUI操作中にエラーが発生しました。GUIログ表示または復旧セットを確認してください。", level="error")
+        self._refresh_home_gui_log_status()
         try:
             messagebox.showerror("GUIエラー", _gui_runtime_error_message(path))
         except tk.TclError:
