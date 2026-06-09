@@ -1520,6 +1520,8 @@ class AutoNoteApp(tk.Tk):
                 ("配布ZIP作成", self.create_release_action),
                 ("最新ZIP検証", self.verify_latest_release_action),
                 ("生成物確認", self.preview_cleanup_action),
+                ("GUIログ表示", self.show_gui_log_action),
+                ("GUIログコピー", self.copy_gui_log_action),
                 ("ログを開く", self.open_gui_log),
                 ("保守フォルダ", self.open_maintenance_folder),
             ],
@@ -1758,6 +1760,8 @@ class AutoNoteApp(tk.Tk):
                 ("最新ZIP検証", self.verify_latest_release_action),
                 ("生成物整理", self.apply_cleanup_action),
                 ("危険生成物整理", self.apply_privacy_failed_cleanup_action),
+                ("GUIログ表示", self.show_gui_log_action),
+                ("GUIログコピー", self.copy_gui_log_action),
                 ("保守フォルダ", self.open_maintenance_folder),
             ],
             columns=5,
@@ -4049,6 +4053,8 @@ class AutoNoteApp(tk.Tk):
             ("出荷ZIP作成", "総合チェック後に配布ZIPを作成/検証", self.run_preflight_create_release_to_tab),
             ("RC引き渡し", "販売候補版の固定点、実機確認、停止条件を開く", self.open_rc_handoff),
             ("アプリ情報", "バージョンと環境概要を表示", self.show_app_info),
+            ("GUIログ表示", "最新GUIログを診断タブに表示", self.show_gui_log_action),
+            ("GUIログコピー", "最新GUIログをクリップボードへコピー", self.copy_gui_log_action),
             ("ライセンス表示", "依存ライブラリの第三者表記を表示", self.show_dependency_notices),
             ("第三者表記更新", "依存ライブラリ表記をMarkdownへ書き出す", self.write_dependency_notices_action),
             ("問い合わせ作成", "サポート依頼テンプレートを作成", self.create_support_request_action),
@@ -5609,6 +5615,56 @@ class AutoNoteApp(tk.Tk):
             messagebox.showinfo("ログ", "まだGUIログはありません。")
             return
         _open_path(path)
+
+    def show_gui_log_action(self) -> None:
+        text, has_log = self._format_gui_log_preview()
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        if has_log:
+            self.notify("GUIログを表示しました", level="success")
+        else:
+            self.notify("GUIログはまだありません", level="info")
+
+    def copy_gui_log_action(self) -> None:
+        text, has_log = self._format_gui_log_preview()
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        if not has_log:
+            self.notify("コピーできるGUIログはまだありません", level="warning")
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("GUIログをコピーできませんでした", level="error")
+            messagebox.showerror("GUIログコピー", str(exc))
+            return
+        self.notify("GUIログをコピーしました", level="success")
+
+    def _format_gui_log_preview(self) -> tuple[str, bool]:
+        path = gui_error_log_path(self.project_dir)
+        lines = [
+            "GUI log / GUIログ",
+            "",
+            f"path: {path}",
+            "note: サポートへ送る前に内容を確認してください。",
+        ]
+        if not path.exists():
+            lines.extend(["", "[INFO] GUIログはまだありません。"])
+            return "\n".join(lines), False
+        try:
+            size = path.stat().st_size
+            content = path.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError as exc:
+            lines.extend(["", f"[NG] GUIログを読めません: {exc}"])
+            return "\n".join(lines), False
+        max_chars = 20000
+        if len(content) > max_chars:
+            content = content[-max_chars:]
+            lines.extend(["", f"[INFO] ログが長いため末尾 {max_chars} 文字だけ表示しています。"])
+        lines.extend(["", f"size: {size} bytes", "", "content:", content or "(empty)"])
+        return "\n".join(lines), True
 
     def open_maintenance_folder(self) -> None:
         path = self.project_dir / ".auto-note"

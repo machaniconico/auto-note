@@ -2553,6 +2553,12 @@ tags:
                 + "home_support_next_button_var\n"
                 + "_home_support_next_button_label\n"
                 + "home_button_var.set(_home_support_next_button_label(text))\n"
+                + "show_gui_log_action\n"
+                + "copy_gui_log_action\n"
+                + "GUIログ表示\n"
+                + "GUIログコピー\n"
+                + "GUI log / GUIログ\n"
+                + "self.clipboard_append(text)\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
                 + '"送付文コピー": "サポート: 送付文"\n'
@@ -2569,7 +2575,7 @@ tags:
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -2739,6 +2745,12 @@ tags:
         self.assertIn("GUI modern settings subtitle:fail", product_details)
         self.assertIn("GUI modern diagnostics subtitle:fail", product_details)
         self.assertIn("GUI modern help subtitle:fail", product_details)
+        self.assertIn("GUI log display action:fail", product_details)
+        self.assertIn("GUI log copy action:fail", product_details)
+        self.assertIn("GUI log display button:fail", product_details)
+        self.assertIn("GUI log copy button:fail", product_details)
+        self.assertIn("GUI log preview content:fail", product_details)
+        self.assertIn("GUI log clipboard:fail", product_details)
         self.assertIn("GUI support send checklist action:fail", product_details)
         self.assertIn("GUI support send next action runner:fail", product_details)
         self.assertIn("GUI support send next action palette:fail", product_details)
@@ -2833,6 +2845,8 @@ tags:
         self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
         self.assertIn("support guide send checklist guidance:fail", product_details)
+        self.assertIn("support guide GUI log display guidance:fail", product_details)
+        self.assertIn("support guide GUI log copy guidance:fail", product_details)
         self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
@@ -2999,6 +3013,12 @@ tags:
         self.assertIn("GUI modern settings subtitle:pass", launcher_details)
         self.assertIn("GUI modern diagnostics subtitle:pass", launcher_details)
         self.assertIn("GUI modern help subtitle:pass", launcher_details)
+        self.assertIn("GUI log display action:pass", launcher_details)
+        self.assertIn("GUI log copy action:pass", launcher_details)
+        self.assertIn("GUI log display button:pass", launcher_details)
+        self.assertIn("GUI log copy button:pass", launcher_details)
+        self.assertIn("GUI log preview content:pass", launcher_details)
+        self.assertIn("GUI log clipboard:pass", launcher_details)
         self.assertIn("GUI support send checklist action:pass", launcher_details)
         self.assertIn("GUI support send next action runner:pass", launcher_details)
         self.assertIn("GUI support send next action palette:pass", launcher_details)
@@ -3093,6 +3113,8 @@ tags:
         self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
         self.assertIn("support guide send checklist guidance:pass", launcher_details)
+        self.assertIn("support guide GUI log display guidance:pass", launcher_details)
+        self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
         self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)

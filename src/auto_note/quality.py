@@ -1262,6 +1262,48 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log display action",
+            "show_gui_log_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log copy action",
+            "copy_gui_log_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log display button",
+            "GUIログ表示",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log copy button",
+            "GUIログコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log preview content",
+            "GUI log / GUIログ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log clipboard",
+            "self.clipboard_append(text)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send checklist action",
             "送付前リスト",
         )
@@ -1992,6 +2034,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide GUI log display guidance",
+            "GUIログ表示",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide GUI log copy guidance",
+            "GUIログコピー",
         )
     )
     checks.append(
