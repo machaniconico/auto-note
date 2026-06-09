@@ -2171,6 +2171,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI review detail action rail",
+            "review_detail_buttons",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI review detail editor action",
+            "open_selected_review_article_editor",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI review detail selected item helper",
+            "_selected_review_detail_item",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI article editor tab selector",
+            "_select_article_editor_tab",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke review detail actions",
+            "review_detail_action_items=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "README.md",
             "README article focus inspector guidance",
             "選択記事フォーカス",

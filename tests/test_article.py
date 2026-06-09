@@ -3189,7 +3189,12 @@ tags:
                 + "article_focus_next_var\n"
                 + "run_article_focus_next_action\n"
                 + "_article_focus_summary\n"
-                + "article_focus_chars=\n",
+                + "article_focus_chars=\n"
+                + "review_detail_buttons\n"
+                + "open_selected_review_article_editor\n"
+                + "_selected_review_detail_item\n"
+                + "_select_article_editor_tab\n"
+                + "review_detail_action_items=\n",
                 encoding="utf-8",
             )
             gui_fixture.write_text(
@@ -3489,6 +3494,11 @@ tags:
         self.assertIn("GUI modern article focus next action:fail", product_details)
         self.assertIn("GUI modern article focus helper:fail", product_details)
         self.assertIn("GUI smoke article focus:fail", product_details)
+        self.assertIn("GUI review detail action rail:fail", product_details)
+        self.assertIn("GUI review detail editor action:fail", product_details)
+        self.assertIn("GUI review detail selected item helper:fail", product_details)
+        self.assertIn("GUI article editor tab selector:fail", product_details)
+        self.assertIn("GUI smoke review detail actions:fail", product_details)
         self.assertIn("README article focus inspector guidance:fail", product_details)
         self.assertIn("GUI home first-run setup lane:fail", product_details)
         self.assertIn("GUI home first-run summary helper:fail", product_details)
@@ -3939,6 +3949,11 @@ tags:
         self.assertIn("GUI modern article focus next action:pass", launcher_details)
         self.assertIn("GUI modern article focus helper:pass", launcher_details)
         self.assertIn("GUI smoke article focus:pass", launcher_details)
+        self.assertIn("GUI review detail action rail:pass", launcher_details)
+        self.assertIn("GUI review detail editor action:pass", launcher_details)
+        self.assertIn("GUI review detail selected item helper:pass", launcher_details)
+        self.assertIn("GUI article editor tab selector:pass", launcher_details)
+        self.assertIn("GUI smoke review detail actions:pass", launcher_details)
         self.assertIn("README article focus inspector guidance:pass", launcher_details)
         self.assertIn("GUI home first-run setup lane:pass", launcher_details)
         self.assertIn("GUI home first-run summary helper:pass", launcher_details)

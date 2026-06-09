@@ -350,6 +350,7 @@ def smoke_gui(project_dir: Path) -> str:
         first_run_items = len(app.first_run_tree.get_children()) if hasattr(app, "first_run_tree") else 0
         home_action_items = len(app.home_action_tree.get_children()) if hasattr(app, "home_action_tree") else 0
         review_items = len(app.review_tree.get_children()) if hasattr(app, "review_tree") else 0
+        review_detail_action_items = len(app.review_detail_buttons) if hasattr(app, "review_detail_buttons") else 0
         publish_ready_items = (
             len(app.publish_ready_tree.get_children()) if hasattr(app, "publish_ready_tree") else 0
         )
@@ -412,6 +413,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
             f"first_run_items={first_run_items}, home_action_items={home_action_items}, "
             f"review_items={review_items}, "
+            f"review_detail_action_items={review_detail_action_items}, "
             f"publish_ready_items={publish_ready_items}, "
             f"article_focus_chars={article_focus_chars}, "
             f"commercial_setup_items={commercial_setup_items}, "
@@ -1618,11 +1620,14 @@ class AutoNoteApp(tk.Tk):
         self._build_workflow_actions(detail_panel)
         self._build_publish_ready_panel(detail_panel)
 
-        content_tabs = ttk.Notebook(detail_panel)
+        self.article_content_tabs = ttk.Notebook(detail_panel)
+        content_tabs = self.article_content_tabs
         content_tabs.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
 
-        preview_tab = ttk.Frame(content_tabs, style="Surface.TFrame", padding=6)
-        editor_tab = ttk.Frame(content_tabs, style="Surface.TFrame", padding=6)
+        self.article_preview_tab = ttk.Frame(content_tabs, style="Surface.TFrame", padding=6)
+        self.article_editor_tab = ttk.Frame(content_tabs, style="Surface.TFrame", padding=6)
+        preview_tab = self.article_preview_tab
+        editor_tab = self.article_editor_tab
         content_tabs.add(preview_tab, text="プレビュー")
         content_tabs.add(editor_tab, text="編集")
 
@@ -1913,7 +1918,9 @@ class AutoNoteApp(tk.Tk):
             side=tk.RIGHT,
             padx=6,
         )
-        ttk.Button(summary, text="記事を編集", command=self.open_selected_review_article).pack(side=tk.RIGHT, padx=6)
+        ttk.Button(summary, text="記事を編集", command=self.open_selected_review_article_editor).pack(
+            side=tk.RIGHT, padx=6
+        )
         ttk.Button(summary, text="準備OKにする", command=self.mark_selected_review_ready).pack(side=tk.RIGHT, padx=6)
 
         pane = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
@@ -1974,6 +1981,20 @@ class AutoNoteApp(tk.Tk):
             fill=tk.X,
             pady=(8, 0),
         )
+        detail_actions = ttk.Frame(detail_panel, style="Surface.TFrame")
+        detail_actions.pack(fill=tk.X, pady=(8, 0))
+        self.review_detail_buttons = [
+            ttk.Button(
+                detail_actions,
+                text="本文を編集",
+                style="Primary.TButton",
+                command=self.open_selected_review_article_editor,
+            ),
+            ttk.Button(detail_actions, text="改善プラン", command=self.improvement_plan_selected_review_to_tab),
+            ttk.Button(detail_actions, text="投稿準備", command=self.publish_ready_selected_review_to_tab),
+        ]
+        for index, button in enumerate(self.review_detail_buttons):
+            button.pack(side=tk.LEFT, padx=(0 if index == 0 else 6, 0))
 
     def _build_settings_tab(self) -> None:
         top = ttk.Frame(self.settings_tab)
@@ -2884,22 +2905,12 @@ class AutoNoteApp(tk.Tk):
             self.on_select_review_detail()
 
     def on_select_review_detail(self) -> None:
-        review = self._selected_review()
-        if review is None:
-            self.review_action_var.set("")
-            return
-        selection = self.review_detail_tree.selection()
-        if not selection:
-            self.review_action_var.set("")
-            return
-        try:
-            index = int(selection[0])
-        except ValueError:
-            self.review_action_var.set("")
-            return
-        if 0 <= index < len(review.items):
-            action = review.items[index].action or "この項目は問題ありません。"
+        item = self._selected_review_detail_item()
+        if item is not None:
+            action = item.action or "この項目は問題ありません。"
             self.review_action_var.set(f"次の操作: {action}")
+            return
+        self.review_action_var.set("")
 
     def _selected_review(self) -> ArticleReview | None:
         if not hasattr(self, "review_tree"):
@@ -2913,12 +2924,39 @@ class AutoNoteApp(tk.Tk):
                 return review
         return None
 
+    def _selected_review_detail_item(self):
+        review = self._selected_review()
+        if review is None or not hasattr(self, "review_detail_tree"):
+            return None
+        selection = self.review_detail_tree.selection()
+        if not selection:
+            return None
+        try:
+            index = int(selection[0])
+        except ValueError:
+            return None
+        if 0 <= index < len(review.items):
+            return review.items[index]
+        return None
+
     def open_selected_review_article(self) -> None:
+        self.open_selected_review_article_editor()
+
+    def open_selected_review_article_editor(self) -> None:
         review = self._selected_review()
         if review is None:
             self.notify("レビュー対象の記事を選択してください", level="warning")
             return
-        self.select_article_path(review.article.source, select_tab=True)
+        if self.select_article_path(review.article.source, select_tab=True) is None:
+            return
+        self._select_article_editor_tab()
+        item = self._selected_review_detail_item()
+        if item is not None and item.level != "ok":
+            detail = _article_focus_brief(item.action or item.message, 70)
+            level = "warning" if item.level == "fix" else "info"
+            self.notify(f"{item.category}: {detail}", level=level)
+            return
+        self.notify("本文編集へ移動しました", level="success" if review.ready else "info")
 
     def review_selected_from_review_panel(self) -> None:
         review = self._selected_review()
@@ -3006,6 +3044,12 @@ class AutoNoteApp(tk.Tk):
         if select_tab:
             self.notebook.select(self.article_tab)
         return article
+
+    def _select_article_editor_tab(self) -> None:
+        if hasattr(self, "article_content_tabs") and hasattr(self, "article_editor_tab"):
+            self.article_content_tabs.select(self.article_editor_tab)
+        if hasattr(self, "editor"):
+            self.editor.focus_set()
 
     def _configure_publish_ready_tree_tags(self) -> None:
         self.publish_ready_tree.tag_configure("pass", background="#dff3ed", foreground="#105f54")
