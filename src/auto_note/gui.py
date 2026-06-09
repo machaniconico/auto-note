@@ -1545,6 +1545,7 @@ class AutoNoteApp(tk.Tk):
         ).pack(side=tk.LEFT, padx=(12, 0))
 
         self.support_contact_summary_var = tk.StringVar(value="未設定")
+        self.support_send_readiness_var = tk.StringVar(value="未準備")
         self.support_bundle_summary_var = tk.StringVar(value="未作成")
         self.support_bundle_status_var = tk.StringVar(value="未検証")
         self.support_bundle_freshness_var = tk.StringVar(value="-")
@@ -1556,6 +1557,7 @@ class AutoNoteApp(tk.Tk):
         support_summary.pack(fill=tk.X, pady=(0, 8))
         for column, (label, variable) in enumerate(
             (
+                ("送付準備", self.support_send_readiness_var),
                 ("連絡先", self.support_contact_summary_var),
                 ("最新ZIP", self.support_bundle_summary_var),
                 ("検証", self.support_bundle_status_var),
@@ -1566,7 +1568,33 @@ class AutoNoteApp(tk.Tk):
             cell = ttk.Frame(support_summary, style="Surface.TFrame")
             cell.grid(row=0, column=column, sticky=tk.NSEW, padx=(0 if column == 0 else 8, 0))
             ttk.Label(cell, text=label, style="KpiLabel.TLabel").pack(anchor=tk.W)
-            if label == "連絡先":
+            if label == "送付準備":
+                status_row = ttk.Frame(cell, style="Surface.TFrame")
+                status_row.pack(fill=tk.X, pady=(3, 0))
+                pill_text, bg, fg = _support_send_readiness_indicator_style(variable.get())
+                self.support_send_readiness_status_pill = tk.Label(
+                    status_row,
+                    text=pill_text,
+                    bg=bg,
+                    fg=fg,
+                    font=("Segoe UI", 8, "bold"),
+                    padx=6,
+                    pady=1,
+                    width=8,
+                )
+                self.support_send_readiness_status_pill.pack(side=tk.LEFT)
+                ttk.Label(
+                    status_row,
+                    textvariable=variable,
+                    style="Surface.TLabel",
+                    wraplength=150,
+                ).pack(
+                    side=tk.LEFT,
+                    fill=tk.X,
+                    expand=True,
+                    padx=(6, 0),
+                )
+            elif label == "連絡先":
                 status_row = ttk.Frame(cell, style="Surface.TFrame")
                 status_row.pack(fill=tk.X, pady=(3, 0))
                 pill_text, bg, fg = _support_contact_indicator_style(variable.get())
@@ -3483,6 +3511,14 @@ class AutoNoteApp(tk.Tk):
         pill_text, bg, fg = _support_contact_indicator_style(contact)
         pill.configure(text=pill_text, bg=bg, fg=fg)
 
+    def _set_support_send_readiness(self, text: str) -> None:
+        self.support_send_readiness_var.set(text)
+        pill = getattr(self, "support_send_readiness_status_pill", None)
+        if pill is None:
+            return
+        pill_text, bg, fg = _support_send_readiness_indicator_style(text)
+        pill.configure(text=pill_text, bg=bg, fg=fg)
+
     def _set_support_next_action(self, text: str) -> None:
         self.support_next_action_var.set(text)
         button_var = getattr(self, "support_next_button_var", None)
@@ -3648,6 +3684,7 @@ class AutoNoteApp(tk.Tk):
             self.support_bundle_summary_var.set("未作成")
             self._set_support_bundle_status("未検証")
             self.support_bundle_freshness_var.set("-")
+            self._set_support_send_readiness("未準備")
             self._set_support_next_action("問い合わせ一式を作成")
             return
         latest = bundles[0]
@@ -3665,18 +3702,23 @@ class AutoNoteApp(tk.Tk):
             self.support_bundle_freshness_var.set("確認不可")
         if errors:
             self._set_support_bundle_status(f"NG {len(errors)}件")
+            self._set_support_send_readiness("要確認")
             self._set_support_next_action("一式ZIP検証で詳細確認")
         elif freshness_unknown:
             self._set_support_bundle_status("確認不可")
+            self._set_support_send_readiness("要確認")
             self._set_support_next_action("一式ZIP検証で詳細確認")
         elif stale:
             self._set_support_bundle_status("要更新")
+            self._set_support_send_readiness("要更新")
             self._set_support_next_action("問い合わせ一式を再作成")
         else:
             self._set_support_bundle_status("OK")
             if contact:
+                self._set_support_send_readiness("準備OK")
                 self._set_support_next_action("送付前リストを確認")
             else:
+                self._set_support_send_readiness("連絡先未設定")
                 self._set_support_next_action("サポート連絡先を設定")
 
     def open_readme(self) -> None:
@@ -5636,6 +5678,14 @@ def _support_contact_indicator_style(contact: str) -> tuple[str, str, str]:
     if contact.strip() and contact.strip() != "未設定":
         return ("OK", "#047857", "#ffffff")
     return ("REQ", "#b45309", "#ffffff")
+
+
+def _support_send_readiness_indicator_style(text: str) -> tuple[str, str, str]:
+    if text == "準備OK":
+        return ("READY", "#047857", "#ffffff")
+    if text in {"要確認", "要更新"}:
+        return ("CHECK", "#b45309", "#ffffff")
+    return ("REQ", "#dc2626", "#ffffff")
 
 
 def _support_next_button_label(action: str) -> str:
