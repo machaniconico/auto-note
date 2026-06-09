@@ -148,6 +148,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
+            "support bundle GUI log verification detail",
+            "GUI_LOG_SUMMARY.txt: present",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
             "support bundle send-only guidance",
             "Send this ZIP only",
         )

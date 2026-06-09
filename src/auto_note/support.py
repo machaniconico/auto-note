@@ -92,10 +92,12 @@ def verify_support_bundle(bundle_path: Path) -> list[str]:
 
 
 def format_support_bundle_verification(bundle_path: Path, errors: list[str]) -> str:
+    details = _format_bundle_verification_details(bundle_path)
     if not errors:
-        return f"[OK] support bundle verified: {bundle_path}"
+        return "\n".join([f"[OK] support bundle verified: {bundle_path}", *details])
     lines = [f"[NG] support bundle verification failed: {bundle_path}"]
     lines.extend(f"- {error}" for error in errors)
+    lines.extend(details)
     return "\n".join(lines)
 
 
@@ -247,6 +249,33 @@ def _build_gui_log_summary(project_dir: Path, *, include_private: bool = False, 
     )
     text = "\n".join(lines) + "\n"
     return text if include_private else mask_text(text, project_dir)
+
+
+def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
+    try:
+        with zipfile.ZipFile(bundle_path) as archive:
+            names = set(archive.namelist())
+            manifest_count = _manifest_file_count(archive)
+    except (OSError, zipfile.BadZipFile):
+        return []
+    lines = ["Details / 詳細:"]
+    if "GUI_LOG_SUMMARY.txt" in names:
+        lines.append("- GUI_LOG_SUMMARY.txt: present")
+    else:
+        lines.append("- GUI_LOG_SUMMARY.txt: not included (legacy bundle; recreate for faster GUI troubleshooting)")
+    lines.append(f"- diagnostic-report.zip: {'present' if 'diagnostic-report.zip' in names else 'missing'}")
+    if manifest_count is not None:
+        lines.append(f"- manifest files: {manifest_count}")
+    return lines
+
+
+def _manifest_file_count(archive: zipfile.ZipFile) -> int | None:
+    try:
+        raw: Any = json.loads(archive.read("SUPPORT_BUNDLE_MANIFEST.json").decode("utf-8"))
+    except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    files = raw.get("files") if isinstance(raw, dict) else None
+    return len(files) if isinstance(files, list) else None
 
 
 def _bundle_record(name: str, data: bytes) -> dict[str, object]:

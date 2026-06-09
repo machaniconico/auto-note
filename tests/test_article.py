@@ -2096,6 +2096,8 @@ tags: note
         )
         self.assertEqual(bundle_errors, [])
         self.assertIn("[OK] support bundle verified", bundle_verification_text)
+        self.assertIn("GUI_LOG_SUMMARY.txt: present", bundle_verification_text)
+        self.assertIn("manifest files: 5", bundle_verification_text)
         self.assertIn("privacy-safe", bundle_readme)
         self.assertIn("問い合わせ一式 送付前チェックリスト", send_checklist)
         self.assertIn("GUI_LOG_SUMMARY.txt", bundle_readme)
@@ -2225,8 +2227,11 @@ tags: note
                 archive.writestr("CHECKSUMS.txt", checksums)
 
             errors = verify_support_bundle(bundle)
+            verification_text = format_support_bundle_verification(bundle, errors)
 
         self.assertEqual(errors, [])
+        self.assertIn("GUI_LOG_SUMMARY.txt: not included", verification_text)
+        self.assertIn("legacy bundle", verification_text)
 
     def test_privacy_audit_detects_raw_private_markers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2572,7 +2577,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nmask_text(text, project_dir)\nSend this ZIP only\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nmask_text(text, project_dir)\nGUI_LOG_SUMMARY.txt: present\nSend this ZIP only\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
@@ -2649,6 +2654,7 @@ tags:
         self.assertIn("support bundle send checklist:fail", product_details)
         self.assertIn("support bundle GUI log summary:fail", product_details)
         self.assertIn("support bundle GUI log privacy mask:fail", product_details)
+        self.assertIn("support bundle GUI log verification detail:fail", product_details)
         self.assertIn("support bundle send-only guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("release check script:fail", product_details)
@@ -3195,6 +3201,7 @@ tags:
         self.assertIn("support bundle send checklist:pass", launcher_details)
         self.assertIn("support bundle GUI log summary:pass", launcher_details)
         self.assertIn("support bundle GUI log privacy mask:pass", launcher_details)
+        self.assertIn("support bundle GUI log verification detail:pass", launcher_details)
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("hidden GUI launcher target:pass", launcher_details)
         self.assertIn("hidden GUI launcher no console:pass", launcher_details)
