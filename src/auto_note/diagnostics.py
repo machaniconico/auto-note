@@ -58,6 +58,7 @@ REQUIRED_DIAGNOSTIC_REPORT_FILES = (
     "sales-plan.txt",
     "sales-materials.txt",
     "sales-finalize.txt",
+    "sales-launch.txt",
     "seller-send-checklist.txt",
     "sales-evidence-manifest.json",
     "product-quality.txt",
@@ -85,6 +86,7 @@ DIAGNOSTIC_PREVIEW_OMITTED_SECTIONS = {
     "sales-plan.txt": "Sales plan / 販売ナビ",
     "sales-materials.txt": "Sales materials / 販売素材",
     "sales-finalize.txt": "Sales finalize / 販売準備一括",
+    "sales-launch.txt": "Sales launch checklist / 販売直前チェック",
     "seller-send-checklist.txt": "Seller send checklist / 販売者送付前チェックリスト",
     "product-quality.txt": "Product quality report",
     "quality.txt": "Quality report",
@@ -206,6 +208,7 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
     sales_plan = _build_sales_plan_report(project_dir)
     sales_materials = _build_sales_materials_report(project_dir)
     sales_finalize = _build_sales_finalize_report(project_dir)
+    sales_launch = _build_sales_launch_report(project_dir)
     seller_send_checklist = _build_seller_send_checklist_report(project_dir)
     sales_evidence_manifest = _build_sales_evidence_manifest_report(project_dir)
     product_quality = _build_quality_report(project_dir, include_articles=False)
@@ -233,6 +236,7 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
         sales_plan = mask_text(sales_plan, project_dir)
         sales_materials = mask_text(sales_materials, project_dir)
         sales_finalize = mask_text(sales_finalize, project_dir)
+        sales_launch = mask_text(sales_launch, project_dir)
         seller_send_checklist = mask_text(seller_send_checklist, project_dir)
         sales_evidence_manifest = mask_text(sales_evidence_manifest, project_dir)
         product_quality = mask_text(product_quality, project_dir)
@@ -263,6 +267,7 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
         archive.writestr("sales-plan.txt", sales_plan + "\n")
         archive.writestr("sales-materials.txt", sales_materials + "\n")
         archive.writestr("sales-finalize.txt", sales_finalize + "\n")
+        archive.writestr("sales-launch.txt", sales_launch + "\n")
         archive.writestr("seller-send-checklist.txt", seller_send_checklist + "\n")
         archive.writestr("sales-evidence-manifest.json", sales_evidence_manifest + "\n")
         archive.writestr("product-quality.txt", product_quality + "\n")
@@ -330,6 +335,7 @@ def preview_diagnostic_report(project_dir: Path, *, include_private: bool = Fals
         "- sales-plan.txt",
         "- sales-materials.txt",
         "- sales-finalize.txt",
+        "- sales-launch.txt",
         "- seller-send-checklist.txt",
         "- sales-evidence-manifest.json",
         "- product-quality.txt",
@@ -374,6 +380,7 @@ def preview_diagnostic_report(project_dir: Path, *, include_private: bool = Fals
         ("sales-plan.txt", omitted["sales-plan.txt"]),
         ("sales-materials.txt", omitted["sales-materials.txt"]),
         ("sales-finalize.txt", omitted["sales-finalize.txt"]),
+        ("sales-launch.txt", omitted["sales-launch.txt"]),
         ("seller-send-checklist.txt", omitted["seller-send-checklist.txt"]),
         ("sales-evidence-manifest.json", sales_evidence_manifest),
         ("product-quality.txt", omitted["product-quality.txt"]),
@@ -833,6 +840,20 @@ def _build_sales_finalize_report(project_dir: Path) -> str:
     return text
 
 
+def _build_sales_launch_report(project_dir: Path) -> str:
+    from .sales_launch import list_sales_launch_checklists
+
+    reports = list_sales_launch_checklists(project_dir)
+    if not reports:
+        return "Sales launch checklist / 販売直前チェック\n\nNo sales launch checklists found."
+    latest = reports[0]
+    try:
+        text = latest.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return f"Sales launch checklist / 販売直前チェック\n\nCould not read {latest.name}: {exc}"
+    return text
+
+
 def _build_seller_send_checklist_report(project_dir: Path) -> str:
     from .sales_finalize import list_seller_send_checklists
 
@@ -885,6 +906,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     from .sales_handoff import list_sales_handoffs, verify_sales_handoff
     from .sales_materials import list_sales_materials, verify_sales_materials
     from .sales_plan import list_sales_plan_reports
+    from .sales_launch import list_sales_launch_checklists
     from .sales_review import list_sales_review_reports
     from .selftest import list_self_test_reports
     from .support import list_support_bundles, list_support_requests, verify_support_bundle
@@ -913,6 +935,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     sales_handoffs = list_sales_handoffs(project_dir)
     sales_materials = list_sales_materials(project_dir)
     sales_plan_reports = list_sales_plan_reports(project_dir)
+    sales_launch_checklists = list_sales_launch_checklists(project_dir)
     sales_review_reports = list_sales_review_reports(project_dir)
     sales_finalize_reports = list_sales_finalize_reports(project_dir)
     seller_send_checklists = list_seller_send_checklists(project_dir)
@@ -941,6 +964,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
         f"sales_handoffs: {len(sales_handoffs)}",
         f"sales_materials: {len(sales_materials)}",
         f"sales_plan_reports: {len(sales_plan_reports)}",
+        f"sales_launch_checklists: {len(sales_launch_checklists)}",
         f"sales_review_reports: {len(sales_review_reports)}",
         f"sales_finalize_reports: {len(sales_finalize_reports)}",
         f"seller_send_checklists: {len(seller_send_checklists)}",
@@ -1028,6 +1052,8 @@ def _build_maintenance_summary(project_dir: Path) -> str:
             lines.append(f"latest_sales_handoff_errors: {len(sales_errors)}")
     if sales_plan_reports:
         lines.append(f"latest_sales_plan_report: {sales_plan_reports[0].name}")
+    if sales_launch_checklists:
+        lines.append(f"latest_sales_launch_checklist: {sales_launch_checklists[0].name}")
     if sales_review_reports:
         lines.append(f"latest_sales_review_report: {sales_review_reports[0].name}")
     if sales_finalize_reports:

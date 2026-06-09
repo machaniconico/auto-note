@@ -188,6 +188,13 @@ from auto_note.sales_finalize import (
     list_seller_delivery_receipts,
     run_buyer_send_readiness,
 )
+from auto_note.sales_launch import (
+    format_sales_launch_checklist,
+    has_sales_launch_blockers,
+    list_sales_launch_checklists,
+    run_sales_launch_check,
+    write_sales_launch_checklist,
+)
 from auto_note.sales_materials import (
     create_sales_materials,
     format_sales_materials_verification,
@@ -1095,6 +1102,7 @@ tags: note
                 self.assertIn("sales-plan.txt", names)
                 self.assertIn("sales-materials.txt", names)
                 self.assertIn("sales-finalize.txt", names)
+                self.assertIn("sales-launch.txt", names)
                 self.assertIn("seller-send-checklist.txt", names)
                 self.assertIn("sales-evidence-manifest.json", names)
                 self.assertIn("product-quality.txt", names)
@@ -1122,6 +1130,7 @@ tags: note
                 sales_plan_text = archive.read("sales-plan.txt").decode("utf-8")
                 sales_materials_text = archive.read("sales-materials.txt").decode("utf-8")
                 sales_finalize_text = archive.read("sales-finalize.txt").decode("utf-8")
+                sales_launch_text = archive.read("sales-launch.txt").decode("utf-8")
                 seller_send_checklist_text = archive.read("seller-send-checklist.txt").decode("utf-8")
                 sales_evidence_manifest_text = archive.read("sales-evidence-manifest.json").decode("utf-8")
                 product_quality_text = archive.read("product-quality.txt").decode("utf-8")
@@ -1155,6 +1164,7 @@ tags: note
             self.assertNotIn(str(project), sales_plan_text)
             self.assertNotIn(str(project), sales_materials_text)
             self.assertNotIn(str(project), sales_finalize_text)
+            self.assertNotIn(str(project), sales_launch_text)
             self.assertNotIn(str(project), seller_send_checklist_text)
             self.assertNotIn(str(project), sales_evidence_manifest_text)
             self.assertNotIn(str(project), product_quality_text)
@@ -1168,6 +1178,8 @@ tags: note
             self.assertIn("Sales plan / 販売ナビ", sales_plan_text)
             self.assertIn("Sales materials / 販売素材", sales_materials_text)
             self.assertIn("Sales finalize / 販売準備一括", sales_finalize_text)
+            self.assertIn("Sales launch checklist / 販売直前チェック", sales_launch_text)
+            self.assertIn("No sales launch checklists found", sales_launch_text)
             self.assertIn("Seller send checklist", seller_send_checklist_text)
             self.assertIn("No sales evidence manifests found", sales_evidence_manifest_text)
             self.assertIn("latest_backup_restorable_files: 1", maintenance_text)
@@ -1178,6 +1190,7 @@ tags: note
             self.assertIn("sales_handoffs:", maintenance_text)
             self.assertIn("sales_materials:", maintenance_text)
             self.assertIn("sales_plan_reports:", maintenance_text)
+            self.assertIn("sales_launch_checklists:", maintenance_text)
             self.assertIn("sales_finalize_reports:", maintenance_text)
             self.assertIn("seller_send_checklists:", maintenance_text)
             self.assertIn("buyer_delivery_messages:", maintenance_text)
@@ -1195,6 +1208,7 @@ tags: note
             self.assertNotIn("バックアップ記事", sales_plan_text)
             self.assertNotIn("バックアップ記事", sales_materials_text)
             self.assertNotIn("バックアップ記事", sales_finalize_text)
+            self.assertNotIn("バックアップ記事", sales_launch_text)
             self.assertNotIn("バックアップ記事", seller_send_checklist_text)
             self.assertNotIn("バックアップ記事", sales_evidence_manifest_text)
             self.assertNotIn("バックアップ記事", self_test_text)
@@ -2099,8 +2113,18 @@ tags: note
             sales_review_cli_output = io.StringIO()
             with redirect_stdout(sales_review_cli_output):
                 sales_review_cli_code = cli_main(["sales-review", "--project-dir", str(project), "--report"])
+            sales_launch = run_sales_launch_check(project)
+            sales_launch_text = format_sales_launch_checklist(sales_launch)
+            sales_launch_report_path = write_sales_launch_checklist(project, report=sales_launch)
+            sales_launch_report_text = sales_launch_report_path.read_text(encoding="utf-8")
+            sales_launch_reports = list_sales_launch_checklists(project)
+            sales_launch_cli_output = io.StringIO()
+            with redirect_stdout(sales_launch_cli_output):
+                sales_launch_cli_code = cli_main(["sales-launch", "--project-dir", str(project), "--report"])
             privacy_after_sales_review = run_privacy_audit(project)
             privacy_after_sales_review_text = format_privacy_audit_report(privacy_after_sales_review)
+            privacy_after_sales_launch = run_privacy_audit(project)
+            privacy_after_sales_launch_text = format_privacy_audit_report(privacy_after_sales_launch)
             acceptance_report_exists = bool(report.acceptance_report_path and report.acceptance_report_path.exists())
 
         self.assertFalse(has_sales_finalize_blockers(report))
@@ -2154,6 +2178,20 @@ tags: note
         self.assertEqual(sales_review_cli_code, 0)
         self.assertIn("sales review report created:", sales_review_cli_output.getvalue())
         self.assertIn("Sales final review", sales_review_cli_output.getvalue())
+        self.assertFalse(has_sales_launch_blockers(sales_launch))
+        self.assertEqual(sales_launch.status, "warn")
+        self.assertIn("Sales launch checklist", sales_launch_text)
+        self.assertIn("Verdict: NEEDS REVIEW", sales_launch_text)
+        self.assertIn("Marketplace launch confirmation", sales_launch_text)
+        self.assertIn("manual marketplace preview", sales_launch_text)
+        self.assertIn(report.buyer_delivery_package_path.name, sales_launch_text)
+        self.assertGreaterEqual(len(sales_launch_reports), 1)
+        self.assertEqual(sales_launch_reports[0], sales_launch_report_path)
+        self.assertIn("Sales launch checklist", sales_launch_report_text)
+        self.assertNotIn(str(project), sales_launch_report_text)
+        self.assertEqual(sales_launch_cli_code, 0)
+        self.assertIn("sales launch checklist created:", sales_launch_cli_output.getvalue())
+        self.assertIn("Sales launch checklist", sales_launch_cli_output.getvalue())
         self.assertIsNotNone(report.seller_send_checklist_path)
         self.assertTrue(seller_send_checklist_exists)
         self.assertIsNotNone(report.sales_plan_report_path)
@@ -2234,6 +2272,8 @@ tags: note
         self.assertIn("seller delivery receipt privacy", privacy_text)
         self.assertIn("sales review report privacy", privacy_after_sales_review_text)
         self.assertFalse(has_privacy_audit_blockers(privacy_after_sales_review))
+        self.assertIn("sales launch checklist privacy", privacy_after_sales_launch_text)
+        self.assertFalse(has_privacy_audit_blockers(privacy_after_sales_launch))
         self.assertIn("[OK] buyer delivery verified", details)
         self.assertIn("[OK] buyer delivery zip verified", details)
         self.assertIn("auto-note buyer delivery message", details)
@@ -3101,7 +3141,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "settings.py").write_text(
@@ -3143,11 +3183,11 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "privacy.py").write_text(
-                "seller send checklist privacy\nlist_seller_send_checklists\nbuyer delivery message privacy\nlist_buyer_delivery_messages\nbuyer send readiness report privacy\nseller delivery receipt privacy\nlist_seller_delivery_receipts\nsales plan report privacy\nsales review report privacy\ncommercial policy review privacy\nsales evidence manifest privacy\n",
+                "seller send checklist privacy\nlist_seller_send_checklists\nbuyer delivery message privacy\nlist_buyer_delivery_messages\nbuyer send readiness report privacy\nseller delivery receipt privacy\nlist_seller_delivery_receipts\nsales plan report privacy\nsales review report privacy\nsales launch checklist privacy\ncommercial policy review privacy\nsales evidence manifest privacy\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "diagnostics.py").write_text(
-                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\n",
+                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
@@ -3162,7 +3202,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
-                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n",
+                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_plan.py").write_text(
@@ -3173,8 +3213,12 @@ tags:
                 "run_sales_review\nwrite_sales_review_report\nrun_buyer_send_readiness\nnote official API limitation\n",
                 encoding="utf-8",
             )
+            (project / "src" / "auto_note" / "sales_launch.py").write_text(
+                "run_sales_launch_check\nwrite_sales_launch_checklist\nrun_sales_review(project_dir)\n",
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "gui.py").write_text(
-                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
+                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
                 encoding="utf-8",
             )
             gui_fixture = project / "src" / "auto_note" / "gui.py"
@@ -3463,7 +3507,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3476,7 +3520,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
@@ -3623,6 +3667,14 @@ tags:
         self.assertIn("privacy audit sales review report:fail", product_details)
         self.assertIn("cleanup sales review report:fail", product_details)
         self.assertIn("maintenance sales review report summary:fail", product_details)
+        self.assertIn("CLI sales launch command:fail", product_details)
+        self.assertIn("CLI sales launch report command:fail", product_details)
+        self.assertIn("sales launch checker:fail", product_details)
+        self.assertIn("sales launch checklist writer:fail", product_details)
+        self.assertIn("sales launch depends on final review:fail", product_details)
+        self.assertIn("privacy audit sales launch checklist:fail", product_details)
+        self.assertIn("cleanup sales launch checklist:fail", product_details)
+        self.assertIn("maintenance sales launch checklist summary:fail", product_details)
         self.assertIn("privacy audit commercial policy review:fail", product_details)
         self.assertIn("cleanup sales plan report:fail", product_details)
         self.assertIn("cleanup commercial policy review:fail", product_details)
@@ -3938,6 +3990,8 @@ tags:
         self.assertIn("GUI sales plan report action:fail", product_details)
         self.assertIn("GUI sales review action:fail", product_details)
         self.assertIn("GUI sales review report action:fail", product_details)
+        self.assertIn("GUI sales launch action:fail", product_details)
+        self.assertIn("GUI sales launch checklist action:fail", product_details)
         self.assertIn("GUI RC handoff help action:fail", product_details)
         self.assertIn("GUI RC handoff opener:fail", product_details)
         self.assertIn("GUI sales vertical action rail:fail", product_details)
@@ -3993,6 +4047,8 @@ tags:
         self.assertIn("README sales plan report guidance:fail", product_details)
         self.assertIn("README sales review guidance:fail", product_details)
         self.assertIn("README sales review report guidance:fail", product_details)
+        self.assertIn("README sales launch guidance:fail", product_details)
+        self.assertIn("README sales launch report guidance:fail", product_details)
         self.assertIn("README sales evidence manifest guidance:fail", product_details)
         self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
@@ -4047,6 +4103,8 @@ tags:
         self.assertIn("product readiness sales plan report guidance:fail", product_details)
         self.assertIn("product readiness sales review command:fail", product_details)
         self.assertIn("product readiness sales review report guidance:fail", product_details)
+        self.assertIn("product readiness sales launch command:fail", product_details)
+        self.assertIn("product readiness sales launch report guidance:fail", product_details)
         self.assertIn("product readiness sales evidence manifest guidance:fail", product_details)
         self.assertIn("release starter pack guidance:fail", product_details)
         self.assertIn("release repair guidance:fail", product_details)
@@ -4164,6 +4222,14 @@ tags:
         self.assertIn("privacy audit sales review report:pass", launcher_details)
         self.assertIn("cleanup sales review report:pass", launcher_details)
         self.assertIn("maintenance sales review report summary:pass", launcher_details)
+        self.assertIn("CLI sales launch command:pass", launcher_details)
+        self.assertIn("CLI sales launch report command:pass", launcher_details)
+        self.assertIn("sales launch checker:pass", launcher_details)
+        self.assertIn("sales launch checklist writer:pass", launcher_details)
+        self.assertIn("sales launch depends on final review:pass", launcher_details)
+        self.assertIn("privacy audit sales launch checklist:pass", launcher_details)
+        self.assertIn("cleanup sales launch checklist:pass", launcher_details)
+        self.assertIn("maintenance sales launch checklist summary:pass", launcher_details)
         self.assertIn("privacy audit commercial policy review:pass", launcher_details)
         self.assertIn("cleanup sales plan report:pass", launcher_details)
         self.assertIn("cleanup commercial policy review:pass", launcher_details)
@@ -4479,6 +4545,8 @@ tags:
         self.assertIn("GUI sales plan report action:pass", launcher_details)
         self.assertIn("GUI sales review action:pass", launcher_details)
         self.assertIn("GUI sales review report action:pass", launcher_details)
+        self.assertIn("GUI sales launch action:pass", launcher_details)
+        self.assertIn("GUI sales launch checklist action:pass", launcher_details)
         self.assertIn("GUI RC handoff help action:pass", launcher_details)
         self.assertIn("GUI RC handoff opener:pass", launcher_details)
         self.assertIn("GUI sales vertical action rail:pass", launcher_details)
@@ -4535,6 +4603,8 @@ tags:
         self.assertIn("README sales plan report guidance:pass", launcher_details)
         self.assertIn("README sales review guidance:pass", launcher_details)
         self.assertIn("README sales review report guidance:pass", launcher_details)
+        self.assertIn("README sales launch guidance:pass", launcher_details)
+        self.assertIn("README sales launch report guidance:pass", launcher_details)
         self.assertIn("README sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
@@ -4589,6 +4659,8 @@ tags:
         self.assertIn("product readiness sales plan report guidance:pass", launcher_details)
         self.assertIn("product readiness sales review command:pass", launcher_details)
         self.assertIn("product readiness sales review report guidance:pass", launcher_details)
+        self.assertIn("product readiness sales launch command:pass", launcher_details)
+        self.assertIn("product readiness sales launch report guidance:pass", launcher_details)
         self.assertIn("product readiness sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("release starter pack guidance:pass", launcher_details)
         self.assertIn("release repair guidance:pass", launcher_details)
@@ -4708,6 +4780,10 @@ tags:
                 sales_dir / f"sales-plan-20260606-12000{index}.txt"
                 for index in range(3)
             ]
+            sales_launch_paths = [
+                sales_dir / f"sales-launch-checklist-20260606-12000{index}.txt"
+                for index in range(3)
+            ]
             seller_checklist_paths = [
                 sales_dir / f"seller-send-checklist-20260606-12000{index}.txt"
                 for index in range(3)
@@ -4727,6 +4803,7 @@ tags:
                 + commercial_template_paths
                 + commercial_policy_review_paths
                 + sales_plan_paths
+                + sales_launch_paths
                 + sales_finalize_paths
                 + seller_checklist_paths
                 + sales_evidence_manifest_paths
@@ -4751,6 +4828,7 @@ tags:
             latest_commercial_template_kept = commercial_template_paths[-1].exists()
             latest_commercial_policy_review_kept = commercial_policy_review_paths[-1].exists()
             latest_sales_plan_kept = sales_plan_paths[-1].exists()
+            latest_sales_launch_kept = sales_launch_paths[-1].exists()
             latest_sales_finalize_kept = sales_finalize_paths[-1].exists()
             latest_seller_checklist_kept = seller_checklist_paths[-1].exists()
             latest_sales_evidence_manifest_kept = sales_evidence_manifest_paths[-1].exists()
@@ -4759,9 +4837,9 @@ tags:
             latest_commercial_kept = commercial_paths[-1].exists()
             releases_kept = all(path.exists() for path in release_paths)
 
-            self.assertEqual(len(preview.items), 26)
+            self.assertEqual(len(preview.items), 28)
             self.assertTrue(all(item.reason != "release package ZIP" for item in preview.items))
-            self.assertEqual(result.deleted, 26)
+            self.assertEqual(result.deleted, 28)
             self.assertEqual(len(release_preview.items), 2)
             self.assertTrue(all(item.reason == "release package ZIP" for item in release_preview.items))
             self.assertTrue(latest_report_kept)
@@ -4771,6 +4849,7 @@ tags:
             self.assertTrue(latest_commercial_template_kept)
             self.assertTrue(latest_commercial_policy_review_kept)
             self.assertTrue(latest_sales_plan_kept)
+            self.assertTrue(latest_sales_launch_kept)
             self.assertTrue(latest_sales_finalize_kept)
             self.assertTrue(latest_seller_checklist_kept)
             self.assertTrue(latest_sales_evidence_manifest_kept)

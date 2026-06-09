@@ -693,6 +693,22 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"sales review report created: {path}")
             return 1 if has_sales_review_blockers(report, strict=args.strict) else 0
 
+        if args.command == "sales-launch":
+            from .sales_launch import (
+                format_sales_launch_checklist,
+                has_sales_launch_blockers,
+                run_sales_launch_check,
+                write_sales_launch_checklist,
+            )
+
+            report = run_sales_launch_check(args.project_dir.resolve())
+            print(format_sales_launch_checklist(report))
+            if args.report:
+                path = write_sales_launch_checklist(args.project_dir.resolve(), report=report)
+                print()
+                print(f"sales launch checklist created: {path}")
+            return 1 if has_sales_launch_blockers(report, strict=args.strict) else 0
+
         if args.command == "self-test":
             from .selftest import format_self_test_report, has_self_test_blockers, run_self_test, write_self_test_report
 
@@ -1448,6 +1464,14 @@ def build_parser() -> argparse.ArgumentParser:
     sales_review.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
     sales_review.add_argument("--strict", action="store_true", help="Exit with an error while warnings remain.")
     sales_review.add_argument("--report", action="store_true", help="Save the sales final review under .auto-note/sales.")
+
+    sales_launch = subparsers.add_parser(
+        "sales-launch",
+        help="Create a final marketplace launch checklist after sales review and buyer delivery checks.",
+    )
+    sales_launch.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
+    sales_launch.add_argument("--strict", action="store_true", help="Exit with an error while warnings remain.")
+    sales_launch.add_argument("--report", action="store_true", help="Save the sales launch checklist under .auto-note/sales.")
 
     self_test = subparsers.add_parser("self-test", help="Run a user-facing local health check after install.")
     self_test.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")

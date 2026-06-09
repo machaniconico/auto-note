@@ -144,6 +144,13 @@ from .sales_review import (
     run_sales_review,
     write_sales_review_report,
 )
+from .sales_launch import (
+    format_sales_launch_checklist,
+    has_sales_launch_blockers,
+    list_sales_launch_checklists,
+    run_sales_launch_check,
+    write_sales_launch_checklist,
+)
 from .settings import AppSettings, DEFAULT_SETTINGS, UI_DENSITY_OPTIONS, load_settings, parse_tags, save_settings
 from .selftest import format_self_test_report, run_self_test, write_self_test_report
 from .setup_check import format_setup_report, run_setup_check
@@ -1602,6 +1609,8 @@ class AutoNoteApp(tk.Tk):
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
             ("最終レビュー", self.run_sales_review_to_tab, None),
             ("レビュー保存", self.create_sales_review_report_action, None),
+            ("販売直前", self.run_sales_launch_to_tab, None),
+            ("直前保存", self.create_sales_launch_checklist_action, None),
             (self.home_support_next_button_var, self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
         )
@@ -1742,6 +1751,8 @@ class AutoNoteApp(tk.Tk):
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
+                ("販売直前", self.run_sales_launch_to_tab),
+                ("直前保存", self.create_sales_launch_checklist_action),
                 ("アクションプラン", self.run_action_plan_to_tab),
                 ("クイック確認", self.run_quickstart_to_tab),
                 ("スターター一式", self.create_starter_pack_action),
@@ -2732,6 +2743,8 @@ class AutoNoteApp(tk.Tk):
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
+                ("販売直前", self.run_sales_launch_to_tab),
+                ("直前保存", self.create_sales_launch_checklist_action),
                 ("セルフテスト", self.run_self_test_to_tab),
                 ("セルフテスト保存", self.create_self_test_report_action),
                 ("運用サマリー", self.run_overview_to_tab),
@@ -3216,6 +3229,8 @@ class AutoNoteApp(tk.Tk):
             "送付文コピー": self.copy_latest_buyer_delivery_message_action,
             "最終レビュー": self.run_sales_review_to_tab,
             "レビュー保存": self.create_sales_review_report_action,
+            "販売直前": self.run_sales_launch_to_tab,
+            "直前保存": self.create_sales_launch_checklist_action,
             "noteログイン": lambda: webbrowser.open(NOTE_LOGIN_URL),
             "次の一手": self.run_home_primary_action,
         }
@@ -5065,6 +5080,7 @@ class AutoNoteApp(tk.Tk):
             ("購入者ZIP", list_buyer_delivery_packages(self.project_dir)),
             ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
             ("送付記録", list_seller_delivery_receipts(self.project_dir)),
+            ("販売直前", list_sales_launch_checklists(self.project_dir)),
             ("投稿キュー", list_publish_queue_reports(self.project_dir)),
             ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
             ("運用サマリー", list_overview_reports(self.project_dir)),
@@ -5941,6 +5957,8 @@ class AutoNoteApp(tk.Tk):
             ("送付文コピー", "最新の購入者向け送付文をZIP検証後にクリップボードへコピー", self.copy_latest_buyer_delivery_message_action),
             ("最終レビュー", "販売ページ文案、送付文、購入者ZIP、納品記録の整合性を確認", self.run_sales_review_to_tab),
             ("レビュー保存", "販売ページ・納品最終レビューを時刻付きレポートとして保存", self.create_sales_review_report_action),
+            ("販売直前", "販売ページ公開前に決済後メッセージ、添付ZIP、返金/サポート表示を確認", self.run_sales_launch_to_tab),
+            ("直前保存", "販売ページ公開前の最終目視チェックリストを保存", self.create_sales_launch_checklist_action),
             ("アクションプラン", "いま優先すべき操作を表示", self.run_action_plan_to_tab),
             ("セルフテスト", "インストール後の基本動作を確認", self.run_self_test_to_tab),
             ("セルフテスト保存", "セルフテスト結果をテキスト保存", self.create_self_test_report_action),
@@ -6942,8 +6960,38 @@ class AutoNoteApp(tk.Tk):
         _open_path(path)
         self.notify(f"最終レビューを保存しました: {path.name}", level=self._sales_review_notify_level(report))
 
+    def run_sales_launch_to_tab(self) -> None:
+        report = run_sales_launch_check(self.project_dir)
+        self._set_text(self.diagnostics_text, format_sales_launch_checklist(report))
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("販売直前チェックを表示しました", level=self._sales_launch_notify_level(report))
+
+    def create_sales_launch_checklist_action(self) -> None:
+        try:
+            report = run_sales_launch_check(self.project_dir)
+            path = write_sales_launch_checklist(self.project_dir, report=report)
+        except OSError as exc:
+            self.notify("販売直前チェック保存に失敗しました", level="error")
+            messagebox.showerror("販売直前チェック保存エラー", str(exc))
+            return
+        self._set_text(
+            self.diagnostics_text,
+            format_sales_launch_checklist(report) + f"\n\nsaved: {path}",
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_reports()
+        _open_path(path)
+        self.notify(f"販売直前チェックを保存しました: {path.name}", level=self._sales_launch_notify_level(report))
+
     def _sales_review_notify_level(self, report) -> str:
         if has_sales_review_blockers(report):
+            return "error"
+        if report.has_warnings:
+            return "warning"
+        return "success"
+
+    def _sales_launch_notify_level(self, report) -> str:
+        if has_sales_launch_blockers(report):
             return "error"
         if report.has_warnings:
             return "warning"
@@ -8844,6 +8892,16 @@ def _home_report_status(label: str, path: Path) -> str:
         return "NG" if verify_release_package(path) else "OK"
     if label == "購入者ZIP":
         return "NG" if verify_buyer_delivery_package(path) else "OK"
+    if label == "販売直前":
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "NG"
+        if "Verdict: BLOCKED" in text:
+            return "NG"
+        if "Verdict: NEEDS REVIEW" in text:
+            return "確認"
+        return "OK"
     if path.suffix.lower() == ".zip":
         try:
             with zipfile.ZipFile(path) as archive:

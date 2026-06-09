@@ -112,6 +112,14 @@ def collect_generated_artifacts(
         )
         items.extend(
             _old_items(
+                list((output_dir / "sales").glob("sales-launch-checklist-*.txt")),
+                cutoff,
+                reason="sales launch checklist",
+                keep_latest=keep_latest,
+            )
+        )
+        items.extend(
+            _old_items(
                 list((output_dir / "sales").glob("sales-finalize-*.txt")),
                 cutoff,
                 reason="sales finalize report",
