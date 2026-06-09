@@ -744,6 +744,13 @@ class AutoNoteApp(tk.Tk):
         ttk.Button(top, text="再チェック", style="Primary.TButton", command=self.run_first_run_to_tab).pack(
             side=tk.RIGHT
         )
+        self.first_run_action_filter_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            top,
+            text="要対応だけ",
+            variable=self.first_run_action_filter_var,
+            command=self.toggle_first_run_action_filter,
+        ).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="診断テキスト", command=self.show_first_run_text).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="受入チェック", command=self.run_acceptance_to_tab).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="受入保存", command=self.create_acceptance_report_action).pack(side=tk.RIGHT, padx=6)
@@ -1900,9 +1907,34 @@ class AutoNoteApp(tk.Tk):
             if key in self.first_run_count_vars:
                 self.first_run_count_vars[key].set(str(value))
 
+        self._populate_first_run_tree(report)
+
+        if select_tab:
+            self.notebook.select(self.first_run_tab)
+        if show_popup:
+            self.notify("初回チェックを更新しました", level=self._first_run_notify_level(report))
+        return report
+
+    def toggle_first_run_action_filter(self) -> None:
+        report = self._last_first_run_report
+        if report is None:
+            return
+        self._populate_first_run_tree(report)
+        visible = len(self.first_run_tree.get_children())
+        if self.first_run_action_filter_var.get():
+            self.notify(f"要対応の初回チェック項目だけ表示しています: {visible}件", level="info", transient=True)
+        else:
+            self.notify("すべての初回チェック項目を表示しています", level="info", transient=True)
+
+    def _populate_first_run_tree(self, report: FirstRunReport) -> None:
         self.first_run_tree.delete(*self.first_run_tree.get_children())
+        action_only = bool(
+            hasattr(self, "first_run_action_filter_var") and self.first_run_action_filter_var.get()
+        )
         actionable_iid = ""
         for index, item in enumerate(report.items):
+            if action_only and item.status not in {"warn", "fail"}:
+                continue
             iid = str(index)
             action = item.action or item.gui or item.command or ""
             label = _first_run_item_label(item.status)
@@ -1922,14 +1954,15 @@ class AutoNoteApp(tk.Tk):
             self.first_run_tree.selection_set(selected)
             self.first_run_tree.focus(selected)
             self.on_select_first_run_item()
-        else:
-            self._clear_first_run_detail()
+            return
 
-        if select_tab:
-            self.notebook.select(self.first_run_tab)
-        if show_popup:
-            self.notify("初回チェックを更新しました", level=self._first_run_notify_level(report))
-        return report
+        self._clear_first_run_detail()
+        if action_only:
+            self.first_run_detail_name_var.set("要対応項目はありません")
+            self.first_run_detail_status_var.set("READY")
+            self.first_run_detail_text_var.set("初回チェックのWARN/NGはありません。受入保存へ進めます。")
+            self.first_run_detail_gui_var.set("GUI: 受入保存 または 販売ナビ")
+            self.first_run_detail_cli_var.set("CLI: auto-note acceptance --project-dir . --full")
 
     def on_select_first_run_item(self) -> None:
         item = self._selected_first_run_item()

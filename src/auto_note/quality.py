@@ -397,6 +397,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "パスコピー",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README first-run actionable filter guidance",
+            "要対応だけ",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
     checks.append(
         _text_contains_check(
@@ -1913,6 +1920,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI first-run actionable filter",
+            "first_run_action_filter_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI first-run actionable filter renderer",
+            "_populate_first_run_tree",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI first-run actionable empty state",
+            "要対応項目はありません",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home sales next action",
             "run_home_sales_next_action",
         )
@@ -2454,6 +2482,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home recent reports copy guidance",
             "パスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness first-run actionable filter guidance",
+            "要対応だけ",
         )
     )
     checks.append(
