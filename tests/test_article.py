@@ -2754,9 +2754,20 @@ tags: note
             bundle_output = io.StringIO()
             with redirect_stdout(bundle_output):
                 bundle_code = cli_main(["support", "--project-dir", str(project), "--bundle"])
+            with patch("auto_note.__main__._open_path") as open_path:
+                open_request_output = io.StringIO()
+                with redirect_stdout(open_request_output):
+                    open_request_code = cli_main(["support", "--project-dir", str(project), "--open"])
+                open_bundle_output = io.StringIO()
+                with redirect_stdout(open_bundle_output):
+                    open_bundle_code = cli_main(["support", "--project-dir", str(project), "--bundle", "--open"])
+                opened_paths = [call.args[0] for call in open_path.call_args_list]
+                opened_path_exists = [path.exists() for path in opened_paths]
 
         request_text = request_output.getvalue()
         bundle_text = bundle_output.getvalue()
+        open_request_text = open_request_output.getvalue()
+        open_bundle_text = open_bundle_output.getvalue()
         self.assertEqual(request_code, 0)
         self.assertIn("support request created:", request_text)
         self.assertIn("Privacy audit report", request_text)
@@ -2766,6 +2777,17 @@ tags: note
         self.assertIn("[OK] support bundle verified", bundle_text)
         self.assertIn("Privacy audit report", bundle_text)
         self.assertIn("support bundle privacy", bundle_text)
+        self.assertEqual(open_request_code, 0)
+        self.assertEqual(open_bundle_code, 0)
+        self.assertIn("support request created:", open_request_text)
+        self.assertIn("support bundle created:", open_bundle_text)
+        self.assertEqual(len(opened_paths), 2)
+        self.assertTrue(opened_paths[0].name.startswith("support-request-"))
+        self.assertEqual(opened_paths[0].suffix, ".md")
+        self.assertTrue(opened_path_exists[0])
+        self.assertTrue(opened_paths[1].name.startswith("auto-note-support-bundle-"))
+        self.assertEqual(opened_paths[1].suffix, ".zip")
+        self.assertTrue(opened_path_exists[1])
 
     def test_unique_path_adds_suffix_when_file_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3170,7 +3192,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "settings.py").write_text(
@@ -3629,6 +3651,7 @@ tags:
         self.assertIn("self-test hidden launcher syntax check:fail", product_details)
         self.assertIn("self-test direct launcher fallback:fail", product_details)
         self.assertIn("CLI troubleshoot command:fail", product_details)
+        self.assertIn("CLI support open option:fail", product_details)
         self.assertIn("CLI acceptance command:fail", product_details)
         self.assertIn("CLI acceptance full command:fail", product_details)
         self.assertIn("CLI commercial readiness command:fail", product_details)
@@ -4199,6 +4222,7 @@ tags:
         self.assertIn("self-test hidden launcher syntax check:pass", launcher_details)
         self.assertIn("self-test direct launcher fallback:pass", launcher_details)
         self.assertIn("CLI troubleshoot command:pass", launcher_details)
+        self.assertIn("CLI support open option:pass", launcher_details)
         self.assertIn("CLI acceptance command:pass", launcher_details)
         self.assertIn("CLI acceptance full command:pass", launcher_details)
         self.assertIn("CLI commercial readiness command:pass", launcher_details)

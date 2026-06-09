@@ -1183,7 +1183,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     support = subparsers.add_parser("support", help="Create a support request markdown template.")
     support.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
-    support.add_argument("--open", action="store_true", help="Open the generated support request.")
+    support.add_argument("--open", action="store_true", help="Open the generated support request or bundle.")
     support.add_argument("--bundle", action="store_true", help="Create one zip with the request and diagnostic report.")
     support.add_argument("--verify", type=Path, help="Verify a support bundle zip created with --bundle.")
     support.add_argument(
