@@ -2866,6 +2866,7 @@ tags: note
         self.assertIn("home_status_badge_chars=", text)
         self.assertIn("home_updated_chars=", text)
         self.assertIn("home_primary_button_chars=", text)
+        self.assertIn("command_palette_display_diagnostics_copy_actions=1", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
 
@@ -3140,12 +3141,14 @@ tags:
                 + "表示サイズ設定へ\n"
                 + "表示リセット\n"
                 + "表示診断\n"
+                + "表示診断コピー\n"
                 + "set_ui_density_action\n"
                 + "focus_ui_density_setting_action\n"
                 + "reset_display_action\n"
                 + "command_palette_ui_density_actions=\n"
                 + "command_palette_display_reset_actions=\n"
                 + "command_palette_display_diagnostics_actions=\n"
+                + "command_palette_display_diagnostics_copy_actions=\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
                 + "display_diagnostics_chars=\n"
@@ -3172,10 +3175,12 @@ tags:
                 + "_home_support_next_button_label\n"
                 + "home_button_var.set(_home_support_next_button_label(text))\n"
                 + "show_display_diagnostics_action\n"
+                + "copy_display_diagnostics_action\n"
                 + "Display diagnostics / 表示診断\n"
                 + "Readability check / 可読性チェック\n"
                 + "- status:\n"
                 + "/ action:\n"
+                + "表示診断をコピーしました\n"
                 + "この表示診断、GUIログ表示、復旧セット\n"
                 + 'extra_entries={"DISPLAY_DIAGNOSTICS.txt": self._format_display_diagnostics()}\n'
                 + "show_gui_log_action\n"
@@ -3376,12 +3381,12 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\n表示診断\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -3660,6 +3665,7 @@ tags:
         self.assertIn("GUI smoke UI density command metrics:fail", product_details)
         self.assertIn("GUI smoke display reset command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics command metrics:fail", product_details)
+        self.assertIn("GUI smoke display diagnostics copy command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
         self.assertIn("GUI smoke display readability status:fail", product_details)
         self.assertIn("GUI smoke display readability warning count:fail", product_details)
@@ -3682,10 +3688,12 @@ tags:
         self.assertIn("README UI density header guidance:fail", product_details)
         self.assertIn("README display reset guidance:fail", product_details)
         self.assertIn("README display diagnostics guidance:fail", product_details)
+        self.assertIn("README display diagnostics copy guidance:fail", product_details)
         self.assertIn("GUI modern diagnostics subtitle:fail", product_details)
         self.assertIn("GUI modern help subtitle:fail", product_details)
         self.assertIn("GUI log display action:fail", product_details)
         self.assertIn("GUI display diagnostics action:fail", product_details)
+        self.assertIn("GUI display diagnostics copy action:fail", product_details)
         self.assertIn("GUI display diagnostics report:fail", product_details)
         self.assertIn("GUI display readability checks:fail", product_details)
         self.assertIn("GUI display readability status line:fail", product_details)
@@ -3695,6 +3703,8 @@ tags:
         self.assertIn("GUI log folder action:fail", product_details)
         self.assertIn("GUI log display button:fail", product_details)
         self.assertIn("GUI display diagnostics button:fail", product_details)
+        self.assertIn("GUI display diagnostics copy button:fail", product_details)
+        self.assertIn("GUI display diagnostics copy clipboard:fail", product_details)
         self.assertIn("GUI log copy button:fail", product_details)
         self.assertIn("GUI log folder button:fail", product_details)
         self.assertIn("GUI diagnostic ZIP folder button:fail", product_details)
@@ -3888,6 +3898,8 @@ tags:
         self.assertIn("support guide diagnostic ZIP path guidance:fail", product_details)
         self.assertIn("support guide diagnostic ZIP verification guidance:fail", product_details)
         self.assertIn("support guide GUI log summary guidance:fail", product_details)
+        self.assertIn("support guide display diagnostics guidance:fail", product_details)
+        self.assertIn("support guide display diagnostics copy guidance:fail", product_details)
         self.assertIn("support guide ZIP log summary action guidance:fail", product_details)
         self.assertIn("support guide recovery report guidance:fail", product_details)
         self.assertIn("support guide home recent reports guidance:fail", product_details)
@@ -4162,6 +4174,7 @@ tags:
         self.assertIn("GUI smoke UI density command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display reset command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke display diagnostics copy command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
         self.assertIn("GUI smoke display readability status:pass", launcher_details)
         self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
@@ -4184,10 +4197,12 @@ tags:
         self.assertIn("README UI density header guidance:pass", launcher_details)
         self.assertIn("README display reset guidance:pass", launcher_details)
         self.assertIn("README display diagnostics guidance:pass", launcher_details)
+        self.assertIn("README display diagnostics copy guidance:pass", launcher_details)
         self.assertIn("GUI modern diagnostics subtitle:pass", launcher_details)
         self.assertIn("GUI modern help subtitle:pass", launcher_details)
         self.assertIn("GUI log display action:pass", launcher_details)
         self.assertIn("GUI display diagnostics action:pass", launcher_details)
+        self.assertIn("GUI display diagnostics copy action:pass", launcher_details)
         self.assertIn("GUI display diagnostics report:pass", launcher_details)
         self.assertIn("GUI display readability checks:pass", launcher_details)
         self.assertIn("GUI display readability status line:pass", launcher_details)
@@ -4197,6 +4212,8 @@ tags:
         self.assertIn("GUI log folder action:pass", launcher_details)
         self.assertIn("GUI log display button:pass", launcher_details)
         self.assertIn("GUI display diagnostics button:pass", launcher_details)
+        self.assertIn("GUI display diagnostics copy button:pass", launcher_details)
+        self.assertIn("GUI display diagnostics copy clipboard:pass", launcher_details)
         self.assertIn("GUI log copy button:pass", launcher_details)
         self.assertIn("GUI log folder button:pass", launcher_details)
         self.assertIn("GUI diagnostic ZIP folder button:pass", launcher_details)
@@ -4391,6 +4408,8 @@ tags:
         self.assertIn("support guide diagnostic ZIP path guidance:pass", launcher_details)
         self.assertIn("support guide diagnostic ZIP verification guidance:pass", launcher_details)
         self.assertIn("support guide GUI log summary guidance:pass", launcher_details)
+        self.assertIn("support guide display diagnostics guidance:pass", launcher_details)
+        self.assertIn("support guide display diagnostics copy guidance:pass", launcher_details)
         self.assertIn("support guide ZIP log summary action guidance:pass", launcher_details)
         self.assertIn("support guide recovery report guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports guidance:pass", launcher_details)

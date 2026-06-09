@@ -2249,6 +2249,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke display diagnostics copy command metrics",
+            "command_palette_display_diagnostics_copy_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke display diagnostics metrics",
             "display_diagnostics_chars=",
         )
@@ -2535,6 +2542,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "README.md",
+            "README display diagnostics copy guidance",
+            "表示診断コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern diagnostics subtitle",
             "品質チェック、配布ZIP",
@@ -2559,6 +2573,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI display diagnostics action",
             "show_display_diagnostics_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics copy action",
+            "copy_display_diagnostics_action",
         )
     )
     checks.append(
@@ -2629,6 +2650,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI display diagnostics button",
             "表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics copy button",
+            "表示診断コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics copy clipboard",
+            "表示診断をコピーしました",
         )
     )
     checks.append(
@@ -3735,6 +3770,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide display diagnostics guidance",
             "DISPLAY_DIAGNOSTICS.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide display diagnostics copy guidance",
+            "表示診断コピー",
         )
     )
     checks.append(

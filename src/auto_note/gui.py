@@ -564,6 +564,9 @@ def smoke_gui(project_dir: Path) -> str:
         command_palette_display_diagnostics_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "表示診断"
         )
+        command_palette_display_diagnostics_copy_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "表示診断コピー"
+        )
         display_readability_status, display_readability_lines = app._display_readability_checks(style)
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
         display_diagnostics = app._format_display_diagnostics()
@@ -598,6 +601,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
             f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
             f"command_palette_display_diagnostics_actions={command_palette_display_diagnostics_actions}, "
+            f"command_palette_display_diagnostics_copy_actions={command_palette_display_diagnostics_copy_actions}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
             f"display_diagnostics_chars={display_diagnostics_chars}, "
@@ -2663,6 +2667,7 @@ class AutoNoteApp(tk.Tk):
                 ("最新ZIP検証", self.verify_latest_release_action),
                 ("生成物確認", self.preview_cleanup_action),
                 ("表示診断", self.show_display_diagnostics_action),
+                ("表示診断コピー", self.copy_display_diagnostics_action),
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
                 ("ログを開く", self.open_gui_log),
@@ -2917,6 +2922,8 @@ class AutoNoteApp(tk.Tk):
                 ("最新ZIP検証", self.verify_latest_release_action),
                 ("生成物整理", self.apply_cleanup_action),
                 ("危険生成物整理", self.apply_privacy_failed_cleanup_action),
+                ("表示診断", self.show_display_diagnostics_action),
+                ("表示診断コピー", self.copy_display_diagnostics_action),
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
                 ("GUIログ場所", self.open_gui_log_folder_action),
@@ -5779,6 +5786,7 @@ class AutoNoteApp(tk.Tk):
             ("表示サイズ設定へ", "設定タブの表示サイズを開く", self.focus_ui_density_setting_action),
             ("表示リセット", "表示サイズとウィンドウを初期状態へ戻す", self.reset_display_action),
             ("表示診断", "フォント、倍率、画面サイズ、表示スタイルを診断タブに表示", self.show_display_diagnostics_action),
+            ("表示診断コピー", "表示診断をクリップボードへコピー", self.copy_display_diagnostics_action),
             ("作業進行: 初回", "ホームの初回工程を開く", lambda: self.open_home_progress_stage("setup")),
             ("作業進行: 記事", "ホームの記事工程を開く", lambda: self.open_home_progress_stage("article")),
             ("作業進行: 仕上げ", "ホームの仕上げ工程を開く", lambda: self.open_home_progress_stage("review")),
@@ -6285,6 +6293,24 @@ class AutoNoteApp(tk.Tk):
             self.notify("表示診断を表示しました", level="success")
         else:
             self.notify("表示診断に注意項目があります", level="warning")
+
+    def copy_display_diagnostics_action(self) -> None:
+        status, _lines = self._display_readability_checks()
+        text = self._format_display_diagnostics()
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("表示診断をコピーできませんでした", level="error")
+            messagebox.showerror("表示診断コピー", str(exc))
+            return
+        if status == "OK":
+            self.notify("表示診断をコピーしました", level="success")
+        else:
+            self.notify("表示診断をコピーしました。注意項目があります", level="warning")
 
     def _display_readability_checks(self, style: ttk.Style | None = None) -> tuple[str, list[str]]:
         style = style or ttk.Style(self)
