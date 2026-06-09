@@ -25,6 +25,7 @@ class AppSettings:
     commercial_terms_reviewed: bool
     commercial_support_scope_confirmed: bool
     commercial_reviewed_at: str
+    ui_density: str
     image_optimize_by_default: bool
     image_max_width: int
     image_quality: int
@@ -52,10 +53,13 @@ DEFAULT_SETTINGS = AppSettings(
     commercial_terms_reviewed=False,
     commercial_support_scope_confirmed=False,
     commercial_reviewed_at="",
+    ui_density="comfortable",
     image_optimize_by_default=False,
     image_max_width=1600,
     image_quality=85,
 )
+
+UI_DENSITY_OPTIONS = ("standard", "comfortable", "large")
 
 
 def settings_path(project_dir: Path) -> Path:
@@ -118,6 +122,7 @@ def _settings_from_mapping(raw: dict[str, Any]) -> AppSettings:
     merged["commercial_terms_reviewed"] = bool(merged.get("commercial_terms_reviewed"))
     merged["commercial_support_scope_confirmed"] = bool(merged.get("commercial_support_scope_confirmed"))
     merged["commercial_reviewed_at"] = str(merged.get("commercial_reviewed_at") or "")
+    merged["ui_density"] = _normalise_ui_density(merged.get("ui_density"))
     merged["image_optimize_by_default"] = bool(merged.get("image_optimize_by_default"))
     merged["image_max_width"] = _clamp_int(merged.get("image_max_width"), default=1600, minimum=320, maximum=4000)
     merged["image_quality"] = _clamp_int(merged.get("image_quality"), default=85, minimum=30, maximum=100)
@@ -162,6 +167,13 @@ def _normalise_tags(value: Any) -> list[str]:
         seen.add(tag)
         tags.append(tag)
     return tags
+
+
+def _normalise_ui_density(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if text in UI_DENSITY_OPTIONS:
+        return text
+    return DEFAULT_SETTINGS.ui_density
 
 
 def _clamp_int(value: Any, *, default: int, minimum: int, maximum: int) -> int:

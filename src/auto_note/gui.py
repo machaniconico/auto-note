@@ -137,7 +137,7 @@ from .sales_materials import (
     verify_sales_materials,
 )
 from .sales_plan import SalesPlanStep, build_sales_plan, format_sales_plan, write_sales_plan_report
-from .settings import AppSettings, load_settings, parse_tags, save_settings
+from .settings import AppSettings, UI_DENSITY_OPTIONS, load_settings, parse_tags, save_settings
 from .selftest import format_self_test_report, run_self_test, write_self_test_report
 from .setup_check import format_setup_report, run_setup_check
 from .starter import (
@@ -200,6 +200,52 @@ UI_NOTEBOOK_TAB_PADDING = (18, 12)
 UI_BUTTON_PADDING = (14, 10)
 UI_PRIMARY_BUTTON_PADDING = (16, 10)
 UI_DANGER_BUTTON_PADDING = (12, 9)
+UI_TEXT_SPACING_TOP = 2
+UI_TEXT_SPACING_BOTTOM = 4
+UI_DENSITY_LABELS = {
+    "standard": "標準",
+    "comfortable": "ゆったり",
+    "large": "大きめ",
+}
+UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
+UI_DENSITY_VALUES = {
+    "standard": {
+        "text_size": 10,
+        "small_text_size": 9,
+        "badge_font_size": 9,
+        "tree_row_height": 36,
+        "notebook_tab_padding": (16, 10),
+        "button_padding": (13, 8),
+        "primary_button_padding": (15, 9),
+        "danger_button_padding": (11, 8),
+        "text_spacing_top": 1,
+        "text_spacing_bottom": 3,
+    },
+    "comfortable": {
+        "text_size": 10,
+        "small_text_size": 9,
+        "badge_font_size": 9,
+        "tree_row_height": 38,
+        "notebook_tab_padding": (18, 12),
+        "button_padding": (14, 10),
+        "primary_button_padding": (16, 10),
+        "danger_button_padding": (12, 9),
+        "text_spacing_top": 2,
+        "text_spacing_bottom": 4,
+    },
+    "large": {
+        "text_size": 11,
+        "small_text_size": 10,
+        "badge_font_size": 10,
+        "tree_row_height": 42,
+        "notebook_tab_padding": (20, 14),
+        "button_padding": (16, 12),
+        "primary_button_padding": (18, 12),
+        "danger_button_padding": (14, 10),
+        "text_spacing_top": 3,
+        "text_spacing_bottom": 5,
+    },
+}
 _DPI_AWARENESS_ENABLED = False
 UI_COLORS = {
     "bg": "#eef3f8",
@@ -238,6 +284,42 @@ STATUS_COLORS = {
     "published": ("#dff3ed", "#105f54"),
 }
 AUTOSAVE_INTERVAL_MS = 30_000
+
+
+def _normalise_ui_density(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if text in UI_DENSITY_OPTIONS:
+        return text
+    return "comfortable"
+
+
+def _ui_density_label(value: str) -> str:
+    return UI_DENSITY_LABELS.get(_normalise_ui_density(value), UI_DENSITY_LABELS["comfortable"])
+
+
+def _ui_density_value(label: str) -> str:
+    text = str(label or "").strip()
+    if text in UI_DENSITY_LABEL_TO_VALUE:
+        return UI_DENSITY_LABEL_TO_VALUE[text]
+    return _normalise_ui_density(text)
+
+
+def _apply_ui_density(density: str) -> None:
+    global UI_TEXT_SIZE, UI_SMALL_TEXT_SIZE, UI_BADGE_FONT_SIZE, UI_TREE_ROW_HEIGHT
+    global UI_NOTEBOOK_TAB_PADDING, UI_BUTTON_PADDING, UI_PRIMARY_BUTTON_PADDING, UI_DANGER_BUTTON_PADDING
+    global UI_TEXT_SPACING_TOP, UI_TEXT_SPACING_BOTTOM
+
+    values = UI_DENSITY_VALUES[_normalise_ui_density(density)]
+    UI_TEXT_SIZE = int(values["text_size"])
+    UI_SMALL_TEXT_SIZE = int(values["small_text_size"])
+    UI_BADGE_FONT_SIZE = int(values["badge_font_size"])
+    UI_TREE_ROW_HEIGHT = int(values["tree_row_height"])
+    UI_NOTEBOOK_TAB_PADDING = tuple(values["notebook_tab_padding"])
+    UI_BUTTON_PADDING = tuple(values["button_padding"])
+    UI_PRIMARY_BUTTON_PADDING = tuple(values["primary_button_padding"])
+    UI_DANGER_BUTTON_PADDING = tuple(values["danger_button_padding"])
+    UI_TEXT_SPACING_TOP = int(values["text_spacing_top"])
+    UI_TEXT_SPACING_BOTTOM = int(values["text_spacing_bottom"])
 
 
 def _enable_windows_dpi_awareness() -> None:
@@ -280,8 +362,8 @@ def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
         highlightcolor=UI_COLORS["focus"],
         padx=10,
         pady=10,
-        spacing1=2,
-        spacing3=4,
+        spacing1=UI_TEXT_SPACING_TOP,
+        spacing3=UI_TEXT_SPACING_BOTTOM,
         font=(CODE_FONT if code else UI_FONT, UI_TEXT_SIZE),
     )
 
@@ -424,6 +506,7 @@ def smoke_gui(project_dir: Path) -> str:
             + str(style.lookup("TNotebook.Tab", "padding"))
             + str(style.lookup("TButton", "padding"))
         )
+        ui_density_chars = len(getattr(app.settings, "ui_density", ""))
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -448,6 +531,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_first_run_chars={home_first_run_chars}, "
             f"home_gui_log_chars={home_gui_log_chars}, "
             f"readability_style_chars={readability_style_chars}, "
+            f"ui_density_chars={ui_density_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -514,6 +598,7 @@ class AutoNoteApp(tk.Tk):
 
     def _configure_style(self) -> None:
         global UI_FONT, CODE_FONT
+        _apply_ui_density(getattr(self.settings, "ui_density", "comfortable"))
         style = ttk.Style(self)
         try:
             style.theme_use("clam")
@@ -762,6 +847,63 @@ class AutoNoteApp(tk.Tk):
         style.map("Danger.TButton", background=[("active", "#fecaca"), ("pressed", "#fca5a5")])
         style.configure("TLabelframe", background=surface, padding=12, relief="flat", borderwidth=0)
         style.configure("TLabelframe.Label", background=surface, foreground=primary, font=(font, 10, "bold"))
+
+    def _manual_status_widgets(self) -> list[tk.Label]:
+        widgets: list[tk.Label] = []
+        for name in (
+            "home_status_badge",
+            "home_first_run_status_pill",
+            "home_gui_log_status_pill",
+            "home_sales_status_pill",
+            "home_buyer_send_status_pill",
+            "first_run_status_pill",
+            "status_pill",
+            "article_focus_status_pill",
+            "publish_ready_status_pill",
+            "support_send_readiness_status_pill",
+            "support_contact_status_pill",
+            "support_bundle_status_pill",
+        ):
+            widget = getattr(self, name, None)
+            if isinstance(widget, tk.Label):
+                widgets.append(widget)
+        for name in (
+            "home_snapshot_pills",
+            "home_progress_pills",
+            "home_sales_stage_pills",
+        ):
+            collection = getattr(self, name, {})
+            if isinstance(collection, dict):
+                widgets.extend(widget for widget in collection.values() if isinstance(widget, tk.Label))
+        return widgets
+
+    def _refresh_manual_readability_widgets(self) -> None:
+        for widget in self._manual_status_widgets():
+            try:
+                widget.configure(
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                    pady=max(3, UI_BADGE_FONT_SIZE - 5),
+                )
+            except tk.TclError:
+                continue
+
+    def _refresh_text_widget_readability(self) -> None:
+        for name, code in (
+            ("home_text", True),
+            ("preview", False),
+            ("editor", False),
+            ("schedule_text", True),
+            ("check_text", True),
+            ("settings_help_box", False),
+            ("diagnostics_text", True),
+            ("help_text", False),
+        ):
+            widget = getattr(self, name, None)
+            if isinstance(widget, tk.Text):
+                try:
+                    _style_text_widget(widget, code=code)
+                except tk.TclError:
+                    continue
 
     def _build_ui(self) -> None:
         self.configure(bg=UI_COLORS["bg"])
@@ -2052,7 +2194,7 @@ class AutoNoteApp(tk.Tk):
         ttk.Label(title_group, text="設定", style="PageTitle.TLabel").pack(anchor=tk.W)
         ttk.Label(
             title_group,
-            text="投稿補助、販売者情報、画像最適化の既定値を管理します。",
+            text="投稿補助、表示サイズ、販売者情報、画像最適化の既定値を管理します。",
             style="PageSubtitle.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="保存", style="Primary.TButton", command=self.save_app_settings).pack(side=tk.RIGHT)
@@ -2065,6 +2207,7 @@ class AutoNoteApp(tk.Tk):
         self.append_tags_var = tk.BooleanVar(value=self.settings.append_tags_by_default)
         self.open_note_var = tk.BooleanVar(value=self.settings.open_note_with_helper)
         self.article_glob_var = tk.StringVar(value=self.settings.article_glob)
+        self.ui_density_var = tk.StringVar(value=_ui_density_label(self.settings.ui_density))
         self.support_contact_var = tk.StringVar(value=self.settings.support_contact)
         self.seller_name_var = tk.StringVar(value=self.settings.seller_name)
         self.sales_channel_url_var = tk.StringVar(value=self.settings.sales_channel_url)
@@ -2092,34 +2235,46 @@ class AutoNoteApp(tk.Tk):
             ),
         )
         self._form_row(form, 2, "記事検索パターン", ttk.Entry(form, textvariable=self.article_glob_var))
+        self._form_row(
+            form,
+            3,
+            "表示サイズ",
+            ttk.Combobox(
+                form,
+                textvariable=self.ui_density_var,
+                values=tuple(UI_DENSITY_LABELS.values()),
+                state="readonly",
+                width=14,
+            ),
+        )
         self.support_contact_entry = ttk.Entry(form, textvariable=self.support_contact_var)
         self.seller_name_entry = ttk.Entry(form, textvariable=self.seller_name_var)
         self.sales_channel_url_entry = ttk.Entry(form, textvariable=self.sales_channel_url_var)
         self.refund_policy_url_entry = ttk.Entry(form, textvariable=self.refund_policy_url_var)
-        self._form_row(form, 3, "サポート連絡先", self.support_contact_entry)
-        self._form_row(form, 4, "販売者/屋号", self.seller_name_entry)
-        self._form_row(form, 5, "販売ページURL", self.sales_channel_url_entry)
-        self._form_row(form, 6, "返金方針URL", self.refund_policy_url_entry)
+        self._form_row(form, 4, "サポート連絡先", self.support_contact_entry)
+        self._form_row(form, 5, "販売者/屋号", self.seller_name_entry)
+        self._form_row(form, 6, "販売ページURL", self.sales_channel_url_entry)
+        self._form_row(form, 7, "返金方針URL", self.refund_policy_url_entry)
         self._form_row(
             form,
-            7,
+            8,
             "画像最大幅",
             ttk.Spinbox(form, textvariable=self.image_max_width_var, from_=320, to=4000, increment=100, width=10),
         )
         self._form_row(
             form,
-            8,
+            9,
             "画像品質",
             ttk.Spinbox(form, textvariable=self.image_quality_var, from_=30, to=100, increment=5, width=10),
         )
         ttk.Checkbutton(form, text="画像挿入時に既定で最適化する", variable=self.image_optimize_var).grid(
-            row=9, column=1, sticky=tk.W, pady=8
-        )
-        ttk.Checkbutton(form, text="投稿ヘルパーでタグを本文末尾に追加する", variable=self.append_tags_var).grid(
             row=10, column=1, sticky=tk.W, pady=8
         )
-        ttk.Checkbutton(form, text="投稿ヘルパー起動時にnote投稿画面も開く", variable=self.open_note_var).grid(
+        ttk.Checkbutton(form, text="投稿ヘルパーでタグを本文末尾に追加する", variable=self.append_tags_var).grid(
             row=11, column=1, sticky=tk.W, pady=8
+        )
+        ttk.Checkbutton(form, text="投稿ヘルパー起動時にnote投稿画面も開く", variable=self.open_note_var).grid(
+            row=12, column=1, sticky=tk.W, pady=8
         )
         self.commercial_terms_reviewed_check = ttk.Checkbutton(
             form,
@@ -2127,7 +2282,7 @@ class AutoNoteApp(tk.Tk):
             variable=self.commercial_terms_reviewed_var,
         )
         self.commercial_terms_reviewed_check.grid(
-            row=12, column=1, sticky=tk.W, pady=8
+            row=13, column=1, sticky=tk.W, pady=8
         )
         self.commercial_support_scope_check = ttk.Checkbutton(
             form,
@@ -2135,13 +2290,13 @@ class AutoNoteApp(tk.Tk):
             variable=self.commercial_support_scope_var,
         )
         self.commercial_support_scope_check.grid(
-            row=13,
+            row=14,
             column=1,
             sticky=tk.W,
             pady=8,
         )
         progress_panel = ttk.Frame(form, style="Surface.TFrame")
-        progress_panel.grid(row=14, column=1, sticky=tk.EW, pady=(2, 8))
+        progress_panel.grid(row=15, column=1, sticky=tk.EW, pady=(2, 8))
         ttk.Label(progress_panel, textvariable=self.commercial_progress_var, style="Surface.TLabel").pack(
             anchor=tk.W,
             fill=tk.X,
@@ -2153,7 +2308,7 @@ class AutoNoteApp(tk.Tk):
         )
         self._build_commercial_setup_checklist(progress_panel)
         setup_actions = ttk.Frame(form, style="Surface.TFrame")
-        setup_actions.grid(row=15, column=1, sticky=tk.EW, pady=8)
+        setup_actions.grid(row=16, column=1, sticky=tk.EW, pady=8)
         ttk.Button(setup_actions, text="セットアップウィザード", command=lambda: self.show_setup_wizard(force=True)).pack(
             side=tk.LEFT
         )
@@ -2179,14 +2334,15 @@ class AutoNoteApp(tk.Tk):
         self._bind_commercial_setup_progress()
         self._refresh_commercial_setup_progress()
 
-        help_box = ScrolledText(self.settings_tab, wrap=tk.WORD, height=10, borderwidth=0)
-        _style_text_widget(help_box)
-        help_box.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
-        help_box.insert(
+        self.settings_help_box = ScrolledText(self.settings_tab, wrap=tk.WORD, height=10, borderwidth=0)
+        _style_text_widget(self.settings_help_box)
+        self.settings_help_box.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+        self.settings_help_box.insert(
             tk.END,
             "設定は .auto-note/settings.json に保存されます。\n\n"
             "既定タグは、新規記事作成時にタグ入力を省略した場合に使われます。\n"
             "記事検索パターンは通常 *.md のままで構いません。\n"
+            "表示サイズは、文字や行高が潰れて見える時に「大きめ」へ変更します。\n"
             "画像最大幅と画像品質は、画像挿入時の最適化に使われます。\n"
             "サポート連絡先はヘルプ画面に表示する任意のメモです。\n"
             "販売者情報と確認チェックは、販売準備レポートの根拠として保存されます。\n"
@@ -2195,7 +2351,7 @@ class AutoNoteApp(tk.Tk):
             "販売者情報確認は、未保存の入力欄も含めて不足項目と公開URLの確認事項を診断タブに表示します。\n"
             "次の不足へは、販売者情報の未入力または確認が必要な欄へ移動します。",
         )
-        help_box.configure(state=tk.DISABLED)
+        self.settings_help_box.configure(state=tk.DISABLED)
 
     def _build_commercial_setup_checklist(self, parent: ttk.Frame) -> None:
         columns = ("status", "field", "detail", "action")
@@ -5327,6 +5483,7 @@ class AutoNoteApp(tk.Tk):
                 commercial_terms_reviewed=self.settings.commercial_terms_reviewed,
                 commercial_support_scope_confirmed=self.settings.commercial_support_scope_confirmed,
                 commercial_reviewed_at=self.settings.commercial_reviewed_at,
+                ui_density=self.settings.ui_density,
                 image_optimize_by_default=image_optimize_var.get(),
                 image_max_width=_bounded_int_var(image_max_width_var, 1600, 320, 4000),
                 image_quality=_bounded_int_var(image_quality_var, 85, 30, 100),
@@ -5573,6 +5730,8 @@ class AutoNoteApp(tk.Tk):
             self.open_note_var.set(self.settings.open_note_with_helper)
         if hasattr(self, "article_glob_var"):
             self.article_glob_var.set(self.settings.article_glob)
+        if hasattr(self, "ui_density_var"):
+            self.ui_density_var.set(_ui_density_label(self.settings.ui_density))
         if hasattr(self, "support_contact_var"):
             self.support_contact_var.set(self.settings.support_contact)
         if hasattr(self, "seller_name_var"):
@@ -5815,6 +5974,7 @@ class AutoNoteApp(tk.Tk):
             append_tags_by_default=self.append_tags_var.get(),
             open_note_with_helper=self.open_note_var.get(),
             article_glob=self.article_glob_var.get().strip() or "*.md",
+            ui_density=_ui_density_value(self.ui_density_var.get()),
             support_contact=self.support_contact_var.get().strip(),
             seller_name=self.seller_name_var.get().strip(),
             sales_channel_url=self.sales_channel_url_var.get().strip(),
@@ -5849,12 +6009,16 @@ class AutoNoteApp(tk.Tk):
             commercial_terms_reviewed=terms_reviewed,
             commercial_support_scope_confirmed=support_scope_confirmed,
             commercial_reviewed_at=reviewed_at,
+            ui_density=_ui_density_value(self.ui_density_var.get()),
             image_optimize_by_default=self.image_optimize_var.get(),
             image_max_width=_bounded_int_var(self.image_max_width_var, 1600, 320, 4000),
             image_quality=_bounded_int_var(self.image_quality_var, 85, 30, 100),
         )
         save_settings(self.project_dir, settings)
         self.settings = settings
+        self._configure_style()
+        self._refresh_manual_readability_widgets()
+        self._refresh_text_widget_readability()
         self.refresh_all()
         self._notify_settings_saved(settings)
 

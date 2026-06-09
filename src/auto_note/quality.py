@@ -2047,7 +2047,49 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text line spacing",
-            "spacing3=4",
+            "UI_TEXT_SPACING_BOTTOM = 4",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "settings.py",
+            "settings UI density field",
+            "ui_density: str",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "settings.py",
+            "settings UI density options",
+            "UI_DENSITY_OPTIONS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "settings.py",
+            "settings UI density normalization",
+            "_normalise_ui_density",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI UI density selector",
+            "ui_density_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI UI density style apply",
+            "_apply_ui_density",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI UI density text refresh",
+            "_refresh_text_widget_readability",
         )
     )
     checks.append(
@@ -2055,6 +2097,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke readable style metrics",
             "readability_style_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke UI density metrics",
+            "ui_density_chars=",
         )
     )
     checks.append(
@@ -2271,7 +2320,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern settings subtitle",
-            "投稿補助、販売者情報",
+            "投稿補助、表示サイズ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README UI density guidance",
+            "表示サイズ",
         )
     )
     checks.append(
