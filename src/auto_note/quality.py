@@ -134,6 +134,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
+            "support bundle GUI log summary",
+            "GUI_LOG_SUMMARY.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle GUI log privacy mask",
+            "mask_text(text, project_dir)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
             "support bundle send-only guidance",
             "Send this ZIP only",
         )
@@ -2048,6 +2062,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log copy guidance",
             "GUIログコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide GUI log summary guidance",
+            "GUI_LOG_SUMMARY.txt",
         )
     )
     checks.append(

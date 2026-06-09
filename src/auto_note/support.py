@@ -10,7 +10,7 @@ import zipfile
 
 from . import __version__
 from .article import write_text_atomic
-from .diagnostics import create_diagnostic_report, preview_diagnostic_report
+from .diagnostics import create_diagnostic_report, mask_text, preview_diagnostic_report
 from .paths import unique_path
 
 
@@ -38,6 +38,7 @@ def create_support_bundle(project_dir: Path, *, include_private: bool = False) -
             include_private=include_private,
         ).encode("utf-8"),
         "support-request.md": build_support_request(project_dir, include_private=include_private).encode("utf-8"),
+        "GUI_LOG_SUMMARY.txt": _build_gui_log_summary(project_dir, include_private=include_private).encode("utf-8"),
         "diagnostic-report.zip": diagnostic_path.read_bytes(),
     }
     records = [_bundle_record(name, data) for name, data in entries.items()]
@@ -168,6 +169,7 @@ def _build_bundle_readme(*, include_private: bool = False) -> str:
         "Files:\n"
         "- SUPPORT_SEND_CHECKLIST.txt: Confirm what to review before sending this zip.\n"
         "- support-request.md: Fill in the summary, reproduction steps, and recent changes before sending.\n"
+        "- GUI_LOG_SUMMARY.txt: Quick view of the latest GUI startup or operation log.\n"
         "- diagnostic-report.zip: Attach this nested diagnostic report when support asks for details.\n\n"
         "Verification:\n"
         "- SUPPORT_BUNDLE_MANIFEST.json lists the bundle contents.\n"
@@ -192,6 +194,7 @@ def _build_support_send_checklist(*, bundle_name: str, diagnostic_name: str, inc
         f"Privacy / 匿名化状態: {privacy}\n\n"
         "Before sending / 送付前に確認:\n"
         "[ ] Open support-request.md and fill in Summary, Steps to reproduce, and Recent changes.\n"
+        "[ ] Open GUI_LOG_SUMMARY.txt if the issue is GUI startup, login, or operation related.\n"
         "[ ] Read the Diagnostic preview in support-request.md and confirm it does not contain article text, personal names, emails, order IDs, or purchase details.\n"
         "[ ] Run `auto-note support --verify <this zip>` or GUI `一式ZIP検証` and confirm `[OK] support bundle verified`.\n"
         "[ ] Run `auto-note privacy-audit --project-dir .` or GUI `プライバシー監査` before sending.\n"
@@ -200,10 +203,50 @@ def _build_support_send_checklist(*, bundle_name: str, diagnostic_name: str, inc
         "- README.txt\n"
         "- SUPPORT_SEND_CHECKLIST.txt\n"
         "- support-request.md\n"
+        "- GUI_LOG_SUMMARY.txt\n"
         "- diagnostic-report.zip\n"
         "- SUPPORT_BUNDLE_MANIFEST.json\n"
         "- CHECKSUMS.txt\n"
     )
+
+
+def _build_gui_log_summary(project_dir: Path, *, include_private: bool = False, max_chars: int = 20000) -> str:
+    log_path = project_dir / ".auto-note" / "gui-error.log"
+    privacy = "raw details included" if include_private else "paths, user name, and email are masked"
+    lines = [
+        "auto-note GUI log summary",
+        "GUIログ要約",
+        "",
+        f"Path: {log_path}",
+        f"Privacy: {privacy}",
+        "",
+    ]
+    if not log_path.exists():
+        lines.append("Status: GUI log has not been created yet.")
+        text = "\n".join(lines) + "\n"
+        return text if include_private else mask_text(text, project_dir)
+    try:
+        size = log_path.stat().st_size
+        content = log_path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError as exc:
+        lines.append(f"Status: could not read GUI log: {exc}")
+        text = "\n".join(lines) + "\n"
+        return text if include_private else mask_text(text, project_dir)
+    if len(content) > max_chars:
+        content = content[-max_chars:]
+        lines.append(f"Status: log is long; showing only the last {max_chars} characters.")
+    else:
+        lines.append("Status: latest GUI log included.")
+    lines.extend(
+        [
+            f"Size: {size} bytes",
+            "",
+            "Content:",
+            content or "(empty)",
+        ]
+    )
+    text = "\n".join(lines) + "\n"
+    return text if include_private else mask_text(text, project_dir)
 
 
 def _bundle_record(name: str, data: bytes) -> dict[str, object]:
@@ -274,6 +317,7 @@ def _verify_checksums(archive: zipfile.ZipFile) -> list[str]:
         "README.txt",
         "SUPPORT_SEND_CHECKLIST.txt",
         "support-request.md",
+        "GUI_LOG_SUMMARY.txt",
         "diagnostic-report.zip",
         "SUPPORT_BUNDLE_MANIFEST.json",
     ):

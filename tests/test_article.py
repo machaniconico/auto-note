@@ -3,6 +3,7 @@ from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 import io
 import json
+import hashlib
 import os
 import shutil
 import tempfile
@@ -2037,6 +2038,7 @@ tags: note
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
             create_article("問い合わせ記事", articles_dir=project / "articles", tags=["note"])
+            append_gui_error(project, "GUI startup failed", f"path={project}\nemail=user@example.com\nstartup failed")
 
             request = create_support_request(project)
             request_exists = request.exists()
@@ -2051,6 +2053,7 @@ tags: note
                 bundle_readme = archive.read("README.txt").decode("utf-8")
                 send_checklist = archive.read("SUPPORT_SEND_CHECKLIST.txt").decode("utf-8")
                 bundled_request = archive.read("support-request.md").decode("utf-8")
+                gui_log_summary = archive.read("GUI_LOG_SUMMARY.txt").decode("utf-8")
                 diagnostic_bytes = archive.read("diagnostic-report.zip")
                 bundle_manifest = json.loads(archive.read("SUPPORT_BUNDLE_MANIFEST.json").decode("utf-8"))
                 checksums = archive.read("CHECKSUMS.txt").decode("utf-8")
@@ -2085,6 +2088,7 @@ tags: note
                 "README.txt",
                 "SUPPORT_SEND_CHECKLIST.txt",
                 "support-request.md",
+                "GUI_LOG_SUMMARY.txt",
                 "diagnostic-report.zip",
                 "SUPPORT_BUNDLE_MANIFEST.json",
                 "CHECKSUMS.txt",
@@ -2094,19 +2098,27 @@ tags: note
         self.assertIn("[OK] support bundle verified", bundle_verification_text)
         self.assertIn("privacy-safe", bundle_readme)
         self.assertIn("問い合わせ一式 送付前チェックリスト", send_checklist)
+        self.assertIn("GUI_LOG_SUMMARY.txt", bundle_readme)
+        self.assertIn("GUI_LOG_SUMMARY.txt", send_checklist)
         self.assertIn("Send this ZIP only", send_checklist)
         self.assertIn("auto-note support --verify <this zip>", send_checklist)
         self.assertIn("auto-note privacy-audit --project-dir .", send_checklist)
+        self.assertIn("GUIログ要約", gui_log_summary)
+        self.assertIn("startup failed", gui_log_summary)
+        self.assertNotIn(str(project), gui_log_summary)
+        self.assertNotIn("user@example.com", gui_log_summary)
         self.assertEqual(send_checklist_from_api, send_checklist)
         self.assertIn("auto-note support request", bundled_request)
         self.assertNotIn(str(project), bundled_request)
         self.assertNotIn("問い合わせ記事", bundled_request)
-        self.assertEqual(bundle_manifest["file_count"], 4)
+        self.assertEqual(bundle_manifest["file_count"], 5)
         self.assertFalse(bundle_manifest["privacy"]["includes_raw_details"])
         self.assertIn("diagnostic-report.zip", checksums)
         self.assertIn("SUPPORT_SEND_CHECKLIST.txt", checksums)
+        self.assertIn("GUI_LOG_SUMMARY.txt", checksums)
         self.assertIn("SUPPORT_BUNDLE_MANIFEST.json", checksums)
         self.assertIn("diagnostics.txt", diagnostic_names)
+        self.assertIn(".auto-note/gui-error.log", diagnostic_names)
         self.assertIn("first-run.txt", diagnostic_names)
         self.assertIn("commercial-readiness.txt", diagnostic_names)
         self.assertIn("sales-plan.txt", diagnostic_names)
@@ -2185,6 +2197,36 @@ tags: note
             errors = verify_support_bundle(bundle)
 
         self.assertIn("checksum mismatch: README.txt", errors)
+
+    def test_support_bundle_verification_accepts_legacy_without_gui_log_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "legacy-support.zip"
+            entries = {
+                "README.txt": b"readme",
+                "SUPPORT_SEND_CHECKLIST.txt": b"checklist",
+                "support-request.md": b"request",
+                "diagnostic-report.zip": b"zip",
+            }
+            manifest = json.dumps(
+                {
+                    "version": "0.1.0",
+                    "privacy": {"includes_raw_details": False},
+                    "files": [{"path": name} for name in entries],
+                }
+            ).encode("utf-8")
+            checksum_entries = {**entries, "SUPPORT_BUNDLE_MANIFEST.json": manifest}
+            checksums = "".join(
+                f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in checksum_entries.items()
+            )
+            with zipfile.ZipFile(bundle, "w") as archive:
+                for name, data in entries.items():
+                    archive.writestr(name, data)
+                archive.writestr("SUPPORT_BUNDLE_MANIFEST.json", manifest)
+                archive.writestr("CHECKSUMS.txt", checksums)
+
+            errors = verify_support_bundle(bundle)
+
+        self.assertEqual(errors, [])
 
     def test_privacy_audit_detects_raw_private_markers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2530,7 +2572,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nSend this ZIP only\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nmask_text(text, project_dir)\nSend this ZIP only\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
@@ -2575,7 +2617,7 @@ tags:
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUI_LOG_SUMMARY.txt\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -2605,6 +2647,8 @@ tags:
         self.assertIn("GUI launcher smoke check:fail", product_details)
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
         self.assertIn("support bundle send checklist:fail", product_details)
+        self.assertIn("support bundle GUI log summary:fail", product_details)
+        self.assertIn("support bundle GUI log privacy mask:fail", product_details)
         self.assertIn("support bundle send-only guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("release check script:fail", product_details)
@@ -2847,6 +2891,7 @@ tags:
         self.assertIn("support guide send checklist guidance:fail", product_details)
         self.assertIn("support guide GUI log display guidance:fail", product_details)
         self.assertIn("support guide GUI log copy guidance:fail", product_details)
+        self.assertIn("support guide GUI log summary guidance:fail", product_details)
         self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
@@ -3115,6 +3160,7 @@ tags:
         self.assertIn("support guide send checklist guidance:pass", launcher_details)
         self.assertIn("support guide GUI log display guidance:pass", launcher_details)
         self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
+        self.assertIn("support guide GUI log summary guidance:pass", launcher_details)
         self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
@@ -3147,6 +3193,8 @@ tags:
         self.assertIn("GUI launcher smoke check:pass", launcher_details)
         self.assertIn("GUI launcher support bundle guidance:pass", launcher_details)
         self.assertIn("support bundle send checklist:pass", launcher_details)
+        self.assertIn("support bundle GUI log summary:pass", launcher_details)
+        self.assertIn("support bundle GUI log privacy mask:pass", launcher_details)
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("hidden GUI launcher target:pass", launcher_details)
         self.assertIn("hidden GUI launcher no console:pass", launcher_details)
