@@ -2082,42 +2082,42 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
-            "UI_TEXT_SIZE = 11",
+            "UI_TEXT_SIZE = 12",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable badge font size",
-            "UI_BADGE_FONT_SIZE = 10",
+            "UI_BADGE_FONT_SIZE = 11",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tree row height",
-            "UI_TREE_ROW_HEIGHT = 44",
+            "UI_TREE_ROW_HEIGHT = 50",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tab padding",
-            "UI_NOTEBOOK_TAB_PADDING = (20, 14)",
+            "UI_NOTEBOOK_TAB_PADDING = (22, 16)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable button padding",
-            "UI_BUTTON_PADDING = (17, 13)",
+            "UI_BUTTON_PADDING = (19, 15)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text line spacing",
-            "UI_TEXT_SPACING_BOTTOM = 5",
+            "UI_TEXT_SPACING_BOTTOM = 6",
         )
     )
     checks.append(
@@ -2251,6 +2251,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke display diagnostics copy command metrics",
             "command_palette_display_diagnostics_copy_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke support display diagnostics command metrics",
+            "command_palette_support_display_diagnostics_actions=",
         )
     )
     checks.append(
@@ -2851,6 +2858,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send display diagnostics action",
+            "show_support_display_diagnostics_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send log summary button",
             "ZIPログ要約",
         )
@@ -2858,8 +2872,22 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send display diagnostics button",
+            "ZIP表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send log summary reader",
             "read_support_gui_log_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send display diagnostics reader",
+            "read_support_display_diagnostics",
         )
     )
     checks.append(
@@ -3784,6 +3812,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide ZIP log summary action guidance",
             "ZIPログ要約",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide ZIP display diagnostics action guidance",
+            "ZIP表示診断",
         )
     )
     checks.append(

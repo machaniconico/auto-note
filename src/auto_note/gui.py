@@ -151,6 +151,7 @@ from .support import (
     create_support_request,
     format_support_bundle_verification,
     list_support_bundles,
+    read_support_display_diagnostics,
     read_support_gui_log_summary,
     read_support_send_checklist,
     verify_support_bundle,
@@ -188,20 +189,20 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-UI_FONT_CANDIDATES = ("Meiryo UI", "Yu Gothic UI", "Meiryo", "Segoe UI", "MS Gothic")
+UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "Segoe UI", "MS Gothic")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_TEXT_SIZE = 11
-UI_SMALL_TEXT_SIZE = 10
-UI_BADGE_FONT_SIZE = 10
-UI_TREE_ROW_HEIGHT = 44
-UI_NOTEBOOK_TAB_PADDING = (20, 14)
-UI_BUTTON_PADDING = (17, 13)
-UI_PRIMARY_BUTTON_PADDING = (19, 13)
-UI_DANGER_BUTTON_PADDING = (15, 11)
-UI_TEXT_SPACING_TOP = 3
-UI_TEXT_SPACING_BOTTOM = 5
+UI_TEXT_SIZE = 12
+UI_SMALL_TEXT_SIZE = 11
+UI_BADGE_FONT_SIZE = 11
+UI_TREE_ROW_HEIGHT = 50
+UI_NOTEBOOK_TAB_PADDING = (22, 16)
+UI_BUTTON_PADDING = (19, 15)
+UI_PRIMARY_BUTTON_PADDING = (21, 15)
+UI_DANGER_BUTTON_PADDING = (17, 13)
+UI_TEXT_SPACING_TOP = 4
+UI_TEXT_SPACING_BOTTOM = 6
 UI_DENSITY_LABELS = {
     "standard": "標準",
     "comfortable": "ゆったり",
@@ -210,18 +211,6 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 10,
-        "small_text_size": 9,
-        "badge_font_size": 9,
-        "tree_row_height": 40,
-        "notebook_tab_padding": (18, 12),
-        "button_padding": (15, 11),
-        "primary_button_padding": (17, 11),
-        "danger_button_padding": (13, 9),
-        "text_spacing_top": 2,
-        "text_spacing_bottom": 4,
-    },
-    "comfortable": {
         "text_size": 11,
         "small_text_size": 10,
         "badge_font_size": 10,
@@ -233,7 +222,7 @@ UI_DENSITY_VALUES = {
         "text_spacing_top": 3,
         "text_spacing_bottom": 5,
     },
-    "large": {
+    "comfortable": {
         "text_size": 12,
         "small_text_size": 11,
         "badge_font_size": 11,
@@ -244,6 +233,18 @@ UI_DENSITY_VALUES = {
         "danger_button_padding": (17, 13),
         "text_spacing_top": 4,
         "text_spacing_bottom": 6,
+    },
+    "large": {
+        "text_size": 13,
+        "small_text_size": 12,
+        "badge_font_size": 12,
+        "tree_row_height": 56,
+        "notebook_tab_padding": (24, 18),
+        "button_padding": (21, 17),
+        "primary_button_padding": (23, 17),
+        "danger_button_padding": (19, 15),
+        "text_spacing_top": 5,
+        "text_spacing_bottom": 7,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -567,6 +568,9 @@ def smoke_gui(project_dir: Path) -> str:
         command_palette_display_diagnostics_copy_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "表示診断コピー"
         )
+        command_palette_support_display_diagnostics_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "ZIP表示診断"
+        )
         display_readability_status, display_readability_lines = app._display_readability_checks(style)
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
         display_diagnostics = app._format_display_diagnostics()
@@ -602,6 +606,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
             f"command_palette_display_diagnostics_actions={command_palette_display_diagnostics_actions}, "
             f"command_palette_display_diagnostics_copy_actions={command_palette_display_diagnostics_copy_actions}, "
+            f"command_palette_support_display_diagnostics_actions={command_palette_support_display_diagnostics_actions}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
             f"display_diagnostics_chars={display_diagnostics_chars}, "
@@ -2818,6 +2823,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("ZIPログ要約", self.show_support_gui_log_summary_action),
+                ("ZIP表示診断", self.show_support_display_diagnostics_action),
                 ("最新復旧レポート", self.show_latest_recovery_kit_report_action),
                 ("復旧レポートコピー", self.copy_latest_recovery_kit_report_action),
                 ("復旧レポート場所", self.open_recovery_kit_reports_folder_action),
@@ -2894,6 +2900,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("ZIPログ要約", self.show_support_gui_log_summary_action),
+                ("ZIP表示診断", self.show_support_display_diagnostics_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
                 ("送付文コピー", self.copy_support_send_message_action),
                 ("販売者情報確認", self.show_commercial_setup_status_action),
@@ -5859,6 +5866,7 @@ class AutoNoteApp(tk.Tk):
             ("サポート次実行", "サポート送付の現在の次アクションを実行", self.run_support_next_action),
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
             ("ZIPログ要約", "最新問い合わせ一式ZIP内のGUIログ要約を表示", self.show_support_gui_log_summary_action),
+            ("ZIP表示診断", "最新問い合わせ一式ZIP内の表示診断を表示", self.show_support_display_diagnostics_action),
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("送付文コピー", "連絡先と最新問い合わせ一式ZIPを送付メモとしてコピー", self.copy_support_send_message_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
@@ -6334,32 +6342,32 @@ class AutoNoteApp(tk.Tk):
 
         add(
             "main text",
-            UI_TEXT_SIZE >= 11,
-            f"{UI_TEXT_SIZE}pt (target 11+)",
+            UI_TEXT_SIZE >= 12,
+            f"{UI_TEXT_SIZE}pt (target 12+)",
             "ヘッダーの 表示 で ゆったり または 大きめ を選ぶ",
         )
         add(
             "small text",
-            UI_SMALL_TEXT_SIZE >= 10,
-            f"{UI_SMALL_TEXT_SIZE}pt (target 10+)",
+            UI_SMALL_TEXT_SIZE >= 11,
+            f"{UI_SMALL_TEXT_SIZE}pt (target 11+)",
             "表示サイズを ゆったり または 大きめ にする",
         )
         add(
             "tree rows",
-            tree_height_number is not None and tree_height_number >= 40,
-            f"{tree_height or 'unknown'}px (target 40+)",
+            tree_height_number is not None and tree_height_number >= 50,
+            f"{tree_height or 'unknown'}px (target 50+)",
             "表示リセット後、表示サイズを 大きめ にする",
         )
         add(
             "tabs",
-            tab_vertical_padding is not None and tab_vertical_padding >= 10,
-            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target 10+)",
+            tab_vertical_padding is not None and tab_vertical_padding >= 14,
+            f"vertical padding {tab_vertical_padding if tab_vertical_padding is not None else 'unknown'} (target 14+)",
             "表示リセットを実行する",
         )
         add(
             "buttons",
-            button_vertical_padding is not None and button_vertical_padding >= 10,
-            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target 10+)",
+            button_vertical_padding is not None and button_vertical_padding >= 13,
+            f"vertical padding {button_vertical_padding if button_vertical_padding is not None else 'unknown'} (target 13+)",
             "表示リセットを実行する",
         )
         add(
@@ -7603,6 +7611,49 @@ class AutoNoteApp(tk.Tk):
             self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
         else:
             self.notify(f"GUIログ要約を表示しました: {latest.name}", level="success")
+
+    def show_support_display_diagnostics_action(self) -> None:
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            messagebox.showinfo("ZIP表示診断", "問い合わせ一式ZIPがまだありません。先に 問い合わせ一式 を作成してください。")
+            self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
+            return
+        latest = bundles[0]
+        errors = verify_support_bundle(latest)
+        self._refresh_support_summary()
+        try:
+            display_diagnostics = read_support_display_diagnostics(latest)
+        except (OSError, ValueError) as exc:
+            self._set_text(
+                self.help_text,
+                "\n\n".join(
+                    [
+                        f"ZIP表示診断: {latest}",
+                        format_support_bundle_verification(latest, errors),
+                        f"[INFO] 表示診断を表示できません: {exc}",
+                        "最新形式で作り直すには、ヘルプの 問い合わせ一式 を実行してください。",
+                    ]
+                ),
+            )
+            self.notebook.select(self.help_tab)
+            self.notify("ZIP表示診断を表示できません", level="warning")
+            return
+        self._set_text(
+            self.help_text,
+            "\n\n".join(
+                [
+                    f"ZIP表示診断: {latest}",
+                    display_diagnostics,
+                    format_support_bundle_verification(latest, errors),
+                ]
+            ),
+        )
+        self.notebook.select(self.help_tab)
+        if errors:
+            self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
+        else:
+            self.notify(f"ZIP表示診断を表示しました: {latest.name}", level="success")
 
     def open_latest_support_bundle_location_action(self) -> None:
         bundles = list_support_bundles(self.project_dir)

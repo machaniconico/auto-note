@@ -2867,6 +2867,7 @@ tags: note
         self.assertIn("home_updated_chars=", text)
         self.assertIn("home_primary_button_chars=", text)
         self.assertIn("command_palette_display_diagnostics_copy_actions=1", text)
+        self.assertIn("command_palette_support_display_diagnostics_actions=1", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
 
@@ -3116,12 +3117,12 @@ tags:
                 + "_style_text_widget\n"
                 + '"Meiryo UI"\n'
                 + "UI_FONT_CANDIDATES\n"
-                + "UI_TEXT_SIZE = 11\n"
-                + "UI_BADGE_FONT_SIZE = 10\n"
-                + "UI_TREE_ROW_HEIGHT = 44\n"
-                + "UI_NOTEBOOK_TAB_PADDING = (20, 14)\n"
-                + "UI_BUTTON_PADDING = (17, 13)\n"
-                + "UI_TEXT_SPACING_BOTTOM = 5\n"
+                + "UI_TEXT_SIZE = 12\n"
+                + "UI_BADGE_FONT_SIZE = 11\n"
+                + "UI_TREE_ROW_HEIGHT = 50\n"
+                + "UI_NOTEBOOK_TAB_PADDING = (22, 16)\n"
+                + "UI_BUTTON_PADDING = (19, 15)\n"
+                + "UI_TEXT_SPACING_BOTTOM = 6\n"
                 + "UI_DENSITY_LABELS\n"
                 + "ui_density_var\n"
                 + "_apply_ui_density\n"
@@ -3149,6 +3150,7 @@ tags:
                 + "command_palette_display_reset_actions=\n"
                 + "command_palette_display_diagnostics_actions=\n"
                 + "command_palette_display_diagnostics_copy_actions=\n"
+                + "command_palette_support_display_diagnostics_actions=\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
                 + "display_diagnostics_chars=\n"
@@ -3204,6 +3206,9 @@ tags:
                 + "show_support_gui_log_summary_action\n"
                 + "ZIPログ要約\n"
                 + "read_support_gui_log_summary\n"
+                + "show_support_display_diagnostics_action\n"
+                + "ZIP表示診断\n"
+                + "read_support_display_diagnostics\n"
                 + "run_recovery_kit_to_tab\n"
                 + "write_recovery_kit_report(self.project_dir, report=report)\n"
                 + "show_latest_recovery_kit_report_action\n"
@@ -3386,7 +3391,7 @@ tags:
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -3666,6 +3671,7 @@ tags:
         self.assertIn("GUI smoke display reset command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics copy command metrics:fail", product_details)
+        self.assertIn("GUI smoke support display diagnostics command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
         self.assertIn("GUI smoke display readability status:fail", product_details)
         self.assertIn("GUI smoke display readability warning count:fail", product_details)
@@ -3765,6 +3771,9 @@ tags:
         self.assertIn("GUI support send log summary action:fail", product_details)
         self.assertIn("GUI support send log summary button:fail", product_details)
         self.assertIn("GUI support send log summary reader:fail", product_details)
+        self.assertIn("GUI support send display diagnostics action:fail", product_details)
+        self.assertIn("GUI support send display diagnostics button:fail", product_details)
+        self.assertIn("GUI support send display diagnostics reader:fail", product_details)
         self.assertIn("GUI support send next action runner:fail", product_details)
         self.assertIn("GUI support send next action palette:fail", product_details)
         self.assertIn("GUI support send dynamic next button:fail", product_details)
@@ -3901,6 +3910,7 @@ tags:
         self.assertIn("support guide display diagnostics guidance:fail", product_details)
         self.assertIn("support guide display diagnostics copy guidance:fail", product_details)
         self.assertIn("support guide ZIP log summary action guidance:fail", product_details)
+        self.assertIn("support guide ZIP display diagnostics action guidance:fail", product_details)
         self.assertIn("support guide recovery report guidance:fail", product_details)
         self.assertIn("support guide home recent reports guidance:fail", product_details)
         self.assertIn("support guide home recent reports copy guidance:fail", product_details)
@@ -4175,6 +4185,7 @@ tags:
         self.assertIn("GUI smoke display reset command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics copy command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke support display diagnostics command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
         self.assertIn("GUI smoke display readability status:pass", launcher_details)
         self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
@@ -4274,6 +4285,9 @@ tags:
         self.assertIn("GUI support send log summary action:pass", launcher_details)
         self.assertIn("GUI support send log summary button:pass", launcher_details)
         self.assertIn("GUI support send log summary reader:pass", launcher_details)
+        self.assertIn("GUI support send display diagnostics action:pass", launcher_details)
+        self.assertIn("GUI support send display diagnostics button:pass", launcher_details)
+        self.assertIn("GUI support send display diagnostics reader:pass", launcher_details)
         self.assertIn("GUI support send next action runner:pass", launcher_details)
         self.assertIn("GUI support send next action palette:pass", launcher_details)
         self.assertIn("GUI support send dynamic next button:pass", launcher_details)
@@ -4411,6 +4425,7 @@ tags:
         self.assertIn("support guide display diagnostics guidance:pass", launcher_details)
         self.assertIn("support guide display diagnostics copy guidance:pass", launcher_details)
         self.assertIn("support guide ZIP log summary action guidance:pass", launcher_details)
+        self.assertIn("support guide ZIP display diagnostics action guidance:pass", launcher_details)
         self.assertIn("support guide recovery report guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports copy guidance:pass", launcher_details)
