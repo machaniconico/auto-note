@@ -155,6 +155,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "auto-note-gui.bat",
+            "GUI launcher safe display argument",
+            "GUI_DISPLAY_ARG=--safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "auto-note-gui.bat",
+            "GUI launcher safe display environment",
+            "AUTO_NOTE_SAFE_DISPLAY",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "auto-note-gui.bat",
+            "GUI launcher safe display guidance",
+            "auto-note-gui.bat --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "auto-note-gui.bat",
             "GUI launcher support bundle guidance",
             "support --project-dir",
         )
@@ -620,6 +641,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "scripts" / "launch-gui.vbs",
             "hidden GUI launcher check mode",
             "AUTO_NOTE_LAUNCHER_CHECK",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "launch-gui.vbs",
+            "hidden GUI launcher forwards arguments",
+            "WScript.Arguments",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "launch-gui.vbs",
+            "hidden GUI launcher quotes arguments",
+            "QuoteArgument",
         )
     )
     checks.append(_path_check(project_dir / "shortcuts" / "create-gui-shortcut.bat", "shortcut helper"))
@@ -2840,6 +2875,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README safe display guidance",
             "auto-note gui --project-dir . --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README safe display launcher guidance",
+            "auto-note-gui.bat --safe-display",
         )
     )
     checks.append(

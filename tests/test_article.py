@@ -3144,6 +3144,9 @@ tags:
             product_checks = run_quality_checks(project, include_articles=False)
             (project / "auto-note-gui.bat").write_text(
                 "python -m auto_note gui --smoke\n"
+                "GUI_DISPLAY_ARG=--safe-display\n"
+                "AUTO_NOTE_SAFE_DISPLAY\n"
+                "auto-note-gui.bat --safe-display\n"
                 "python -m auto_note recovery-kit --project-dir . --report\n"
                 "python -m auto_note support --project-dir . --bundle\n",
                 encoding="utf-8",
@@ -3152,6 +3155,8 @@ tags:
             (project / "scripts" / "launch-gui.vbs").write_text(
                 'batPath = fso.BuildPath(projectDir, "auto-note-gui.bat")\n'
                 "AUTO_NOTE_LAUNCHER_CHECK\n"
+                "WScript.Arguments\n"
+                "QuoteArgument\n"
                 "exitCode = shell.Run(command, 0, True)\n",
                 encoding="utf-8",
             )
@@ -3567,7 +3572,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nauto-note gui --project-dir . --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3601,6 +3606,9 @@ tags:
         self.assertIn("schedule format:fail", details)
         self.assertTrue(any(check.name == "article review" for check in checks))
         self.assertIn("GUI launcher smoke check:fail", product_details)
+        self.assertIn("GUI launcher safe display argument:fail", product_details)
+        self.assertIn("GUI launcher safe display environment:fail", product_details)
+        self.assertIn("GUI launcher safe display guidance:fail", product_details)
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
         self.assertIn("GUI launcher recovery kit guidance:fail", product_details)
         self.assertIn("GUI launcher recovery kit report guidance:fail", product_details)
@@ -3616,6 +3624,8 @@ tags:
         self.assertIn("recovery kit report lister:fail", product_details)
         self.assertIn("README self-test launcher health guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
+        self.assertIn("hidden GUI launcher forwards arguments:fail", product_details)
+        self.assertIn("hidden GUI launcher quotes arguments:fail", product_details)
         self.assertIn("release check script:fail", product_details)
         self.assertIn("release check unit tests:fail", product_details)
         self.assertIn("release check product quality:fail", product_details)
@@ -3919,6 +3929,7 @@ tags:
         self.assertIn("GUI modern settings subtitle:fail", product_details)
         self.assertIn("README UI density guidance:fail", product_details)
         self.assertIn("README safe display guidance:fail", product_details)
+        self.assertIn("README safe display launcher guidance:fail", product_details)
         self.assertIn("README UI density command guidance:fail", product_details)
         self.assertIn("README UI density header guidance:fail", product_details)
         self.assertIn("README display reset guidance:fail", product_details)
@@ -4496,6 +4507,7 @@ tags:
         self.assertIn("GUI modern settings subtitle:pass", launcher_details)
         self.assertIn("README UI density guidance:pass", launcher_details)
         self.assertIn("README safe display guidance:pass", launcher_details)
+        self.assertIn("README safe display launcher guidance:pass", launcher_details)
         self.assertIn("README UI density command guidance:pass", launcher_details)
         self.assertIn("README UI density header guidance:pass", launcher_details)
         self.assertIn("README display reset guidance:pass", launcher_details)
@@ -4773,6 +4785,9 @@ tags:
         self.assertIn("release buyer acceptance checklist:pass", launcher_details)
         self.assertIn("release buyer acceptance full guidance:pass", launcher_details)
         self.assertIn("GUI launcher smoke check:pass", launcher_details)
+        self.assertIn("GUI launcher safe display argument:pass", launcher_details)
+        self.assertIn("GUI launcher safe display environment:pass", launcher_details)
+        self.assertIn("GUI launcher safe display guidance:pass", launcher_details)
         self.assertIn("GUI launcher support bundle guidance:pass", launcher_details)
         self.assertIn("GUI launcher recovery kit guidance:pass", launcher_details)
         self.assertIn("GUI launcher recovery kit report guidance:pass", launcher_details)
@@ -4789,6 +4804,8 @@ tags:
         self.assertIn("hidden GUI launcher target:pass", launcher_details)
         self.assertIn("hidden GUI launcher no console:pass", launcher_details)
         self.assertIn("hidden GUI launcher check mode:pass", launcher_details)
+        self.assertIn("hidden GUI launcher forwards arguments:pass", launcher_details)
+        self.assertIn("hidden GUI launcher quotes arguments:pass", launcher_details)
         self.assertIn("shortcut uses hidden launcher:pass", launcher_details)
         self.assertIn("shortcut icon:pass", launcher_details)
         self.assertNotIn("article check", product_details)

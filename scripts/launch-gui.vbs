@@ -1,6 +1,6 @@
 Option Explicit
 
-Dim fso, shell, scriptDir, projectDir, batPath, logPath, command, exitCode, message
+Dim fso, shell, scriptDir, projectDir, batPath, logPath, command, exitCode, message, forwardedArgs, index
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
@@ -10,8 +10,6 @@ projectDir = fso.GetParentFolderName(scriptDir)
 batPath = fso.BuildPath(projectDir, "auto-note-gui.bat")
 logPath = fso.BuildPath(fso.BuildPath(projectDir, ".auto-note"), "gui-error.log")
 
-command = "cmd.exe /c """ & batPath & """"
-
 If shell.Environment("PROCESS")("AUTO_NOTE_LAUNCHER_CHECK") = "1" Then
   WScript.Quit 0
 End If
@@ -20,6 +18,13 @@ If Not fso.FileExists(batPath) Then
   MsgBox "auto-note-gui.bat was not found." & vbCrLf & batPath, vbExclamation, "auto-note"
   WScript.Quit 1
 End If
+
+forwardedArgs = ""
+For index = 0 To WScript.Arguments.Count - 1
+  forwardedArgs = forwardedArgs & " " & QuoteArgument(WScript.Arguments(index))
+Next
+
+command = "cmd.exe /c """ & batPath & """" & forwardedArgs
 
 exitCode = shell.Run(command, 0, True)
 
@@ -50,4 +55,8 @@ Function TruncateText(text, maxLength)
   Else
     TruncateText = Left(text, maxLength) & vbCrLf & vbCrLf & "(Log truncated. Full log: .auto-note\gui-error.log)"
   End If
+End Function
+
+Function QuoteArgument(value)
+  QuoteArgument = """" & Replace(CStr(value), """", """""") & """"
 End Function
