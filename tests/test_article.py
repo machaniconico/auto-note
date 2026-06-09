@@ -2545,6 +2545,16 @@ tags:
                 "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\n初回起動、販売前チェック\n投稿補助、販売者情報\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
                 encoding="utf-8",
             )
+            gui_fixture = project / "src" / "auto_note" / "gui.py"
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
+                + 'if action == "送付文コピー":\n'
+                + 'self.support_next_action_var.get() != "送付文コピー"\n'
+                + "self.copy_support_send_message_action()\n"
+                + '"送付文コピー": "次: 送付文"\n'
+                + 'self._set_support_next_action("送付文コピー")\n',
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "release.py").write_text(
                 "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\nstarter-pack\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\n",
                 encoding="utf-8",
@@ -2712,6 +2722,7 @@ tags:
         self.assertIn("GUI home support send next action:fail", product_details)
         self.assertIn("GUI home support send next button:fail", product_details)
         self.assertIn("GUI home support send next delegates:fail", product_details)
+        self.assertIn("GUI home support send next preserves message action:fail", product_details)
         self.assertIn("GUI home support send feedback:fail", product_details)
         self.assertIn("GUI home sales indicator style:fail", product_details)
         self.assertIn("GUI modern chrome style:fail", product_details)
@@ -2726,6 +2737,9 @@ tags:
         self.assertIn("GUI support send next action palette:fail", product_details)
         self.assertIn("GUI support send dynamic next button:fail", product_details)
         self.assertIn("GUI support send next button label:fail", product_details)
+        self.assertIn("GUI support send next message runner:fail", product_details)
+        self.assertIn("GUI support send next message delegates:fail", product_details)
+        self.assertIn("GUI support send next message label:fail", product_details)
         self.assertIn("GUI support send open latest location action:fail", product_details)
         self.assertIn("GUI support send open latest location feedback:fail", product_details)
         self.assertIn("GUI support send copy latest path action:fail", product_details)
@@ -2744,6 +2758,7 @@ tags:
         self.assertIn("GUI support send contact status pill:fail", product_details)
         self.assertIn("GUI support send contact status style:fail", product_details)
         self.assertIn("GUI support send verify refreshes summary:fail", product_details)
+        self.assertIn("GUI support send checklist advances next:fail", product_details)
         self.assertIn("GUI support send checklist refreshes summary:fail", product_details)
         self.assertIn("GUI support send checklist reader:fail", product_details)
         self.assertIn("GUI support send summary panel:fail", product_details)
@@ -2964,6 +2979,7 @@ tags:
         self.assertIn("GUI home support send next action:pass", launcher_details)
         self.assertIn("GUI home support send next button:pass", launcher_details)
         self.assertIn("GUI home support send next delegates:pass", launcher_details)
+        self.assertIn("GUI home support send next preserves message action:pass", launcher_details)
         self.assertIn("GUI home support send feedback:pass", launcher_details)
         self.assertIn("GUI home sales indicator style:pass", launcher_details)
         self.assertIn("GUI modern chrome style:pass", launcher_details)
@@ -2978,6 +2994,9 @@ tags:
         self.assertIn("GUI support send next action palette:pass", launcher_details)
         self.assertIn("GUI support send dynamic next button:pass", launcher_details)
         self.assertIn("GUI support send next button label:pass", launcher_details)
+        self.assertIn("GUI support send next message runner:pass", launcher_details)
+        self.assertIn("GUI support send next message delegates:pass", launcher_details)
+        self.assertIn("GUI support send next message label:pass", launcher_details)
         self.assertIn("GUI support send open latest location action:pass", launcher_details)
         self.assertIn("GUI support send open latest location feedback:pass", launcher_details)
         self.assertIn("GUI support send copy latest path action:pass", launcher_details)
@@ -2997,6 +3016,7 @@ tags:
         self.assertIn("GUI support send contact status style:pass", launcher_details)
         self.assertIn("GUI support send verify refreshes summary:pass", launcher_details)
         self.assertIn("GUI support send checklist refreshes summary:pass", launcher_details)
+        self.assertIn("GUI support send checklist advances next:pass", launcher_details)
         self.assertIn("GUI support send checklist reader:pass", launcher_details)
         self.assertIn("GUI support send summary panel:pass", launcher_details)
         self.assertIn("GUI support send status summary:pass", launcher_details)

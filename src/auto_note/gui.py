@@ -4167,7 +4167,8 @@ class AutoNoteApp(tk.Tk):
         self.notify("サポート送付の状態を表示しました", level="info")
 
     def run_home_support_next_action(self) -> None:
-        self._refresh_support_summary()
+        if self.support_next_action_var.get() != "送付文コピー":
+            self._refresh_support_summary()
         self.notebook.select(self.help_tab)
         self.run_support_next_action()
 
@@ -4189,6 +4190,10 @@ class AutoNoteApp(tk.Tk):
         self.notify("サポート連絡先をコピーしました", level="success")
 
     def run_support_next_action(self) -> None:
+        action = self.support_next_action_var.get()
+        if action == "送付文コピー":
+            self.copy_support_send_message_action()
+            return
         self._refresh_support_summary()
         action = self.support_next_action_var.get()
         if action in {"問い合わせ一式を作成", "問い合わせ一式を再作成"}:
@@ -5523,6 +5528,7 @@ class AutoNoteApp(tk.Tk):
         if errors:
             self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
         else:
+            self._set_support_next_action("送付文コピー")
             self.notify(f"送付前リストを表示しました: {latest.name}", level="success")
 
     def preview_cleanup_action(self) -> None:
@@ -5730,6 +5736,7 @@ def _support_next_button_label(action: str) -> str:
         "一式ZIP検証で詳細確認": "次: ZIP検証",
         "サポート連絡先を設定": "次: 連絡先",
         "送付前リストを確認": "次: リスト確認",
+        "送付文コピー": "次: 送付文",
     }.get(action, "次を実行")
 
 

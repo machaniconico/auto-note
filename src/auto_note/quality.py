@@ -1171,6 +1171,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home support send next preserves message action",
+            'self.support_next_action_var.get() != "送付文コピー"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home support send feedback",
             "サポート送付の状態を表示しました",
         )
@@ -1264,6 +1271,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send next button label",
             "_support_next_button_label",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send next message runner",
+            'if action == "送付文コピー":',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send next message delegates",
+            "self.copy_support_send_message_action()",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send next message label",
+            '"送付文コピー": "次: 送付文"',
         )
     )
     checks.append(
@@ -1397,6 +1425,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send checklist refreshes summary",
             "self._refresh_support_summary()\n        try:\n            send_checklist",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send checklist advances next",
+            'self._set_support_next_action("送付文コピー")',
         )
     )
     checks.append(
