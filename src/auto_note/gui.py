@@ -186,6 +186,31 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
+UI_COLORS = {
+    "bg": "#f5f7fb",
+    "surface": "#ffffff",
+    "surface_alt": "#f8fafc",
+    "surface_selected": "#eef6f3",
+    "ink": "#172033",
+    "muted": "#5f6b7a",
+    "line": "#d8e0ea",
+    "chrome": "#16202f",
+    "chrome_alt": "#1f2a3a",
+    "chrome_muted": "#b9c6d6",
+    "accent": "#0f766e",
+    "accent_hover": "#0d5f59",
+    "accent_pressed": "#0a4e49",
+    "accent_soft": "#dff7f2",
+    "focus": "#99f6e4",
+    "danger": "#dc2626",
+    "danger_soft": "#fee2e2",
+    "warn": "#b45309",
+    "warn_soft": "#fff4db",
+    "info": "#2563eb",
+    "info_soft": "#e7f0ff",
+    "ok": "#047857",
+    "ok_soft": "#dff3ed",
+}
 STATUS_COLORS = {
     "draft": ("#f3f4f6", "#374151"),
     "ready": ("#e7f0ff", "#174ea6"),
@@ -355,7 +380,7 @@ class AutoNoteApp(tk.Tk):
         self.title("auto-note")
         self.geometry("1240x780")
         self.minsize(1020, 640)
-        self.configure(bg="#eef2f7")
+        self.configure(bg=UI_COLORS["bg"])
 
         self._configure_style()
         self._build_ui()
@@ -381,29 +406,49 @@ class AutoNoteApp(tk.Tk):
         except tk.TclError:
             pass
         font = "Segoe UI"
-        bg = "#eef2f7"
-        surface = "#ffffff"
-        primary = "#0f172a"
-        muted = "#64748b"
-        accent = "#2563eb"
+        bg = UI_COLORS["bg"]
+        surface = UI_COLORS["surface"]
+        surface_alt = UI_COLORS["surface_alt"]
+        selected = UI_COLORS["surface_selected"]
+        primary = UI_COLORS["ink"]
+        muted = UI_COLORS["muted"]
+        line = UI_COLORS["line"]
+        chrome = UI_COLORS["chrome"]
+        chrome_alt = UI_COLORS["chrome_alt"]
+        chrome_muted = UI_COLORS["chrome_muted"]
+        accent = UI_COLORS["accent"]
         style.configure("TFrame", background=bg)
         style.configure("Surface.TFrame", background=surface)
-        style.configure("Chrome.TFrame", background=primary)
+        style.configure("Elevated.TFrame", background=surface, relief="flat", borderwidth=1)
+        style.configure("Toolbar.TFrame", background=surface_alt)
+        style.configure("Chrome.TFrame", background=chrome)
+        style.configure("ChromeAlt.TFrame", background=chrome_alt)
         style.configure("TLabel", background=bg, foreground=primary, font=(font, 10))
         style.configure("Surface.TLabel", background=surface, foreground=primary, font=(font, 10))
+        style.configure("SurfaceMuted.TLabel", background=surface, foreground=muted, font=(font, 9))
         style.configure("Muted.TLabel", background=surface, foreground=muted, font=(font, 9))
-        style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 18, "bold"))
+        style.configure("SmallMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 8))
+        style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, "bold"))
         style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, 10))
-        style.configure("AppTitle.TLabel", background=primary, foreground="#ffffff", font=(font, 18, "bold"))
-        style.configure("ChromeMuted.TLabel", background=primary, foreground="#cbd5e1", font=(font, 9))
+        style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
+        style.configure("ChromeMuted.TLabel", background=chrome, foreground=chrome_muted, font=(font, 9))
+        style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, 10, "bold"))
         style.configure("Title.TLabel", background=surface, foreground=primary, font=(font, 16, "bold"))
-        style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, 9, "bold"))
-        style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 19, "bold"))
-        style.configure("TNotebook", background=bg, borderwidth=0, tabmargins=(0, 6, 0, 0))
-        style.configure("TNotebook.Tab", padding=(16, 9), font=(font, 10), background="#e2e8f0", foreground="#334155")
+        style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, 8, "bold"))
+        style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 20, "bold"))
+        style.configure("KpiHint.TLabel", background=surface, foreground=muted, font=(font, 8))
+        style.configure("TNotebook", background=bg, borderwidth=0, tabmargins=(0, 8, 0, 0))
+        style.configure(
+            "TNotebook.Tab",
+            padding=(18, 10),
+            font=(font, 10, "bold"),
+            background=surface_alt,
+            foreground=muted,
+            borderwidth=0,
+        )
         style.map(
             "TNotebook.Tab",
-            background=[("selected", surface), ("active", "#f8fafc")],
+            background=[("selected", surface), ("active", selected)],
             foreground=[("selected", primary), ("active", primary)],
         )
         style.configure(
@@ -411,21 +456,30 @@ class AutoNoteApp(tk.Tk):
             background=surface,
             fieldbackground=surface,
             foreground=primary,
-            rowheight=32,
+            rowheight=34,
             borderwidth=0,
             font=(font, 10),
         )
         style.configure(
             "Treeview.Heading",
-            background="#f8fafc",
-            foreground="#334155",
-            font=(font, 10, "bold"),
+            background=surface_alt,
+            foreground=muted,
+            font=(font, 9, "bold"),
             padding=(8, 8),
             relief="flat",
         )
-        style.map("Treeview", background=[("selected", "#dbeafe")], foreground=[("selected", primary)])
-        style.configure("TButton", padding=(11, 7), font=(font, 10), background="#f8fafc", foreground=primary)
-        style.map("TButton", background=[("active", "#e2e8f0"), ("pressed", "#cbd5e1")])
+        style.map("Treeview", background=[("selected", selected)], foreground=[("selected", primary)])
+        style.configure(
+            "TButton",
+            padding=(11, 7),
+            font=(font, 10),
+            background=surface_alt,
+            foreground=primary,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+        )
+        style.map("TButton", background=[("active", selected), ("pressed", "#d9ece8")])
         style.configure(
             "Primary.TButton",
             padding=(14, 8),
@@ -436,42 +490,48 @@ class AutoNoteApp(tk.Tk):
         )
         style.map(
             "Primary.TButton",
-            background=[("active", "#1d4ed8"), ("pressed", "#1e40af"), ("disabled", "#93c5fd")],
-            foreground=[("disabled", "#eff6ff")],
+            background=[
+                ("active", UI_COLORS["accent_hover"]),
+                ("pressed", UI_COLORS["accent_pressed"]),
+                ("disabled", "#8acfc5"),
+            ],
+            foreground=[("disabled", "#ecfdf5")],
         )
-        style.configure("Danger.TButton", padding=(11, 7), background="#fef2f2", foreground="#991b1b")
-        style.map("Danger.TButton", background=[("active", "#fee2e2"), ("pressed", "#fecaca")])
-        style.configure("TLabelframe", background=surface, padding=10, relief="flat", borderwidth=0)
-        style.configure("TLabelframe.Label", background=surface, foreground="#334155", font=(font, 10, "bold"))
+        style.configure("Quiet.TButton", padding=(10, 7), background=chrome_alt, foreground="#ffffff")
+        style.map("Quiet.TButton", background=[("active", "#2b394c"), ("pressed", "#34445a")])
+        style.configure("Danger.TButton", padding=(11, 7), background=UI_COLORS["danger_soft"], foreground="#991b1b")
+        style.map("Danger.TButton", background=[("active", "#fecaca"), ("pressed", "#fca5a5")])
+        style.configure("TLabelframe", background=surface, padding=12, relief="flat", borderwidth=0)
+        style.configure("TLabelframe.Label", background=surface, foreground=primary, font=(font, 10, "bold"))
 
     def _build_ui(self) -> None:
-        shell = ttk.Frame(self, padding=(12, 12, 12, 10))
+        self.configure(bg=UI_COLORS["bg"])
+        shell = ttk.Frame(self, padding=(14, 14, 14, 12))
         shell.pack(fill=tk.BOTH, expand=True)
 
-        header = ttk.Frame(shell, style="Chrome.TFrame", padding=(14, 10))
-        header.pack(fill=tk.X, pady=(0, 10))
+        header = ttk.Frame(shell, style="Chrome.TFrame", padding=(16, 12))
+        header.pack(fill=tk.X, pady=(0, 12))
         brand = ttk.Frame(header, style="Chrome.TFrame")
         brand.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Label(brand, text="auto-note", style="AppTitle.TLabel").pack(anchor=tk.W)
         ttk.Label(
             brand,
-            text=f"販売候補ワークスペース / v{__version__} / {self.project_dir}",
+            text=f"Note operations workspace / v{__version__} / {self.project_dir}",
             style="ChromeMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
-        ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article).pack(
-            side=tk.RIGHT, padx=(6, 0)
+
+        ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
+        ttk.Button(header, text="更新", style="Quiet.TButton", command=self.refresh_all).pack(side=tk.RIGHT, padx=6)
+        ttk.Button(header, text="Ctrl+K コマンド検索", style="Quiet.TButton", command=self.show_command_palette).pack(
+            side=tk.RIGHT,
+            padx=6,
         )
-        ttk.Button(header, text="初回チェック", command=self.run_first_run_to_tab).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(header, text="コマンド", command=self.show_command_palette).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(header, text="セットアップ", command=lambda: self.show_setup_wizard(force=True)).pack(
-            side=tk.RIGHT, padx=6
-        )
-        ttk.Button(header, text="更新", command=self.refresh_all).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(header, text="noteログイン", command=lambda: webbrowser.open(NOTE_LOGIN_URL)).pack(
-            side=tk.RIGHT, padx=6
-        )
-        ttk.Button(header, text="記事フォルダ", command=lambda: _open_path(self.articles_dir)).pack(
-            side=tk.RIGHT, padx=6
+        quick = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
+        quick.pack(side=tk.RIGHT, padx=(0, 6))
+        ttk.Label(quick, text="note", style="ChromeAction.TLabel").pack(side=tk.LEFT)
+        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=lambda: webbrowser.open(NOTE_LOGIN_URL)).pack(
+            side=tk.LEFT,
+            padx=(8, 0),
         )
 
         self.notebook = ttk.Notebook(shell)
@@ -516,21 +576,19 @@ class AutoNoteApp(tk.Tk):
         self.bind_all("<Control-Shift-C>", lambda _event: self.copy_selected("body"))
 
     def _build_home_tab(self) -> None:
-        top = ttk.Frame(self.home_tab)
+        top = ttk.Frame(self.home_tab, style="Surface.TFrame", padding=(14, 12))
         top.pack(fill=tk.X, pady=(0, 10))
-        title_group = ttk.Frame(top)
+        title_group = ttk.Frame(top, style="Surface.TFrame")
         title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Label(title_group, text="今日の状態", style="PageTitle.TLabel").pack(anchor=tk.W)
+        ttk.Label(title_group, text="今日の状態", style="Title.TLabel").pack(anchor=tk.W)
         ttk.Label(
             title_group,
-            text="記事作成、投稿準備、販売準備をひとつの作業面で確認します。",
-            style="PageSubtitle.TLabel",
+            text="記事、投稿準備、販売、サポートを同じ作業面で確認します。",
+            style="SurfaceMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
+        ttk.Button(top, text="コマンド検索", command=self.show_command_palette).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="診断", command=lambda: self.notebook.select(self.diagnostics_tab)).pack(
-            side=tk.RIGHT, padx=6
-        )
-        ttk.Button(top, text="ヘルプ", command=lambda: self.notebook.select(self.help_tab)).pack(
             side=tk.RIGHT, padx=6
         )
 
@@ -540,6 +598,10 @@ class AutoNoteApp(tk.Tk):
         for index, key in enumerate(("準備度", "記事", "下書き", "準備OK", "予定", "公開済み")):
             box = ttk.Frame(self.kpi_frame, style="Surface.TFrame", padding=14)
             box.grid(row=0, column=index, sticky="nsew", padx=(0 if index == 0 else 8, 0))
+            tk.Frame(box, bg=UI_COLORS["accent"] if index == 0 else UI_COLORS["line"], height=3).pack(
+                fill=tk.X,
+                pady=(0, 9),
+            )
             value = tk.StringVar(value="0")
             self.kpi_vars[key] = value
             ttk.Label(box, text=key, style="KpiLabel.TLabel").pack(anchor=tk.W)
@@ -578,11 +640,11 @@ class AutoNoteApp(tk.Tk):
                 ("support", "サポート"),
             )
         ):
-            step = ttk.Frame(progress_steps, style="Surface.TFrame")
+            step = ttk.Frame(progress_steps, style="Toolbar.TFrame", padding=(8, 8))
             step.grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 8, 0))
             progress_steps.columnconfigure(index, weight=1, uniform="home_progress")
-            ttk.Label(step, text=label, style="Muted.TLabel").pack(anchor=tk.W)
-            row = ttk.Frame(step, style="Surface.TFrame")
+            ttk.Label(step, text=label, style="SmallMuted.TLabel").pack(anchor=tk.W)
+            row = ttk.Frame(step, style="Toolbar.TFrame")
             row.pack(fill=tk.X, pady=(3, 0))
             pill = tk.Label(
                 row,
@@ -598,7 +660,7 @@ class AutoNoteApp(tk.Tk):
             value = tk.StringVar(value="確認中")
             self.home_progress_vars[key] = value
             self.home_progress_pills[key] = pill
-            ttk.Label(row, textvariable=value, style="Muted.TLabel", wraplength=140).pack(
+            ttk.Label(row, textvariable=value, style="SmallMuted.TLabel", wraplength=140).pack(
                 side=tk.LEFT,
                 fill=tk.X,
                 expand=True,
@@ -2143,10 +2205,11 @@ class AutoNoteApp(tk.Tk):
             parent,
             text="準備できました",
             anchor=tk.W,
-            bg="#146c5f",
-            fg="#ffffff",
+            bg=UI_COLORS["surface_selected"],
+            fg=UI_COLORS["ink"],
+            font=("Segoe UI", 9, "bold"),
             padx=12,
-            pady=8,
+            pady=7,
         )
         self.notification.pack(fill=tk.X, pady=(8, 0))
 
@@ -6685,10 +6748,10 @@ class AutoNoteApp(tk.Tk):
 
     def notify(self, message: str, *, level: str = "info", transient: bool = False) -> None:
         colors = {
-            "info": ("#334155", "#ffffff"),
-            "success": ("#047857", "#ffffff"),
-            "warning": ("#b45309", "#ffffff"),
-            "error": ("#dc2626", "#ffffff"),
+            "info": (UI_COLORS["info_soft"], "#174ea6"),
+            "success": (UI_COLORS["ok_soft"], UI_COLORS["ok"]),
+            "warning": (UI_COLORS["warn_soft"], UI_COLORS["warn"]),
+            "error": (UI_COLORS["danger_soft"], "#991b1b"),
         }
         bg, fg = colors.get(level, colors["info"])
         self.notification.configure(text=message, bg=bg, fg=fg)
@@ -6696,7 +6759,14 @@ class AutoNoteApp(tk.Tk):
             self.after_cancel(self._notification_job)
             self._notification_job = None
         if transient:
-            self._notification_job = self.after(2500, lambda: self.notification.configure(text="準備できました"))
+            self._notification_job = self.after(
+                2500,
+                lambda: self.notification.configure(
+                    text="準備できました",
+                    bg=UI_COLORS["surface_selected"],
+                    fg=UI_COLORS["ink"],
+                ),
+            )
 
 
 def _show_text_window(parent: tk.Misc, title: str, text: str) -> None:

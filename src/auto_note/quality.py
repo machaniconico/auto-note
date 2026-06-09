@@ -1871,6 +1871,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern design tokens",
+            "UI_COLORS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern quiet header action",
+            "Quiet.TButton",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern command search header",
+            "Ctrl+K コマンド検索",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern KPI accent rail",
+            'UI_COLORS["accent"] if index == 0 else UI_COLORS["line"]',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern first-run subtitle",
             "初回起動、販売前チェック",
         )
