@@ -297,6 +297,11 @@ def smoke_gui(project_dir: Path) -> str:
         publish_ready_items = (
             len(app.publish_ready_tree.get_children()) if hasattr(app, "publish_ready_tree") else 0
         )
+        article_focus_chars = (
+            len(app.article_focus_summary_var.get() + app.article_focus_next_var.get())
+            if hasattr(app, "article_focus_summary_var")
+            else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
@@ -344,6 +349,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"first_run_items={first_run_items}, home_action_items={home_action_items}, "
             f"review_items={review_items}, "
             f"publish_ready_items={publish_ready_items}, "
+            f"article_focus_chars={article_focus_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_report_items={home_report_items}, "
@@ -392,6 +398,7 @@ class AutoNoteApp(tk.Tk):
         self._last_publish_ready_report: PublishReadyReport | None = None
         self._last_publish_queue_report: PublishQueueReport | None = None
         self._last_improvement_plan: ImprovementPlan | None = None
+        self._last_article_focus_plan: ImprovementPlan | None = None
         self.editor_dirty = False
         self._restoring_selection = False
         self._home_sales_next_step = None
@@ -442,6 +449,7 @@ class AutoNoteApp(tk.Tk):
         style.configure("HomeLead.TFrame", background=UI_COLORS["surface_strong"])
         style.configure("HomeSnapshot.TFrame", background=surface)
         style.configure("HomeSnapshotTile.TFrame", background=surface_alt)
+        style.configure("ArticleFocus.TFrame", background=surface_alt)
         style.configure("Elevated.TFrame", background=surface, relief="flat", borderwidth=1)
         style.configure("Toolbar.TFrame", background=surface_alt)
         style.configure("Chrome.TFrame", background=chrome)
@@ -477,6 +485,9 @@ class AutoNoteApp(tk.Tk):
         style.configure("SmallMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 8))
         style.configure("HomeSnapshotTitle.TLabel", background=surface_alt, foreground=muted, font=(font, 8, "bold"))
         style.configure("HomeSnapshotValue.TLabel", background=surface_alt, foreground=primary, font=(font, 10, "bold"))
+        style.configure("ArticleFocusTitle.TLabel", background=surface_alt, foreground=muted, font=(font, 8, "bold"))
+        style.configure("ArticleFocusValue.TLabel", background=surface_alt, foreground=primary, font=(font, 10, "bold"))
+        style.configure("ArticleFocusMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 9))
         style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, "bold"))
         style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, 10))
         style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
@@ -1456,6 +1467,7 @@ class AutoNoteApp(tk.Tk):
         )
         self.status_pill.pack(side=tk.RIGHT)
         ttk.Label(detail_panel, textvariable=self.meta_var, style="Muted.TLabel").pack(anchor=tk.W, pady=(6, 10))
+        self._build_article_focus_panel(detail_panel)
 
         action_grid = ttk.Frame(detail_panel, style="Surface.TFrame")
         action_grid.pack(fill=tk.X, pady=(0, 8))
@@ -1493,6 +1505,54 @@ class AutoNoteApp(tk.Tk):
         self.editor = ScrolledText(editor_tab, wrap=tk.WORD, height=18, borderwidth=0, undo=True)
         self.editor.pack(fill=tk.BOTH, expand=True)
         self.editor.bind("<<Modified>>", self.on_editor_modified)
+
+    def _build_article_focus_panel(self, parent: ttk.Frame) -> None:
+        box = ttk.Frame(parent, style="ArticleFocus.TFrame", padding=(10, 9))
+        box.pack(fill=tk.X, pady=(0, 8))
+
+        self.article_focus_rail = tk.Frame(box, bg=UI_COLORS["line"], width=4)
+        self.article_focus_rail.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
+
+        body = ttk.Frame(box, style="ArticleFocus.TFrame")
+        body.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        head = ttk.Frame(body, style="ArticleFocus.TFrame")
+        head.pack(fill=tk.X)
+        ttk.Label(head, text="選択記事フォーカス", style="ArticleFocusTitle.TLabel").pack(side=tk.LEFT)
+        self.article_focus_status_pill = tk.Label(
+            head,
+            text="未選択",
+            bg="#344054",
+            fg="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            padx=9,
+            pady=3,
+            width=9,
+        )
+        self.article_focus_status_pill.pack(side=tk.RIGHT)
+
+        self.article_focus_summary_var = tk.StringVar(value="記事を選択すると仕上げ状態を確認できます。")
+        ttk.Label(
+            body,
+            textvariable=self.article_focus_summary_var,
+            style="ArticleFocusValue.TLabel",
+            wraplength=500,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(5, 0))
+
+        self.article_focus_next_var = tk.StringVar(value="次: 記事一覧から対象を選択してください。")
+        ttk.Label(
+            body,
+            textvariable=self.article_focus_next_var,
+            style="ArticleFocusMuted.TLabel",
+            wraplength=500,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(3, 0))
+
+        actions = ttk.Frame(body, style="ArticleFocus.TFrame")
+        actions.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(actions, text="次を確認", style="Primary.TButton", command=self.run_article_focus_next_action).pack(
+            side=tk.LEFT
+        )
+        ttk.Button(actions, text="投稿準備", command=self.publish_ready_selected_to_tab).pack(side=tk.LEFT, padx=6)
+        ttk.Button(actions, text="HTML確認", command=self.generate_publish_ready_helper_action).pack(side=tk.LEFT)
 
     def _configure_article_tree_tags(self) -> None:
         for status, (bg, fg) in STATUS_COLORS.items():
@@ -2765,6 +2825,67 @@ class AutoNoteApp(tk.Tk):
         self.publish_ready_tree.tag_configure("warn", background="#fff4db", foreground="#8a4f00")
         self.publish_ready_tree.tag_configure("fail", background="#ffe2df", foreground="#8b2119")
 
+    def refresh_article_focus_panel(self, *, article: Article | None = None) -> ImprovementPlan | None:
+        if not hasattr(self, "article_focus_summary_var"):
+            return None
+        article = article or self.selected_article
+        if article is None:
+            self._clear_article_focus_panel("記事を選択すると仕上げ状態を確認できます。")
+            return None
+        try:
+            plan = build_improvement_plan(
+                article.source,
+                append_tags=self.settings.append_tags_by_default,
+                limit=6,
+            )
+        except ArticleError as exc:
+            self._last_article_focus_plan = None
+            self._render_article_focus_error(str(exc))
+            return None
+        self._render_article_focus_panel(plan)
+        return plan
+
+    def _render_article_focus_panel(self, plan: ImprovementPlan) -> None:
+        self._last_article_focus_plan = plan
+        status_text, bg, fg = _article_focus_status_style(plan.status)
+        self.article_focus_status_pill.configure(text=status_text, bg=bg, fg=fg)
+        self.article_focus_summary_var.set(_article_focus_summary(plan))
+        self.article_focus_next_var.set(_article_focus_next_text(plan))
+        self.article_focus_rail.configure(bg=_article_focus_accent_color(plan.status))
+
+    def _render_article_focus_error(self, message: str) -> None:
+        status_text, bg, fg = _article_focus_status_style("blocked")
+        self.article_focus_status_pill.configure(text=status_text, bg=bg, fg=fg)
+        self.article_focus_summary_var.set("記事を読み込めません。")
+        self.article_focus_next_var.set(f"次: {message}")
+        self.article_focus_rail.configure(bg=_article_focus_accent_color("blocked"))
+
+    def _clear_article_focus_panel(self, message: str) -> None:
+        self._last_article_focus_plan = None
+        self.article_focus_status_pill.configure(text="未選択", bg="#344054", fg="#ffffff")
+        self.article_focus_summary_var.set(message)
+        self.article_focus_next_var.set("次: 記事一覧から対象を選択してください。")
+        self.article_focus_rail.configure(bg=UI_COLORS["line"])
+
+    def run_article_focus_next_action(self) -> None:
+        article = self.selected_or_warn()
+        if not article:
+            return
+        plan = self._last_article_focus_plan or self.refresh_article_focus_panel(article=article)
+        if plan is None:
+            self.notify("選択記事フォーカスを更新できません", level="error")
+            return
+        if plan.status == "ready":
+            self.open_helper()
+            return
+        self._last_improvement_plan = plan
+        self.refresh_review_panel()
+        self._last_publish_ready_report = plan.publish_ready
+        self._render_publish_ready_panel(plan.publish_ready)
+        self._set_check_text(format_improvement_plan(plan))
+        self.notebook.select(self.check_tab)
+        self.notify("次に直す内容を改善プランで開きました", level=self._improvement_plan_notify_level(plan))
+
     def refresh_publish_ready_panel_action(self) -> None:
         report = self.refresh_publish_ready_panel(show_popup=True)
         if report is not None:
@@ -3038,6 +3159,8 @@ class AutoNoteApp(tk.Tk):
             self._set_preview("")
             self._set_editor("")
             self._update_status_pill("draft")
+            if hasattr(self, "article_focus_summary_var"):
+                self._clear_article_focus_panel("記事を選択すると仕上げ状態を確認できます。")
             if hasattr(self, "publish_ready_tree"):
                 self._clear_publish_ready_panel("記事を選択すると投稿準備を確認できます。")
             return
@@ -3054,7 +3177,12 @@ class AutoNoteApp(tk.Tk):
         self._set_preview(body_with_tags(article))
         self._set_editor(_read_text(article.source))
         self._update_status_pill(article.status or "draft")
-        self.refresh_publish_ready_panel(article=article)
+        plan = self.refresh_article_focus_panel(article=article)
+        if plan is not None and hasattr(self, "publish_ready_tree"):
+            self._last_publish_ready_report = plan.publish_ready
+            self._render_publish_ready_panel(plan.publish_ready)
+        else:
+            self.refresh_publish_ready_panel(article=article)
         self.after(80, lambda path=article.source: self.offer_autosave_restore(path))
 
     def _update_status_pill(self, status: str) -> None:
@@ -3772,8 +3900,12 @@ class AutoNoteApp(tk.Tk):
             messagebox.showerror("改善プランエラー", str(exc))
             return
         self._last_improvement_plan = plan
+        if hasattr(self, "article_focus_summary_var"):
+            self._render_article_focus_panel(plan)
         self.refresh_review_panel()
-        self.refresh_publish_ready_panel(article=article, show_popup=False, smoke_helper=False)
+        if hasattr(self, "publish_ready_tree"):
+            self._last_publish_ready_report = plan.publish_ready
+            self._render_publish_ready_panel(plan.publish_ready)
         self._set_check_text(format_improvement_plan(plan))
         self.notebook.select(self.check_tab)
         self.notify("改善プランを表示しました", level=self._improvement_plan_notify_level(plan))
@@ -7100,6 +7232,60 @@ def _home_snapshot_next_state(severity: str) -> str:
 def _home_snapshot_worst_state(*states: str) -> str:
     rank = {"fail": 3, "warn": 2, "info": 1, "ok": 0}
     return max(states or ("info",), key=lambda state: rank.get(state, 1))
+
+
+def _article_focus_summary(plan: ImprovementPlan) -> str:
+    readiness = {
+        "pass": "投稿OK",
+        "warn": "投稿前確認",
+        "fail": "投稿前NG",
+    }.get(plan.publish_ready.status, "投稿前確認")
+    return (
+        f"レビュー {plan.review.score}/100 / {readiness} / "
+        f"FIX {plan.fix_count} / WARN {plan.warn_count} / "
+        f"IMPROVE {plan.improve_count} / 約{plan.total_minutes}分"
+    )
+
+
+def _article_focus_next_text(plan: ImprovementPlan) -> str:
+    if plan.status == "ready":
+        return "次: 投稿ヘルパーを開き、noteへ転記して公開後URLを保存します。"
+    if not plan.steps:
+        return "次: 改善プランを開いて投稿前の確認を進めます。"
+    step = plan.steps[0]
+    label = {
+        "fix": "必須修正",
+        "warn": "確認",
+        "improve": "改善",
+        "info": "次へ",
+    }.get(step.severity, step.severity.upper())
+    problem = _article_focus_brief(step.problem, 46)
+    action = _article_focus_brief(step.action, 54) if step.action else "改善プランで確認"
+    return f"次: {label} / {step.stage}-{step.category}: {problem} / {action}"
+
+
+def _article_focus_status_style(status: str) -> tuple[str, str, str]:
+    styles = {
+        "ready": ("READY", UI_COLORS["ok"], "#ffffff"),
+        "check": ("CHECK", UI_COLORS["warn"], "#ffffff"),
+        "blocked": ("BLOCKED", UI_COLORS["danger"], "#ffffff"),
+    }
+    return styles.get(status, ("CHECK", "#344054", "#ffffff"))
+
+
+def _article_focus_accent_color(status: str) -> str:
+    return {
+        "ready": UI_COLORS["ok"],
+        "check": UI_COLORS["warn"],
+        "blocked": UI_COLORS["danger"],
+    }.get(status, UI_COLORS["line"])
+
+
+def _article_focus_brief(text: str, limit: int) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: max(0, limit - 3)].rstrip() + "..."
 
 
 def _home_primary_button_label(step: ActionPlanStep | None) -> str:
