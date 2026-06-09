@@ -1603,6 +1603,7 @@ class AutoNoteApp(tk.Tk):
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
                 ("ログを開く", self.open_gui_log),
+                ("GUIログ場所", self.open_gui_log_folder_action),
                 ("保守フォルダ", self.open_maintenance_folder),
             ],
             columns=5,
@@ -1851,6 +1852,7 @@ class AutoNoteApp(tk.Tk):
                 ("危険生成物整理", self.apply_privacy_failed_cleanup_action),
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
+                ("GUIログ場所", self.open_gui_log_folder_action),
                 ("保守フォルダ", self.open_maintenance_folder),
             ],
             columns=5,
@@ -4315,6 +4317,7 @@ class AutoNoteApp(tk.Tk):
             ("アプリ情報", "バージョンと環境概要を表示", self.show_app_info),
             ("GUIログ表示", "最新GUIログを診断タブに表示", self.show_gui_log_action),
             ("GUIログコピー", "最新GUIログをクリップボードへコピー", self.copy_gui_log_action),
+            ("GUIログ場所", "GUIログが保存されるフォルダを開く", self.open_gui_log_folder_action),
             ("ライセンス表示", "依存ライブラリの第三者表記を表示", self.show_dependency_notices),
             ("第三者表記更新", "依存ライブラリ表記をMarkdownへ書き出す", self.write_dependency_notices_action),
             ("問い合わせ作成", "サポート依頼テンプレートを作成", self.create_support_request_action),
@@ -5955,6 +5958,12 @@ class AutoNoteApp(tk.Tk):
             messagebox.showinfo("ログ", "まだGUIログはありません。")
             return
         _open_path(path)
+
+    def open_gui_log_folder_action(self) -> None:
+        path = gui_error_log_path(self.project_dir)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _open_path(path.parent)
+        self.notify("GUIログの保存場所を開きました", level="success")
 
     def show_gui_log_action(self) -> None:
         text, has_log = self._format_gui_log_preview()

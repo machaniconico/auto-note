@@ -1556,6 +1556,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log folder action",
+            "open_gui_log_folder_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log display button",
             "GUIログ表示",
         )
@@ -1570,6 +1577,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log folder button",
+            "GUIログ場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log preview content",
             "GUI log / GUIログ",
         )
@@ -1579,6 +1593,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI log clipboard",
             "self.clipboard_append(text)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README GUI log folder guidance",
+            "GUIログ場所",
         )
     )
     checks.append(
@@ -2370,6 +2391,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log copy guidance",
             "GUIログコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide GUI log folder guidance",
+            "GUIログ場所",
         )
     )
     checks.append(
