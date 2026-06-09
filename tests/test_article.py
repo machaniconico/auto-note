@@ -188,7 +188,13 @@ from auto_note.sales_plan import (
 )
 from auto_note.scaffold import create_article, create_practice_article, list_article_templates
 from auto_note.settings import AppSettings, inspect_settings, list_settings_recovery_files, load_settings, save_settings
-from auto_note.selftest import _self_test_quickstart_item, format_self_test_report, run_self_test, write_self_test_report
+from auto_note.selftest import (
+    _launcher_health_item,
+    _self_test_quickstart_item,
+    format_self_test_report,
+    run_self_test,
+    write_self_test_report,
+)
 from auto_note.setup_check import format_setup_report, run_setup_check
 from auto_note.starter import (
     cleanup_starter_pack,
@@ -2262,11 +2268,30 @@ tags: note
         self.assertNotIn(str(project), saved_text)
         self.assertGreaterEqual(len(saved_reports), 2)
         self.assertIn("setup", item_names)
+        self.assertIn("launcher health", item_names)
         self.assertIn("quickstart", item_names)
         self.assertIn("action plan", item_names)
         self.assertIn("privacy audit", item_names)
         self.assertIn("Self-test report", cli_output.getvalue())
         self.assertIn("self-test report created:", cli_report_output.getvalue())
+
+    def test_launcher_health_warns_when_hidden_launcher_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "auto-note-gui.bat").write_text(
+                "python -m auto_note gui --project-dir . --smoke\n"
+                "python -m auto_note recovery-kit --project-dir . --report\n"
+                "python -m auto_note support --project-dir . --bundle\n"
+                ".auto-note\\gui-error.log\n",
+                encoding="utf-8",
+            )
+
+            item = _launcher_health_item(project)
+
+        self.assertEqual(item.name, "launcher health")
+        self.assertEqual(item.status, "warn")
+        self.assertIn("hidden launcher missing", item.detail)
+        self.assertIn("auto-note-gui.bat", item.action)
 
     def test_workflow_smoke_runs_temporary_publish_flow_and_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2897,6 +2922,13 @@ tags:
                 "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\n",
                 encoding="utf-8",
             )
+            (project / "src" / "auto_note" / "selftest.py").write_text(
+                "_launcher_health_item\n"
+                "_launcher_health_item(project_dir)\n"
+                "_hidden_launcher_syntax_warning\n"
+                "auto-note-gui.bat を直接\n",
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "commercial.py").write_text(
                 "write_commercial_policy_review\nlist_commercial_policy_reviews\n",
                 encoding="utf-8",
@@ -3127,12 +3159,12 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -3140,7 +3172,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
@@ -3173,6 +3205,7 @@ tags:
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
         self.assertIn("recovery kit report writer:fail", product_details)
         self.assertIn("recovery kit report lister:fail", product_details)
+        self.assertIn("README self-test launcher health guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("release check script:fail", product_details)
         self.assertIn("release check unit tests:fail", product_details)
@@ -3197,6 +3230,10 @@ tags:
         self.assertIn("CLI repair command:fail", product_details)
         self.assertIn("CLI recovery kit command:fail", product_details)
         self.assertIn("CLI recovery kit report option:fail", product_details)
+        self.assertIn("self-test launcher health item:fail", product_details)
+        self.assertIn("self-test launcher health included:fail", product_details)
+        self.assertIn("self-test hidden launcher syntax check:fail", product_details)
+        self.assertIn("self-test direct launcher fallback:fail", product_details)
         self.assertIn("CLI troubleshoot command:fail", product_details)
         self.assertIn("CLI acceptance command:fail", product_details)
         self.assertIn("CLI acceptance full command:fail", product_details)
@@ -3563,6 +3600,7 @@ tags:
         self.assertIn("support guide recovery report guidance:fail", product_details)
         self.assertIn("support guide home recent reports guidance:fail", product_details)
         self.assertIn("support guide home recent reports copy guidance:fail", product_details)
+        self.assertIn("support guide self-test launcher health guidance:fail", product_details)
         self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
@@ -3575,6 +3613,7 @@ tags:
         self.assertIn("product readiness home recent reports guidance:fail", product_details)
         self.assertIn("product readiness home recent reports copy guidance:fail", product_details)
         self.assertIn("product readiness first-run actionable filter guidance:fail", product_details)
+        self.assertIn("product readiness self-test launcher health guidance:fail", product_details)
         self.assertIn("product readiness commercial setup template apply command:fail", product_details)
         self.assertIn("product readiness commercial setup safe template guidance:fail", product_details)
         self.assertIn("product readiness commercial setup GUI next missing guidance:fail", product_details)
@@ -3618,6 +3657,10 @@ tags:
         self.assertIn("CLI repair command:pass", launcher_details)
         self.assertIn("CLI recovery kit command:pass", launcher_details)
         self.assertIn("CLI recovery kit report option:pass", launcher_details)
+        self.assertIn("self-test launcher health item:pass", launcher_details)
+        self.assertIn("self-test launcher health included:pass", launcher_details)
+        self.assertIn("self-test hidden launcher syntax check:pass", launcher_details)
+        self.assertIn("self-test direct launcher fallback:pass", launcher_details)
         self.assertIn("CLI troubleshoot command:pass", launcher_details)
         self.assertIn("CLI acceptance command:pass", launcher_details)
         self.assertIn("CLI acceptance full command:pass", launcher_details)
@@ -3931,6 +3974,7 @@ tags:
         self.assertIn("README recovery kit CLI guidance:pass", launcher_details)
         self.assertIn("README recovery kit report guidance:pass", launcher_details)
         self.assertIn("README recovery kit GUI report guidance:pass", launcher_details)
+        self.assertIn("README self-test launcher health guidance:pass", launcher_details)
         self.assertIn("README home recent reports guidance:pass", launcher_details)
         self.assertIn("README home recent reports copy guidance:pass", launcher_details)
         self.assertIn("README home recent reports buyer delivery guidance:pass", launcher_details)
@@ -3984,6 +4028,7 @@ tags:
         self.assertIn("support guide recovery report guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports copy guidance:pass", launcher_details)
+        self.assertIn("support guide self-test launcher health guidance:pass", launcher_details)
         self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
@@ -3995,6 +4040,7 @@ tags:
         self.assertIn("product readiness home recent reports guidance:pass", launcher_details)
         self.assertIn("product readiness home recent reports copy guidance:pass", launcher_details)
         self.assertIn("product readiness first-run actionable filter guidance:pass", launcher_details)
+        self.assertIn("product readiness self-test launcher health guidance:pass", launcher_details)
         self.assertIn("product readiness commercial setup template command:pass", launcher_details)
         self.assertIn("product readiness commercial setup template apply command:pass", launcher_details)
         self.assertIn("product readiness commercial setup safe template guidance:pass", launcher_details)

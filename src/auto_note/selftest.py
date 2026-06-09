@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -52,6 +53,7 @@ def run_self_test(
     project_dir = project_dir.resolve()
     items = [
         _setup_item(project_dir, create=create),
+        _launcher_health_item(project_dir),
         _quickstart_item(project_dir),
         _action_plan_item(project_dir),
         _privacy_item(project_dir, include_sales_handoffs=include_sales_handoffs),
@@ -158,6 +160,102 @@ def _setup_item(project_dir: Path, *, create: bool) -> SelfTestItem:
             "任意機能が必要な場合はセットアップ確認のWARNを確認してください。",
         )
     return SelfTestItem("setup", "pass", f"{len(checks)} setup check(s) OK")
+
+
+def _launcher_health_item(project_dir: Path) -> SelfTestItem:
+    bat = project_dir / "auto-note-gui.bat"
+    vbs = project_dir / "scripts" / "launch-gui.vbs"
+    shortcut_candidates = (project_dir / "auto-note.lnk", project_dir / "auto-note GUI.lnk")
+    warnings: list[str] = []
+
+    if not bat.exists():
+        return SelfTestItem(
+            "launcher health",
+            "fail",
+            "auto-note-gui.bat missing",
+            "配布ZIPを展開し直すか、`shortcuts\\install-auto-note.bat` を実行してください。",
+        )
+
+    bat_text = _read_optional_text(bat)
+    _collect_missing_markers(
+        warnings,
+        bat_text,
+        (
+            ("GUI smoke", "--smoke"),
+            ("startup recovery", "recovery-kit --project-dir"),
+            ("support bundle fallback", "support --project-dir"),
+            ("GUI log", "gui-error.log"),
+        ),
+    )
+
+    if not vbs.exists():
+        warnings.append("hidden launcher missing")
+    else:
+        vbs_text = _read_optional_text(vbs)
+        _collect_missing_markers(
+            warnings,
+            vbs_text,
+            (
+                ("hidden launcher target", "auto-note-gui.bat"),
+                ("hidden launcher no-console mode", "shell.Run(command, 0, True)"),
+                ("hidden launcher check mode", "AUTO_NOTE_LAUNCHER_CHECK"),
+            ),
+        )
+        syntax_warning = _hidden_launcher_syntax_warning(vbs)
+        if syntax_warning:
+            warnings.append(syntax_warning)
+
+    if not any(path.exists() for path in shortcut_candidates):
+        warnings.append("desktop shortcut missing")
+
+    if warnings:
+        preview = "; ".join(warnings[:4])
+        if len(warnings) > 4:
+            preview = f"{preview}; +{len(warnings) - 4} more"
+        return SelfTestItem(
+            "launcher health",
+            "warn",
+            preview,
+            "ショートカットで起動しない場合は auto-note-gui.bat を直接開き、復旧セットを実行してください。",
+        )
+    return SelfTestItem("launcher health", "pass", "bat, hidden launcher, shortcut, recovery path OK")
+
+
+def _collect_missing_markers(warnings: list[str], text: str | None, markers: tuple[tuple[str, str], ...]) -> None:
+    if text is None:
+        warnings.append("launcher file unreadable")
+        return
+    for label, marker in markers:
+        if marker not in text:
+            warnings.append(f"{label} marker missing")
+
+
+def _read_optional_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _hidden_launcher_syntax_warning(path: Path) -> str:
+    if os.name != "nt":
+        return ""
+    env = os.environ.copy()
+    env["AUTO_NOTE_LAUNCHER_CHECK"] = "1"
+    try:
+        result = subprocess.run(
+            ["cscript.exe", "//nologo", str(path)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"hidden launcher syntax check skipped: {exc.__class__.__name__}"
+    if result.returncode != 0:
+        return f"hidden launcher syntax check failed: exit {result.returncode}"
+    return ""
 
 
 def _quickstart_item(project_dir: Path) -> SelfTestItem:

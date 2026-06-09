@@ -449,6 +449,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README self-test launcher health guidance",
+            "ランチャー健康チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README home recent reports guidance",
             "直近レポート",
         )
@@ -634,6 +641,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "__main__.py",
             "CLI recovery kit report option",
             "--report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test launcher health item",
+            "_launcher_health_item",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test launcher health included",
+            "_launcher_health_item(project_dir)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test hidden launcher syntax check",
+            "_hidden_launcher_syntax_warning",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test direct launcher fallback",
+            "auto-note-gui.bat を直接",
         )
     )
     checks.append(
@@ -3165,6 +3200,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide self-test launcher health guidance",
+            "launcher health",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "docs" / "PRIVACY.md",
             "privacy guide support send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
@@ -3245,6 +3287,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness first-run actionable filter guidance",
             "要対応だけ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness self-test launcher health guidance",
+            "ランチャー健康チェック",
         )
     )
     checks.append(
