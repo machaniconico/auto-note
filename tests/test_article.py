@@ -71,12 +71,15 @@ from auto_note.gui import (
     _home_first_run_summary,
     _home_buyer_send_summary,
     _home_gui_log_status,
+    _home_overview_badge,
+    _home_primary_button_label,
     _home_progress_review_text,
     _home_progress_state_from_status,
     _home_progress_summary,
     _home_report_status,
     _home_report_status_tag,
     _home_report_summary,
+    _home_state_accent_color,
     _support_bundle_indicator_style,
     _support_send_readiness_indicator_style,
     smoke_gui,
@@ -256,6 +259,48 @@ class ArticleTests(unittest.TestCase):
             "NG 1 / CHECK 1 / READY 1",
             _home_progress_summary({"setup": "ok", "article": "fail", "publish": "warn"}, "自動修復"),
         )
+
+    def test_home_primary_button_label_names_next_action(self) -> None:
+        self.assertEqual(_home_primary_button_label(None), "詳細を見る")
+        self.assertEqual(
+            _home_primary_button_label(
+                ActionPlanStep(
+                    "セットアップを修復する",
+                    "missing launcher",
+                    "自動修復を実行",
+                    gui="診断 > 自動修復",
+                    severity="blocker",
+                    source="setup",
+                )
+            ),
+            "セットアップへ",
+        )
+        self.assertEqual(
+            _home_primary_button_label(
+                ActionPlanStep(
+                    "製品品質のNGを確認する",
+                    "failure",
+                    "品質チェックを開く",
+                    gui="診断 > 品質チェック",
+                    severity="blocker",
+                    source="quality",
+                )
+            ),
+            "品質チェックへ",
+        )
+        self.assertEqual(
+            _home_primary_button_label(
+                ActionPlanStep("長いタイトルを持つ次の作業ステップ", "reason", "action", severity="info")
+            ),
+            "長いタイトルを持つ次...",
+        )
+
+    def test_home_modern_status_helpers_reflect_state(self) -> None:
+        self.assertEqual(_home_overview_badge(95, "ready")[0], "READY")
+        self.assertEqual(_home_overview_badge(40, "blocker")[0], "ACTION")
+        self.assertEqual(_home_overview_badge(80, "needs work")[0], "CHECK")
+        self.assertEqual(_home_state_accent_color("ok"), "#047857")
+        self.assertEqual(_home_state_accent_color("fail"), "#dc2626")
 
     def test_home_first_run_summary_points_to_next_item(self) -> None:
         report = FirstRunReport(
@@ -2677,6 +2722,9 @@ tags: note
         self.assertIn("publish_ready_items=", text)
         self.assertIn("home_sales_chars=", text)
         self.assertIn("home_sales_stage_chars=", text)
+        self.assertIn("home_status_badge_chars=", text)
+        self.assertIn("home_updated_chars=", text)
+        self.assertIn("home_primary_button_chars=", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2970,20 +3018,32 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "作業進行\n"
+                + "HomeLead.TFrame\n"
+                + "HomeTitle.TLabel\n"
+                + "home_status_badge\n"
+                + "home_updated_var\n"
+                + "_home_overview_badge\n"
                 + "home_progress_summary_var\n"
                 + "home_progress_vars\n"
                 + "_refresh_home_progress_lane\n"
                 + "_set_home_progress_stage\n"
                 + "_home_progress_summary\n"
+                + "home_primary_button_var\n"
+                + "_home_primary_button_label\n"
                 + "home_progress_chars=\n",
                 encoding="utf-8",
             )
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "home_progress_buttons\n"
+                + "home_progress_rails\n"
+                + "_home_state_accent_color\n"
                 + "open_home_progress_stage\n"
                 + "_select_home_progress_tab\n"
-                + "home_progress_action_items=\n",
+                + "home_progress_action_items=\n"
+                + "home_status_badge_chars=\n"
+                + "home_updated_chars=\n"
+                + "home_primary_button_chars=\n",
                 encoding="utf-8",
             )
             gui_fixture.write_text(
@@ -3259,15 +3319,27 @@ tags:
         self.assertIn("GUI home progress refresh:fail", product_details)
         self.assertIn("GUI home progress stage setter:fail", product_details)
         self.assertIn("GUI home progress summary helper:fail", product_details)
+        self.assertIn("GUI home primary dynamic button:fail", product_details)
+        self.assertIn("GUI home primary button label helper:fail", product_details)
+        self.assertIn("GUI modern home lead panel:fail", product_details)
+        self.assertIn("GUI modern home title typography:fail", product_details)
+        self.assertIn("GUI modern home status badge:fail", product_details)
+        self.assertIn("GUI modern home freshness:fail", product_details)
+        self.assertIn("GUI modern home overview badge helper:fail", product_details)
         self.assertIn("GUI home first-run setup lane:fail", product_details)
         self.assertIn("GUI home first-run summary helper:fail", product_details)
         self.assertIn("GUI home first-run opener:fail", product_details)
         self.assertIn("GUI smoke home progress count:fail", product_details)
         self.assertIn("GUI smoke home first-run count:fail", product_details)
         self.assertIn("GUI home progress action buttons:fail", product_details)
+        self.assertIn("GUI home progress state rails:fail", product_details)
+        self.assertIn("GUI home progress state rail helper:fail", product_details)
         self.assertIn("GUI home progress stage opener:fail", product_details)
         self.assertIn("GUI home progress article route:fail", product_details)
         self.assertIn("GUI smoke home progress action count:fail", product_details)
+        self.assertIn("GUI smoke home status badge:fail", product_details)
+        self.assertIn("GUI smoke home freshness:fail", product_details)
+        self.assertIn("GUI smoke home primary button label:fail", product_details)
         self.assertIn("GUI home progress command palette setup:fail", product_details)
         self.assertIn("GUI home progress command palette support:fail", product_details)
         self.assertIn("GUI home progress command palette opener:fail", product_details)
@@ -3668,15 +3740,27 @@ tags:
         self.assertIn("GUI home progress refresh:pass", launcher_details)
         self.assertIn("GUI home progress stage setter:pass", launcher_details)
         self.assertIn("GUI home progress summary helper:pass", launcher_details)
+        self.assertIn("GUI home primary dynamic button:pass", launcher_details)
+        self.assertIn("GUI home primary button label helper:pass", launcher_details)
+        self.assertIn("GUI modern home lead panel:pass", launcher_details)
+        self.assertIn("GUI modern home title typography:pass", launcher_details)
+        self.assertIn("GUI modern home status badge:pass", launcher_details)
+        self.assertIn("GUI modern home freshness:pass", launcher_details)
+        self.assertIn("GUI modern home overview badge helper:pass", launcher_details)
         self.assertIn("GUI home first-run setup lane:pass", launcher_details)
         self.assertIn("GUI home first-run summary helper:pass", launcher_details)
         self.assertIn("GUI home first-run opener:pass", launcher_details)
         self.assertIn("GUI smoke home progress count:pass", launcher_details)
         self.assertIn("GUI smoke home first-run count:pass", launcher_details)
         self.assertIn("GUI home progress action buttons:pass", launcher_details)
+        self.assertIn("GUI home progress state rails:pass", launcher_details)
+        self.assertIn("GUI home progress state rail helper:pass", launcher_details)
         self.assertIn("GUI home progress stage opener:pass", launcher_details)
         self.assertIn("GUI home progress article route:pass", launcher_details)
         self.assertIn("GUI smoke home progress action count:pass", launcher_details)
+        self.assertIn("GUI smoke home status badge:pass", launcher_details)
+        self.assertIn("GUI smoke home freshness:pass", launcher_details)
+        self.assertIn("GUI smoke home primary button label:pass", launcher_details)
         self.assertIn("GUI home progress command palette setup:pass", launcher_details)
         self.assertIn("GUI home progress command palette support:pass", launcher_details)
         self.assertIn("GUI home progress command palette opener:pass", launcher_details)

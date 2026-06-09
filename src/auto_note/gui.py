@@ -190,6 +190,8 @@ UI_COLORS = {
     "bg": "#f5f7fb",
     "surface": "#ffffff",
     "surface_alt": "#f8fafc",
+    "surface_hover": "#eef4f8",
+    "surface_strong": "#edf7f5",
     "surface_selected": "#eef6f3",
     "ink": "#172033",
     "muted": "#5f6b7a",
@@ -321,6 +323,13 @@ def smoke_gui(project_dir: Path) -> str:
         home_progress_action_items = (
             len(app.home_progress_buttons) if hasattr(app, "home_progress_buttons") else 0
         )
+        home_status_badge_chars = (
+            len(str(app.home_status_badge.cget("text"))) if hasattr(app, "home_status_badge") else 0
+        )
+        home_updated_chars = len(app.home_updated_var.get()) if hasattr(app, "home_updated_var") else 0
+        home_primary_button_chars = (
+            len(app.home_primary_button_var.get()) if hasattr(app, "home_primary_button_var") else 0
+        )
         home_first_run_chars = len(app.home_first_run_var.get()) if hasattr(app, "home_first_run_var") else 0
         home_gui_log_chars = len(app.home_gui_log_var.get()) if hasattr(app, "home_gui_log_var") else 0
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
@@ -335,6 +344,9 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
+            f"home_status_badge_chars={home_status_badge_chars}, "
+            f"home_updated_chars={home_updated_chars}, "
+            f"home_primary_button_chars={home_primary_button_chars}, "
             f"home_first_run_chars={home_first_run_chars}, "
             f"home_gui_log_chars={home_gui_log_chars}, "
             f"diagnostics_chars={diagnostics_chars}"
@@ -419,12 +431,37 @@ class AutoNoteApp(tk.Tk):
         accent = UI_COLORS["accent"]
         style.configure("TFrame", background=bg)
         style.configure("Surface.TFrame", background=surface)
+        style.configure("HomeLead.TFrame", background=UI_COLORS["surface_strong"])
         style.configure("Elevated.TFrame", background=surface, relief="flat", borderwidth=1)
         style.configure("Toolbar.TFrame", background=surface_alt)
         style.configure("Chrome.TFrame", background=chrome)
         style.configure("ChromeAlt.TFrame", background=chrome_alt)
         style.configure("TLabel", background=bg, foreground=primary, font=(font, 10))
         style.configure("Surface.TLabel", background=surface, foreground=primary, font=(font, 10))
+        style.configure(
+            "HomeLead.TLabel",
+            background=UI_COLORS["surface_strong"],
+            foreground=primary,
+            font=(font, 10),
+        )
+        style.configure(
+            "HomeLeadMuted.TLabel",
+            background=UI_COLORS["surface_strong"],
+            foreground=muted,
+            font=(font, 9),
+        )
+        style.configure(
+            "HomeEyebrow.TLabel",
+            background=UI_COLORS["surface_strong"],
+            foreground=accent,
+            font=(font, 8, "bold"),
+        )
+        style.configure(
+            "HomeTitle.TLabel",
+            background=UI_COLORS["surface_strong"],
+            foreground=primary,
+            font=(font, 22, "bold"),
+        )
         style.configure("SurfaceMuted.TLabel", background=surface, foreground=muted, font=(font, 9))
         style.configure("Muted.TLabel", background=surface, foreground=muted, font=(font, 9))
         style.configure("SmallMuted.TLabel", background=surface_alt, foreground=muted, font=(font, 8))
@@ -480,6 +517,20 @@ class AutoNoteApp(tk.Tk):
             darkcolor=line,
         )
         style.map("TButton", background=[("active", selected), ("pressed", "#d9ece8")])
+        style.configure(
+            "Secondary.TButton",
+            padding=(11, 7),
+            font=(font, 10),
+            background=surface,
+            foreground=primary,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+        )
+        style.map(
+            "Secondary.TButton",
+            background=[("active", UI_COLORS["surface_hover"]), ("pressed", selected)],
+        )
         style.configure(
             "Primary.TButton",
             padding=(14, 8),
@@ -576,21 +627,47 @@ class AutoNoteApp(tk.Tk):
         self.bind_all("<Control-Shift-C>", lambda _event: self.copy_selected("body"))
 
     def _build_home_tab(self) -> None:
-        top = ttk.Frame(self.home_tab, style="Surface.TFrame", padding=(14, 12))
+        top = ttk.Frame(self.home_tab, style="HomeLead.TFrame", padding=(16, 14))
         top.pack(fill=tk.X, pady=(0, 10))
-        title_group = ttk.Frame(top, style="Surface.TFrame")
+        tk.Frame(top, bg=UI_COLORS["accent"], width=4).pack(side=tk.LEFT, fill=tk.Y, padx=(0, 12))
+        title_group = ttk.Frame(top, style="HomeLead.TFrame")
         title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Label(title_group, text="今日の状態", style="Title.TLabel").pack(anchor=tk.W)
+        meta_row = ttk.Frame(title_group, style="HomeLead.TFrame")
+        meta_row.pack(fill=tk.X)
+        ttk.Label(meta_row, text="WORKSPACE STATUS", style="HomeEyebrow.TLabel").pack(side=tk.LEFT)
+        self.home_status_badge = tk.Label(
+            meta_row,
+            text="CHECK",
+            bg=UI_COLORS["warn"],
+            fg="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            padx=9,
+            pady=3,
+            width=12,
+        )
+        self.home_status_badge.pack(side=tk.LEFT, padx=(10, 0))
+        self.home_updated_var = tk.StringVar(value="更新待ち")
+        ttk.Label(meta_row, textvariable=self.home_updated_var, style="HomeLeadMuted.TLabel").pack(
+            side=tk.LEFT,
+            padx=(10, 0),
+        )
+        ttk.Label(title_group, text="今日の状態", style="HomeTitle.TLabel").pack(anchor=tk.W, pady=(2, 0))
         ttk.Label(
             title_group,
             text="記事、投稿準備、販売、サポートを同じ作業面で確認します。",
-            style="SurfaceMuted.TLabel",
+            style="HomeLeadMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Button(top, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
-        ttk.Button(top, text="コマンド検索", command=self.show_command_palette).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(top, text="診断", command=lambda: self.notebook.select(self.diagnostics_tab)).pack(
-            side=tk.RIGHT, padx=6
+        ttk.Button(top, text="コマンド検索", style="Secondary.TButton", command=self.show_command_palette).pack(
+            side=tk.RIGHT,
+            padx=6,
         )
+        ttk.Button(
+            top,
+            text="診断",
+            style="Secondary.TButton",
+            command=lambda: self.notebook.select(self.diagnostics_tab),
+        ).pack(side=tk.RIGHT, padx=6)
 
         self.kpi_frame = ttk.Frame(self.home_tab)
         self.kpi_frame.pack(fill=tk.X, pady=(0, 10))
@@ -613,13 +690,19 @@ class AutoNoteApp(tk.Tk):
         progress_header = ttk.Frame(progress, style="Surface.TFrame")
         progress_header.pack(fill=tk.X, pady=(0, 8))
         self.home_progress_summary_var = tk.StringVar(value="投稿までの進行状況を確認中です。")
+        self.home_primary_button_var = tk.StringVar(value="次を実行")
         ttk.Label(
             progress_header,
             textvariable=self.home_progress_summary_var,
             style="Muted.TLabel",
             wraplength=820,
         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(progress_header, text="次を実行", style="Primary.TButton", command=self.run_home_primary_action).pack(
+        ttk.Button(
+            progress_header,
+            textvariable=self.home_primary_button_var,
+            style="Primary.TButton",
+            command=self.run_home_primary_action,
+        ).pack(
             side=tk.RIGHT,
             padx=(6, 0),
         )
@@ -628,6 +711,7 @@ class AutoNoteApp(tk.Tk):
         self.home_progress_vars: dict[str, tk.StringVar] = {}
         self.home_progress_pills: dict[str, tk.Label] = {}
         self.home_progress_buttons: dict[str, ttk.Button] = {}
+        self.home_progress_rails: dict[str, tk.Frame] = {}
         progress_steps = ttk.Frame(progress, style="Surface.TFrame")
         progress_steps.pack(fill=tk.X)
         for index, (key, label) in enumerate(
@@ -643,6 +727,9 @@ class AutoNoteApp(tk.Tk):
             step = ttk.Frame(progress_steps, style="Toolbar.TFrame", padding=(8, 8))
             step.grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 8, 0))
             progress_steps.columnconfigure(index, weight=1, uniform="home_progress")
+            rail = tk.Frame(step, bg=UI_COLORS["line"], height=3)
+            rail.pack(fill=tk.X, pady=(0, 7))
+            self.home_progress_rails[key] = rail
             ttk.Label(step, text=label, style="SmallMuted.TLabel").pack(anchor=tk.W)
             row = ttk.Frame(step, style="Toolbar.TFrame")
             row.pack(fill=tk.X, pady=(3, 0))
@@ -728,7 +815,12 @@ class AutoNoteApp(tk.Tk):
             anchor=tk.W,
             pady=(4, 0),
         )
-        ttk.Button(focus, text="実行", style="Primary.TButton", command=self.run_home_primary_action).pack(
+        ttk.Button(
+            focus,
+            textvariable=self.home_primary_button_var,
+            style="Primary.TButton",
+            command=self.run_home_primary_action,
+        ).pack(
             side=tk.RIGHT,
             padx=(8, 0),
         )
@@ -3863,9 +3955,16 @@ class AutoNoteApp(tk.Tk):
         self.kpi_vars["予定"].set(str(counts["scheduled"]))
         self.kpi_vars["公開済み"].set(str(counts["published"]))
         next_actions = self._home_next_actions(action_plan)
+        if hasattr(self, "home_status_badge"):
+            badge_text, badge_bg, badge_fg = _home_overview_badge(readiness.score, action_plan.status)
+            self.home_status_badge.configure(text=badge_text, bg=badge_bg, fg=badge_fg)
+        if hasattr(self, "home_updated_var"):
+            self.home_updated_var.set(f"更新 {datetime.now().strftime('%H:%M')}")
         if hasattr(self, "home_focus_var"):
             self._home_primary_step = action_plan.steps[0] if action_plan.steps else None
             self.home_focus_var.set(self._format_home_focus(action_plan))
+            if hasattr(self, "home_primary_button_var"):
+                self.home_primary_button_var.set(_home_primary_button_label(self._home_primary_step))
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
         first_run_report = run_first_run_checklist(self.project_dir)
@@ -3962,11 +4061,14 @@ class AutoNoteApp(tk.Tk):
     def _set_home_progress_stage(self, key: str, state: str, text: str) -> None:
         value = getattr(self, "home_progress_vars", {}).get(key)
         pill = getattr(self, "home_progress_pills", {}).get(key)
+        rail = getattr(self, "home_progress_rails", {}).get(key)
         if value is not None:
             value.set(text)
         if pill is not None:
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
+        if rail is not None:
+            rail.configure(bg=_home_state_accent_color(state))
 
     def open_home_progress_stage(self, key: str) -> None:
         actions = {
@@ -6845,6 +6947,50 @@ def _home_progress_summary(stages: dict[str, str], next_title: str) -> str:
     else:
         status = f"READY {ready}/{len(stages)} / CHECK {check}"
     return f"{status} - 次: {next_title}"
+
+
+def _home_primary_button_label(step: ActionPlanStep | None) -> str:
+    if step is None:
+        return "詳細を見る"
+    source = f"{step.title} {step.gui} {step.source}".lower()
+    if "セットアップ" in step.title or "setup" in source:
+        return "セットアップへ"
+    if "品質" in step.title or "quality" in source:
+        return "品質チェックへ"
+    if "トラブル" in step.title or "診断" in step.title or "troubleshoot" in source:
+        return "診断を開く"
+    if "販売者" in step.title or "commercial" in source:
+        return "販売者情報へ"
+    if "投稿キュー" in step.title or "publish" in source:
+        return "投稿キューへ"
+    if "記事" in step.title or "review" in source:
+        return "記事を直す"
+    if "サポート" in step.title or "support" in source:
+        return "サポートへ"
+    if "バックアップ" in step.title or "backup" in source:
+        return "バックアップ"
+    label = step.title.strip() or "次を実行"
+    return label if len(label) <= 12 else label[:10] + "..."
+
+
+def _home_overview_badge(readiness_score: int, status: str) -> tuple[str, str, str]:
+    normalized = status.lower()
+    if "blocker" in normalized or "ng" in normalized or readiness_score < 60:
+        return ("ACTION", UI_COLORS["danger"], "#ffffff")
+    if "ready" in normalized or readiness_score >= 90:
+        return ("READY", UI_COLORS["ok"], "#ffffff")
+    if readiness_score >= 75:
+        return ("CHECK", UI_COLORS["info"], "#ffffff")
+    return ("CHECK", UI_COLORS["warn"], "#ffffff")
+
+
+def _home_state_accent_color(state: str) -> str:
+    return {
+        "ok": UI_COLORS["ok"],
+        "info": UI_COLORS["info"],
+        "warn": UI_COLORS["warn"],
+        "fail": UI_COLORS["danger"],
+    }.get(state, UI_COLORS["line"])
 
 
 def _home_sales_indicator_style(state: str) -> tuple[str, str, str]:
