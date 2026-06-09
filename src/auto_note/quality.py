@@ -218,8 +218,64 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery kit saves report",
+            "write_recovery_kit_report(self.project_dir, report=report)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI recovery kit button",
             "復旧セット",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report display action",
+            "show_latest_recovery_kit_report_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report copy action",
+            "copy_latest_recovery_kit_report_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report folder action",
+            "open_recovery_kit_reports_folder_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report display button",
+            "最新復旧レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report copy button",
+            "復旧レポートコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report folder button",
+            "復旧レポート場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI recovery report empty state",
+            "復旧レポートはまだありません",
         )
     )
     checks.append(
@@ -241,6 +297,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README recovery kit report guidance",
             "recovery-kit-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README recovery kit GUI report guidance",
+            "最新復旧レポート",
         )
     )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
@@ -2206,6 +2269,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide recovery report guidance",
+            "復旧レポートコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "docs" / "PRIVACY.md",
             "privacy guide support send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
@@ -2258,6 +2328,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home sales buyer message guidance",
             "送付文有無",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness recovery report guidance",
+            "最新復旧レポート",
         )
     )
     checks.append(

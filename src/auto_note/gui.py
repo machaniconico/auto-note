@@ -85,7 +85,14 @@ from .publish_queue import (
 from .quality import format_quality_report, run_quality_checks
 from .quickstart import format_quickstart_report, run_quickstart
 from .readiness import format_readiness_report, run_readiness
-from .repair import format_recovery_kit_report, format_repair_report, run_recovery_kit, run_repair
+from .repair import (
+    format_recovery_kit_report,
+    format_repair_report,
+    list_recovery_kit_reports,
+    run_recovery_kit,
+    run_repair,
+    write_recovery_kit_report,
+)
 from .release import create_release_package, format_release_verification, list_releases, verify_release_package
 from .review import ArticleReview, format_review_report, has_review_blockers, review_article, review_path
 from .scaffold import create_article, create_practice_article, list_article_templates
@@ -1508,6 +1515,9 @@ class AutoNoteApp(tk.Tk):
                 ("セットアップ確認", self.run_setup_to_tab),
                 ("準備度", self.run_readiness_to_tab),
                 ("復旧セット", self.run_recovery_kit_to_tab),
+                ("最新復旧レポート", self.show_latest_recovery_kit_report_action),
+                ("復旧レポートコピー", self.copy_latest_recovery_kit_report_action),
+                ("復旧レポート場所", self.open_recovery_kit_reports_folder_action),
                 ("自動修復", self.run_repair_to_tab),
                 ("トラブル診断", self.run_troubleshoot_to_tab),
                 ("出荷前チェック", self.run_preflight_to_tab),
@@ -1671,6 +1681,9 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
                 ("ZIPログ要約", self.show_support_gui_log_summary_action),
+                ("最新復旧レポート", self.show_latest_recovery_kit_report_action),
+                ("復旧レポートコピー", self.copy_latest_recovery_kit_report_action),
+                ("復旧レポート場所", self.open_recovery_kit_reports_folder_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
                 ("送付文コピー", self.copy_support_send_message_action),
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
@@ -1735,6 +1748,9 @@ class AutoNoteApp(tk.Tk):
                 ("第三者表記更新", self.write_dependency_notices_action),
                 ("セットアップ確認", self.run_setup_to_tab),
                 ("復旧セット", self.run_recovery_kit_to_tab),
+                ("最新復旧レポート", self.show_latest_recovery_kit_report_action),
+                ("復旧レポートコピー", self.copy_latest_recovery_kit_report_action),
+                ("復旧レポート場所", self.open_recovery_kit_reports_folder_action),
                 ("自動修復", self.run_repair_to_tab),
                 ("トラブル診断", self.run_troubleshoot_to_tab),
                 ("問い合わせ作成", self.create_support_request_action),
@@ -4054,6 +4070,9 @@ class AutoNoteApp(tk.Tk):
             ("セットアップ確認", "初回セットアップ状態を確認", self.run_setup_to_tab),
             ("準備度確認", "スコアと次の対応を表示", self.run_readiness_to_tab),
             ("復旧セット", "安全な基本修復、再診断、必要時の問い合わせ一式作成をまとめて実行", self.run_recovery_kit_to_tab),
+            ("最新復旧レポート", "保存済みの最新復旧レポートを表示", self.show_latest_recovery_kit_report_action),
+            ("復旧レポートコピー", "最新復旧レポートをクリップボードへコピー", self.copy_latest_recovery_kit_report_action),
+            ("復旧レポート場所", "復旧レポート保存フォルダを開く", self.open_recovery_kit_reports_folder_action),
             ("自動修復", "基本フォルダ/設定を安全に再作成し、整理候補を確認", self.run_repair_to_tab),
             ("トラブル診断", "起動、ログイン、プライバシー、配布ZIPの詰まりどころを確認", self.run_troubleshoot_to_tab),
             ("出荷前チェック", "販売/配布前の総合チェックを表示", self.run_preflight_to_tab),
@@ -4970,6 +4989,7 @@ class AutoNoteApp(tk.Tk):
             return
         try:
             report = run_recovery_kit(self.project_dir)
+            report_path = write_recovery_kit_report(self.project_dir, report=report)
         except OSError as exc:
             self.notify("復旧セットに失敗しました", level="error")
             messagebox.showerror("復旧セットエラー", str(exc))
@@ -4978,10 +4998,23 @@ class AutoNoteApp(tk.Tk):
         self.sync_settings_tab()
         self.refresh_all()
         self._refresh_support_summary()
-        self._set_text(self.diagnostics_text, format_recovery_kit_report(report))
+        try:
+            display_path = report_path.resolve().relative_to(self.project_dir.resolve())
+        except ValueError:
+            display_path = Path(report_path.name)
+        self._set_text(
+            self.diagnostics_text,
+            "\n\n".join(
+                [
+                    format_recovery_kit_report(report),
+                    f"Saved report: {display_path}",
+                    "サポートへ共有する場合は、最新復旧レポート または 復旧レポートコピー を使えます。",
+                ]
+            ),
+        )
         self.notebook.select(self.diagnostics_tab)
         level = {"pass": "success", "warn": "warning", "fail": "error"}.get(report.status, "info")
-        self.notify("復旧セットを実行しました", level=level)
+        self.notify(f"復旧セットを実行し、レポートを保存しました: {report_path.name}", level=level)
 
     def run_repair_to_tab(self) -> None:
         if not messagebox.askyesno(
@@ -5738,6 +5771,84 @@ class AutoNoteApp(tk.Tk):
             lines.extend(["", f"[INFO] ログが長いため末尾 {max_chars} 文字だけ表示しています。"])
         lines.extend(["", f"size: {size} bytes", "", "content:", content or "(empty)"])
         return "\n".join(lines), True
+
+    def show_latest_recovery_kit_report_action(self) -> None:
+        text, latest = self._format_latest_recovery_kit_report_preview()
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        if latest:
+            self.notify(f"最新復旧レポートを表示しました: {latest.name}", level="success")
+        else:
+            self.notify("復旧レポートはまだありません", level="warning")
+
+    def copy_latest_recovery_kit_report_action(self) -> None:
+        text, latest = self._format_latest_recovery_kit_report_preview()
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        if not latest:
+            self.notify("コピーできる復旧レポートはまだありません", level="warning")
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("復旧レポートをコピーできませんでした", level="error")
+            messagebox.showerror("復旧レポートコピー", str(exc))
+            return
+        self.notify(f"復旧レポートをコピーしました: {latest.name}", level="success")
+
+    def open_recovery_kit_reports_folder_action(self) -> None:
+        reports_dir = self.project_dir / ".auto-note" / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        _open_path(reports_dir)
+        self.notify("復旧レポートの保存場所を開きました", level="success")
+
+    def _format_latest_recovery_kit_report_preview(self) -> tuple[str, Path | None]:
+        reports_dir = self.project_dir / ".auto-note" / "reports"
+        reports = list_recovery_kit_reports(self.project_dir)
+        lines = [
+            "Recovery report / 復旧レポート",
+            "",
+            "folder: .auto-note\\reports",
+            "note: サポートへ送る前に内容を確認してください。",
+        ]
+        if not reports:
+            lines.extend(
+                [
+                    "",
+                    "[INFO] 復旧レポートはまだありません。",
+                    "作成: 診断 > 復旧セット、または auto-note recovery-kit --project-dir . --report",
+                ]
+            )
+            return "\n".join(lines), None
+
+        latest = reports[0]
+        try:
+            size = latest.stat().st_size
+            modified = datetime.fromtimestamp(latest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            content = latest.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError as exc:
+            lines.extend(["", f"[NG] 復旧レポートを読めません: {exc}"])
+            return "\n".join(lines), None
+
+        max_chars = 30000
+        if len(content) > max_chars:
+            content = content[-max_chars:]
+            lines.extend(["", f"[INFO] レポートが長いため末尾 {max_chars} 文字だけ表示しています。"])
+        lines.extend(
+            [
+                "",
+                f"latest: {latest.name}",
+                f"modified: {modified}",
+                f"size: {size} bytes",
+                f"saved reports: {len(reports)}",
+                "",
+                "content:",
+                content or "(empty)",
+            ]
+        )
+        return "\n".join(lines), latest
 
     def open_maintenance_folder(self) -> None:
         path = self.project_dir / ".auto-note"
