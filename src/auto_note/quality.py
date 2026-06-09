@@ -3636,6 +3636,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer support request open action",
+            "open_latest_buyer_support_request_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer support request command",
+            "問い合わせ票",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales materials action",
             "販売素材作成",
         )
@@ -3673,6 +3687,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales finalize opens buyer delivery message",
             "buyer_delivery_message_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens buyer support request",
+            "_buyer_support_request_for",
         )
     )
     checks.append(

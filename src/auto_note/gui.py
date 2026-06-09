@@ -1609,6 +1609,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前チェック", self.run_buyer_send_readiness_to_tab, None),
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
+            ("問い合わせ票", self.open_latest_buyer_support_request_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
             ("最終レビュー", self.run_sales_review_to_tab, None),
             ("レビュー保存", self.create_sales_review_report_action, None),
@@ -1751,6 +1752,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前チェック", self.run_buyer_send_readiness_to_tab),
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
+                ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
@@ -2743,6 +2745,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前チェック", self.run_buyer_send_readiness_to_tab),
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
+                ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
@@ -3026,6 +3029,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前チェック", self.run_buyer_send_readiness_to_tab),
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
+                ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
@@ -3229,6 +3233,7 @@ class AutoNoteApp(tk.Tk):
             "送付前チェック": self.run_buyer_send_readiness_to_tab,
             "送付前保存": self.create_buyer_send_readiness_report_action,
             "送付記録": self.create_seller_delivery_receipt_action,
+            "問い合わせ票": self.open_latest_buyer_support_request_action,
             "送付文コピー": self.copy_latest_buyer_delivery_message_action,
             "最終レビュー": self.run_sales_review_to_tab,
             "レビュー保存": self.create_sales_review_report_action,
@@ -6887,6 +6892,10 @@ class AutoNoteApp(tk.Tk):
             _open_path(report.buyer_delivery_package_path)
             if report.buyer_delivery_message_path:
                 _open_path(report.buyer_delivery_message_path)
+            if report.buyer_delivery_dir:
+                support_request_path = _buyer_support_request_for(report.buyer_delivery_dir)
+                if support_request_path.exists():
+                    _open_path(support_request_path)
             if report.sales_plan_report_path:
                 _open_path(report.sales_plan_report_path)
             if report.seller_send_checklist_path:
@@ -7515,6 +7524,7 @@ class AutoNoteApp(tk.Tk):
                     format_buyer_delivery_result(result),
                     "",
                     f"購入者に添付するのは {result.package_path.name} です。",
+                    f"問い合わせ時に使う記入票: {result.buyer_support_request_path}",
                     "中には配布ZIP、START_HERE_FOR_BUYER.txt、BUYER_HANDOFF.txt、BUYER_SUPPORT_GUIDE.txt、BUYER_SUPPORT_REQUEST.txt、BUYER_DELIVERY_MANIFEST.json、SHA256SUMS.txt だけが入っています。",
                     "元の auto-note-sales-handoff-*.zip は販売者の証跡として保管してください。",
                 ]
@@ -7523,7 +7533,42 @@ class AutoNoteApp(tk.Tk):
         self.notebook.select(self.diagnostics_tab)
         self._refresh_home_sales_summary()
         _open_path(result.package_path)
+        _open_path(result.buyer_support_request_path)
         self.notify(f"購入者向けZIPを作成しました: {result.package_path.name}", level="success")
+
+    def open_latest_buyer_support_request_action(self) -> None:
+        deliveries = list_buyer_deliveries(self.project_dir)
+        if not deliveries:
+            messagebox.showinfo(
+                "問い合わせ票",
+                "購入者向け抽出フォルダがまだありません。先に 販売一括作成 または 購入者ZIP抽出 を実行してください。",
+            )
+            self.notify("購入者向け問い合わせ票がありません", level="warning")
+            return
+        latest = deliveries[0]
+        request_path = _buyer_support_request_for(latest)
+        if not request_path.exists():
+            self.notify("購入者向け問い合わせ票が見つかりません", level="error")
+            messagebox.showinfo(
+                "問い合わせ票",
+                "BUYER_SUPPORT_REQUEST.txt が見つかりません。購入者ZIP抽出をもう一度実行してください。",
+            )
+            return
+        _open_path(request_path)
+        self._set_text(
+            self.diagnostics_text,
+            "\n".join(
+                [
+                    "Buyer support request / 購入者向け問い合わせ票",
+                    "",
+                    f"[OK] file: {request_path}",
+                    "購入者が困った時は、この記入票と問い合わせ一式ZIP、スクリーンショットを一緒に送ってもらいます。",
+                    "パスワード、ログインコード、未公開本文全文、支払い情報は入れないでください。",
+                ]
+            ),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"問い合わせ票を開きました: {request_path.name}", level="success")
 
     def verify_latest_buyer_delivery_action(self) -> None:
         deliveries = list_buyer_deliveries(self.project_dir)
@@ -8978,3 +9023,7 @@ def _open_path(path: Path) -> None:
 def _buyer_delivery_package_for(directory: Path) -> Path:
     stamp = directory.name.replace("buyer-delivery-", "", 1)
     return directory.parent / f"auto-note-buyer-delivery-{stamp}.zip"
+
+
+def _buyer_support_request_for(directory: Path) -> Path:
+    return directory / "BUYER_SUPPORT_REQUEST.txt"
