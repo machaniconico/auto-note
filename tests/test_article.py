@@ -43,6 +43,7 @@ from auto_note.commercial_setup import (
     update_commercial_settings,
 )
 from auto_note.diagnostics import (
+    _truncate_preview_text,
     create_diagnostic_report,
     format_diagnostic_report_verification,
     preview_diagnostic_report,
@@ -1068,6 +1069,10 @@ tags: note
             self.assertNotIn(article_path.name, sales_finalize_text)
             self.assertNotIn(article_path.name, seller_send_checklist_text)
             self.assertIn("Diagnostic report preview", preview)
+            self.assertIn("Shortened for fast support triage", preview)
+            self.assertIn("full content is in diagnostic-report.zip", preview)
+            self.assertIn("Preview omitted for speed", preview)
+            self.assertLess(len(preview), 40000)
             self.assertIn("- article-review.txt", preview)
             self.assertIn("- first-run.txt", preview)
             self.assertIn("- acceptance.txt", preview)
@@ -1115,6 +1120,13 @@ tags: note
             self.assertIn("Maintenance summary", preview)
             self.assertNotIn(str(project), preview)
             self.assertNotIn(article_path.name, preview)
+
+    def test_diagnostic_preview_truncates_large_sections(self) -> None:
+        text = _truncate_preview_text("x" * 2000, max_chars=20)
+
+        self.assertTrue(text.startswith("x" * 20))
+        self.assertIn("truncated 1980 chars", text)
+        self.assertIn("full content is in diagnostic-report.zip", text)
 
     def test_quickstart_reports_first_publish_path_and_helper_smoke(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2866,7 +2878,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "diagnostics.py").write_text(
-                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\n",
+                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
@@ -3173,6 +3185,10 @@ tags:
         self.assertIn("diagnostic seller send checklist:fail", product_details)
         self.assertIn("diagnostic report verifier:fail", product_details)
         self.assertIn("diagnostic report verification formatter:fail", product_details)
+        self.assertIn("diagnostic preview bounded sections:fail", product_details)
+        self.assertIn("diagnostic preview section formatter:fail", product_details)
+        self.assertIn("diagnostic preview truncation notice:fail", product_details)
+        self.assertIn("diagnostic preview heavyweight omission:fail", product_details)
         self.assertIn("cleanup seller send checklist:fail", product_details)
         self.assertIn("CLI sales plan command:fail", product_details)
         self.assertIn("CLI sales plan report command:fail", product_details)
@@ -3574,6 +3590,10 @@ tags:
         self.assertIn("diagnostic seller send checklist:pass", launcher_details)
         self.assertIn("diagnostic report verifier:pass", launcher_details)
         self.assertIn("diagnostic report verification formatter:pass", launcher_details)
+        self.assertIn("diagnostic preview bounded sections:pass", launcher_details)
+        self.assertIn("diagnostic preview section formatter:pass", launcher_details)
+        self.assertIn("diagnostic preview truncation notice:pass", launcher_details)
+        self.assertIn("diagnostic preview heavyweight omission:pass", launcher_details)
         self.assertIn("cleanup seller send checklist:pass", launcher_details)
         self.assertIn("CLI sales plan command:pass", launcher_details)
         self.assertIn("CLI sales plan report command:pass", launcher_details)

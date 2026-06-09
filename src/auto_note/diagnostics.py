@@ -65,6 +65,75 @@ REQUIRED_DIAGNOSTIC_REPORT_FILES = (
     "maintenance-summary.txt",
 )
 
+DIAGNOSTIC_PREVIEW_SECTION_LIMIT = 900
+DIAGNOSTIC_PREVIEW_MAINTENANCE_LIMIT = 1600
+DIAGNOSTIC_PREVIEW_OMITTED_SECTIONS = {
+    "first-run.txt": "First-run checklist / 初回チェック",
+    "acceptance.txt": "Acceptance check / 受入チェック",
+    "self-test.txt": "Self-test report / セルフテスト",
+    "action-plan.txt": "Action plan / 次の一手",
+    "overview.txt": "Overview / 運用サマリー",
+    "calendar.txt": "Calendar / 公開予定",
+    "quickstart.txt": "Quickstart report",
+    "publish-ready.txt": "Publish readiness report",
+    "improvement-plan.txt": "Improvement plan / 改善プラン",
+    "publish-queue.txt": "Publish queue / 投稿キュー",
+    "gui-smoke.txt": "GUI smoke",
+    "preflight.txt": "Preflight report",
+    "readiness.txt": "Readiness report",
+    "commercial-readiness.txt": "Commercial readiness / 販売準備",
+    "sales-plan.txt": "Sales plan / 販売ナビ",
+    "sales-materials.txt": "Sales materials / 販売素材",
+    "sales-finalize.txt": "Sales finalize / 販売準備一括",
+    "seller-send-checklist.txt": "Seller send checklist / 販売者送付前チェックリスト",
+    "product-quality.txt": "Product quality report",
+    "quality.txt": "Quality report",
+}
+
+
+def _truncate_preview_text(text: str, *, max_chars: int = DIAGNOSTIC_PREVIEW_SECTION_LIMIT) -> str:
+    clean = text.rstrip()
+    if len(clean) <= max_chars:
+        return clean
+    if max_chars < 80:
+        omitted = len(clean) - max_chars
+        return (
+            clean[:max_chars].rstrip()
+            + f"\n...[truncated {omitted} chars; full content is in diagnostic-report.zip]"
+        )
+    head_chars = max_chars * 2 // 3
+    tail_chars = max_chars - head_chars
+    omitted = len(clean) - max_chars
+    return (
+        clean[:head_chars].rstrip()
+        + f"\n...[truncated {omitted} chars; full content is in diagnostic-report.zip]"
+        + "\n"
+        + clean[-tail_chars:].lstrip()
+    )
+
+
+def _format_preview_section(
+    name: str,
+    text: str,
+    *,
+    max_chars: int = DIAGNOSTIC_PREVIEW_SECTION_LIMIT,
+    required_prefixes: tuple[str, ...] = (),
+) -> list[str]:
+    body = _truncate_preview_text(text, max_chars=max_chars)
+    if required_prefixes:
+        missing = [
+            line
+            for line in text.splitlines()
+            if line.startswith(required_prefixes) and line not in body
+        ]
+        if missing:
+            body = body.rstrip() + "\n\nImportant lines\n" + "\n".join(missing)
+    return [name, body] if body else [name, "(empty)"]
+
+
+def _preview_omitted_report(title: str) -> str:
+    return f"{title}\n\nPreview omitted for speed; full content is in diagnostic-report.zip."
+
 
 def run_diagnostics(project_dir: Path) -> list[DiagnosticItem]:
     items = [
@@ -215,56 +284,20 @@ def preview_diagnostic_report(project_dir: Path, *, include_private: bool = Fals
     diagnostics = format_diagnostics(run_diagnostics(project_dir))
     article_index = _build_article_index(project_dir, include_private=include_private)
     article_review = _build_article_review_report(project_dir, include_private=include_private)
-    first_run = _build_first_run_report(project_dir)
-    acceptance = _build_acceptance_report(project_dir)
-    self_test = _build_self_test_report(project_dir)
-    action_plan = _build_action_plan_report(project_dir)
-    overview = _build_overview_report(project_dir, include_private=include_private)
-    calendar = _build_calendar_report(project_dir, include_private=include_private)
-    quickstart = _build_quickstart_report(project_dir, include_private=include_private)
-    publish_ready = _build_publish_ready_report(project_dir, include_private=include_private)
-    improvement_plan = _build_improvement_plan_report(project_dir, include_private=include_private)
-    publish_queue = _build_publish_queue_report(project_dir, include_private=include_private)
-    gui_smoke = _build_gui_smoke_report(project_dir)
-    preflight = _build_preflight_report(project_dir)
     troubleshoot = _build_troubleshoot_report(project_dir)
-    readiness = _build_readiness_report(project_dir)
-    commercial_readiness = _build_commercial_readiness_report(project_dir)
     commercial_setup_template = _build_commercial_setup_template_report(project_dir)
-    sales_plan = _build_sales_plan_report(project_dir)
-    sales_materials = _build_sales_materials_report(project_dir)
-    sales_finalize = _build_sales_finalize_report(project_dir)
-    seller_send_checklist = _build_seller_send_checklist_report(project_dir)
     sales_evidence_manifest = _build_sales_evidence_manifest_report(project_dir)
-    product_quality = _build_quality_report(project_dir, include_articles=False)
-    quality = _build_quality_report(project_dir)
     maintenance = _build_maintenance_summary(project_dir)
+    omitted = {
+        name: _preview_omitted_report(title)
+        for name, title in DIAGNOSTIC_PREVIEW_OMITTED_SECTIONS.items()
+    }
     if not include_private:
         diagnostics = mask_text(diagnostics, project_dir)
         article_review = mask_text(article_review, project_dir)
-        first_run = mask_text(first_run, project_dir)
-        acceptance = mask_text(acceptance, project_dir)
-        self_test = mask_text(self_test, project_dir)
-        action_plan = mask_text(action_plan, project_dir)
-        overview = mask_text(overview, project_dir)
-        calendar = mask_text(calendar, project_dir)
-        quickstart = mask_text(quickstart, project_dir)
-        publish_ready = mask_text(publish_ready, project_dir)
-        improvement_plan = mask_text(improvement_plan, project_dir)
-        publish_queue = mask_text(publish_queue, project_dir)
-        gui_smoke = mask_text(gui_smoke, project_dir)
-        preflight = mask_text(preflight, project_dir)
         troubleshoot = mask_text(troubleshoot, project_dir)
-        readiness = mask_text(readiness, project_dir)
-        commercial_readiness = mask_text(commercial_readiness, project_dir)
         commercial_setup_template = mask_text(commercial_setup_template, project_dir)
-        sales_plan = mask_text(sales_plan, project_dir)
-        sales_materials = mask_text(sales_materials, project_dir)
-        sales_finalize = mask_text(sales_finalize, project_dir)
-        seller_send_checklist = mask_text(seller_send_checklist, project_dir)
         sales_evidence_manifest = mask_text(sales_evidence_manifest, project_dir)
-        product_quality = mask_text(product_quality, project_dir)
-        quality = mask_text(quality, project_dir)
         maintenance = mask_text(maintenance, project_dir)
 
     lines = [
@@ -313,91 +346,62 @@ def preview_diagnostic_report(project_dir: Path, *, include_private: bool = Fals
     lines.extend(
         [
             "",
-            "diagnostics.txt",
-            diagnostics,
-            "",
-            "article-index.txt",
-            article_index,
-            "",
-            "article-review.txt",
-            article_review,
-            "",
-            "first-run.txt",
-            first_run,
-            "",
-            "acceptance.txt",
-            acceptance,
-            "",
-            "self-test.txt",
-            self_test,
-            "",
-            "action-plan.txt",
-            action_plan,
-            "",
-            "overview.txt",
-            overview,
-            "",
-            "calendar.txt",
-            calendar,
-            "",
-            "quickstart.txt",
-            quickstart,
-            "",
-            "publish-ready.txt",
-            publish_ready,
-            "",
-            "improvement-plan.txt",
-            improvement_plan,
-            "",
-            "publish-queue.txt",
-            publish_queue,
-            "",
-            "gui-smoke.txt",
-            gui_smoke,
-            "",
-            "preflight.txt",
-            preflight,
-            "",
-            "troubleshoot.txt",
-            troubleshoot,
-            "",
-            "settings-summary.txt",
-            _build_settings_summary(project_dir).rstrip(),
-            "",
-            "readiness.txt",
-            readiness,
-            "",
-            "commercial-readiness.txt",
-            commercial_readiness,
-            "",
-            "commercial-setup-template.txt",
-            commercial_setup_template,
-            "",
-            "sales-plan.txt",
-            sales_plan,
-            "",
-            "sales-materials.txt",
-            sales_materials,
-            "",
-            "sales-finalize.txt",
-            sales_finalize,
-            "",
-            "seller-send-checklist.txt",
-            seller_send_checklist,
-            "",
-            "sales-evidence-manifest.json",
-            sales_evidence_manifest,
-            "",
-            "product-quality.txt",
-            product_quality,
-            "",
-            "quality.txt",
-            quality,
-            "",
-            "maintenance-summary.txt",
-            maintenance,
+            "Preview note",
+            "Shortened for fast support triage; full content is in diagnostic-report.zip.",
         ]
     )
+    sections = [
+        ("diagnostics.txt", diagnostics),
+        ("article-index.txt", article_index),
+        ("article-review.txt", article_review),
+        ("first-run.txt", omitted["first-run.txt"]),
+        ("acceptance.txt", omitted["acceptance.txt"]),
+        ("self-test.txt", omitted["self-test.txt"]),
+        ("action-plan.txt", omitted["action-plan.txt"]),
+        ("overview.txt", omitted["overview.txt"]),
+        ("calendar.txt", omitted["calendar.txt"]),
+        ("quickstart.txt", omitted["quickstart.txt"]),
+        ("publish-ready.txt", omitted["publish-ready.txt"]),
+        ("improvement-plan.txt", omitted["improvement-plan.txt"]),
+        ("publish-queue.txt", omitted["publish-queue.txt"]),
+        ("gui-smoke.txt", omitted["gui-smoke.txt"]),
+        ("preflight.txt", omitted["preflight.txt"]),
+        ("troubleshoot.txt", troubleshoot),
+        ("settings-summary.txt", _build_settings_summary(project_dir).rstrip()),
+        ("readiness.txt", omitted["readiness.txt"]),
+        ("commercial-readiness.txt", omitted["commercial-readiness.txt"]),
+        ("commercial-setup-template.txt", commercial_setup_template),
+        ("sales-plan.txt", omitted["sales-plan.txt"]),
+        ("sales-materials.txt", omitted["sales-materials.txt"]),
+        ("sales-finalize.txt", omitted["sales-finalize.txt"]),
+        ("seller-send-checklist.txt", omitted["seller-send-checklist.txt"]),
+        ("sales-evidence-manifest.json", sales_evidence_manifest),
+        ("product-quality.txt", omitted["product-quality.txt"]),
+        ("quality.txt", omitted["quality.txt"]),
+        ("maintenance-summary.txt", maintenance),
+    ]
+    for name, text in sections:
+        max_chars = (
+            DIAGNOSTIC_PREVIEW_MAINTENANCE_LIMIT
+            if name == "maintenance-summary.txt"
+            else DIAGNOSTIC_PREVIEW_SECTION_LIMIT
+        )
+        required_prefixes = (
+            ("latest_support_request:", "latest_support_bundle:", "latest_support_bundle_verified:")
+            if name == "maintenance-summary.txt"
+            else ()
+        )
+        lines.extend(
+            [
+                "",
+                *_format_preview_section(
+                    name,
+                    text,
+                    max_chars=max_chars,
+                    required_prefixes=required_prefixes,
+                ),
+            ]
+        )
     return "\n".join(lines)
 
 

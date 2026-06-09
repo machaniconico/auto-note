@@ -1136,6 +1136,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic preview bounded sections",
+            "DIAGNOSTIC_PREVIEW_SECTION_LIMIT",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic preview section formatter",
+            "_format_preview_section",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic preview truncation notice",
+            "full content is in diagnostic-report.zip",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic preview heavyweight omission",
+            "Preview omitted for speed",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
             "diagnostic buyer delivery message summary",
             "buyer_delivery_messages",
         )
