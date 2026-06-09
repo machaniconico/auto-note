@@ -194,6 +194,14 @@ STATUS_COLORS = {
 AUTOSAVE_INTERVAL_MS = 30_000
 
 
+def _command_palette_status(match_count: int, total_count: int, query: str) -> str:
+    if match_count <= 0:
+        return "一致するコマンドがありません。別の言葉で検索してください。"
+    if query.strip():
+        return f"{match_count}件のコマンドが見つかりました。Enterで実行できます。"
+    return f"全{total_count}件のコマンドを表示しています。入力すると絞り込めます。"
+
+
 def launch_gui(project_dir: Path) -> int:
     project_dir = _clean_path(project_dir)
     app = AutoNoteApp(project_dir)
@@ -4400,6 +4408,11 @@ class AutoNoteApp(tk.Tk):
         entry.pack(fill=tk.X, pady=(0, 8))
         entry.focus()
 
+        command_palette_status_var = tk.StringVar()
+        ttk.Label(frame, textvariable=command_palette_status_var, style="Muted.TLabel").pack(
+            fill=tk.X, pady=(0, 6)
+        )
+
         listbox = tk.Listbox(frame, height=14)
         listbox.pack(fill=tk.BOTH, expand=True)
 
@@ -4415,8 +4428,11 @@ class AutoNoteApp(tk.Tk):
                     continue
                 visible.append((label, hint, action))
                 listbox.insert(tk.END, f"{label}  -  {hint}")
+            command_palette_status_var.set(_command_palette_status(len(visible), len(actions), query))
             if visible:
                 listbox.selection_set(0)
+            else:
+                listbox.insert(tk.END, "一致するコマンドがありません")
 
         def run_selected(_event=None) -> None:
             selection = listbox.curselection()
