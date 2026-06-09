@@ -74,6 +74,8 @@ from auto_note.gui import (
     _home_progress_state_from_status,
     _home_progress_summary,
     _home_report_status,
+    _home_report_status_tag,
+    _home_report_summary,
     _support_bundle_indicator_style,
     _support_send_readiness_indicator_style,
     smoke_gui,
@@ -397,6 +399,19 @@ class ArticleTests(unittest.TestCase):
 
             self.assertEqual(_home_report_status("購入者ZIP", package), "NG")
             self.assertEqual(_home_report_status("任意ZIP", package), "OK")
+
+    def test_home_report_status_tag_and_summary_make_action_clear(self) -> None:
+        self.assertEqual(_home_report_status_tag("OK"), "ok")
+        self.assertEqual(_home_report_status_tag("NG"), "fail")
+        self.assertEqual(_home_report_status_tag("なし"), "missing")
+        self.assertEqual(_home_report_status_tag("確認"), "check")
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "buyer.zip"
+            package.write_bytes(b"broken")
+            summary = _home_report_summary("選択", "購入者ZIP", package, "NG")
+
+            self.assertIn("選択: 購入者ZIP / NG", summary)
+            self.assertIn("表示で詳細確認", summary)
 
     def test_command_palette_status_describes_results(self) -> None:
         self.assertEqual(
@@ -2904,6 +2919,11 @@ tags:
                 + "_refresh_home_reports\n"
                 + "show_selected_home_report_action\n"
                 + "open_selected_home_report_location_action\n"
+                + "_configure_home_reports_tree_tags\n"
+                + "on_select_home_report\n"
+                + "tags=(_home_report_status_tag(status),)\n"
+                + "_home_report_summary(\"選択\"\n"
+                + "表示で詳細確認\n"
                 + "まだ保存レポートがありません\n"
                 + 'heading("status", text="状態")\n'
                 + "copy_selected_home_report_path_action\n"
@@ -3270,6 +3290,10 @@ tags:
         self.assertIn("GUI home recent reports refresh:fail", product_details)
         self.assertIn("GUI home recent reports display action:fail", product_details)
         self.assertIn("GUI home recent reports location action:fail", product_details)
+        self.assertIn("GUI home recent reports status tags:fail", product_details)
+        self.assertIn("GUI home recent reports row tags:fail", product_details)
+        self.assertIn("GUI home recent reports selection summary:fail", product_details)
+        self.assertIn("GUI home recent reports NG action summary:fail", product_details)
         self.assertIn("GUI home recent reports empty state:fail", product_details)
         self.assertIn("GUI home recent reports status column:fail", product_details)
         self.assertIn("GUI home recent reports copy path action:fail", product_details)
@@ -3663,6 +3687,10 @@ tags:
         self.assertIn("GUI home recent reports refresh:pass", launcher_details)
         self.assertIn("GUI home recent reports display action:pass", launcher_details)
         self.assertIn("GUI home recent reports location action:pass", launcher_details)
+        self.assertIn("GUI home recent reports status tags:pass", launcher_details)
+        self.assertIn("GUI home recent reports row tags:pass", launcher_details)
+        self.assertIn("GUI home recent reports selection summary:pass", launcher_details)
+        self.assertIn("GUI home recent reports NG action summary:pass", launcher_details)
         self.assertIn("GUI home recent reports empty state:pass", launcher_details)
         self.assertIn("GUI home recent reports status column:pass", launcher_details)
         self.assertIn("GUI home recent reports copy path action:pass", launcher_details)

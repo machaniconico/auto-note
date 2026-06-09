@@ -944,6 +944,8 @@ class AutoNoteApp(tk.Tk):
         self.home_reports_tree.column("location", width=200, minwidth=150, stretch=False)
         self.home_reports_tree.column("name", width=520, minwidth=240)
         self.home_reports_tree.pack(fill=tk.X)
+        self._configure_home_reports_tree_tags()
+        self.home_reports_tree.bind("<<TreeviewSelect>>", lambda _event: self.on_select_home_report())
         self.home_reports_tree.bind("<Double-1>", lambda _event: self.show_selected_home_report_action())
 
         quick = ttk.LabelFrame(self.home_tab, text="次の作業", padding=10)
@@ -3965,12 +3967,25 @@ class AutoNoteApp(tk.Tk):
                     _relative_parent_label(self.project_dir, path),
                     path.name,
                 ),
+                tags=(_home_report_status_tag(status),),
             )
         first_label, first_path = items[0]
         first_status = _home_report_status(first_label, first_path)
-        self.home_reports_var.set(
-            f"最新: {first_label} / {first_status} / {_format_mtime(first_path)} / {first_path.name}"
-        )
+        self.home_reports_var.set(_home_report_summary("最新", first_label, first_path, first_status))
+
+    def _configure_home_reports_tree_tags(self) -> None:
+        self.home_reports_tree.tag_configure("ok", background="#dff3ed", foreground="#105f54")
+        self.home_reports_tree.tag_configure("check", background="#e7f0ff", foreground="#174ea6")
+        self.home_reports_tree.tag_configure("fail", background="#ffe2df", foreground="#8b2119")
+        self.home_reports_tree.tag_configure("missing", background="#f3f4f6", foreground="#667085")
+
+    def on_select_home_report(self) -> None:
+        item = self._selected_home_report()
+        if item is None:
+            return
+        label, path = item
+        status = _home_report_status(label, path)
+        self.home_reports_var.set(_home_report_summary("選択", label, path, status))
 
     def _refresh_home_gui_log_status(self) -> None:
         if not hasattr(self, "home_gui_log_var"):
@@ -7092,6 +7107,27 @@ def _home_report_status(label: str, path: Path) -> str:
         return "OK" if path.is_file() else "確認"
     except OSError:
         return "NG"
+
+
+def _home_report_status_tag(status: str) -> str:
+    if status == "OK":
+        return "ok"
+    if status == "NG":
+        return "fail"
+    if status == "なし":
+        return "missing"
+    return "check"
+
+
+def _home_report_summary(prefix: str, label: str, path: Path, status: str) -> str:
+    if status == "NG":
+        next_action = "表示で詳細確認"
+    elif status in {"なし", "確認"}:
+        next_action = "表示で内容確認"
+    else:
+        next_action = "利用可"
+    updated = _format_mtime(path) if path.exists() else "not found"
+    return f"{prefix}: {label} / {status} / {next_action} / {updated} / {path.name}"
 
 
 def _format_zip_report_summary(path: Path) -> list[str]:
