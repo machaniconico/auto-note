@@ -2466,6 +2466,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package verification",
+            "buyer_package_errors =",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package verification summary",
+            "package_errors=buyer_package_errors",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package verification warning",
+            "ZIP検証NG",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home buyer send next action",
             "home_buyer_send_next_var",
         )
@@ -2482,6 +2503,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home buyer send action helper",
             "_home_buyer_send_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package verification action",
+            '"購入者ZIP検証": "購入者送付: ZIP検証"',
         )
     )
     checks.append(

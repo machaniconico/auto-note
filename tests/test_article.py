@@ -301,6 +301,15 @@ class ArticleTests(unittest.TestCase):
             state, summary, next_text = _home_buyer_send_summary(package, None, None)
             self.assertEqual(state, "warn")
             self.assertIn("送付文なし", summary)
+            state, summary, next_text = _home_buyer_send_summary(
+                package,
+                None,
+                None,
+                package_errors=["missing required buyer package file: START_HERE_FOR_BUYER.txt"],
+            )
+            self.assertEqual(state, "fail")
+            self.assertIn("ZIP検証NG 1件", summary)
+            self.assertIn("購入者ZIP検証", next_text)
             message.write_text("message", encoding="utf-8")
             state, summary, next_text = _home_buyer_send_summary(package, message, None)
             self.assertEqual(state, "info")
@@ -339,6 +348,11 @@ class ArticleTests(unittest.TestCase):
             message = root / "buyer-delivery-message.txt"
             receipt = root / "seller-delivery-receipt.txt"
             package.write_bytes(b"zip")
+            self.assertEqual(
+                _home_buyer_send_action(package, None, None, package_errors=["bad package"]),
+                "購入者ZIP検証",
+            )
+            self.assertEqual(_home_buyer_send_button_label("購入者ZIP検証"), "購入者送付: ZIP検証")
             self.assertEqual(_home_buyer_send_action(package, None, None), "送付文作成")
             self.assertEqual(_home_buyer_send_button_label("送付文作成"), "購入者送付: 文作成")
             message.write_text("message", encoding="utf-8")
@@ -2965,6 +2979,9 @@ tags:
                 + "home_buyer_send_var.get()\n"
                 + "home_buyer_send_var\n"
                 + "_home_buyer_send_summary\n"
+                + "buyer_package_errors = verify_buyer_delivery_package\n"
+                + "package_errors=buyer_package_errors\n"
+                + "ZIP検証NG\n"
                 + "home_buyer_send_next_var\n",
                 encoding="utf-8",
             )
@@ -2974,6 +2991,7 @@ tags:
                 + "_home_buyer_send_action\n"
                 + "_home_buyer_send_message_matches_package\n"
                 + "_home_buyer_send_receipt_matches_delivery\n"
+                + '"購入者ZIP検証": "購入者送付: ZIP検証"\n'
                 + "run_home_buyer_send_next_action\n",
                 encoding="utf-8",
             )
@@ -3385,9 +3403,13 @@ tags:
         self.assertIn("GUI sales vertical action rail:fail", product_details)
         self.assertIn("GUI home buyer send status row:fail", product_details)
         self.assertIn("GUI home buyer send summary helper:fail", product_details)
+        self.assertIn("GUI home buyer send package verification:fail", product_details)
+        self.assertIn("GUI home buyer send package verification summary:fail", product_details)
+        self.assertIn("GUI home buyer send package verification warning:fail", product_details)
         self.assertIn("GUI home buyer send next action:fail", product_details)
         self.assertIn("GUI home buyer send dynamic button:fail", product_details)
         self.assertIn("GUI home buyer send action helper:fail", product_details)
+        self.assertIn("GUI home buyer send package verification action:fail", product_details)
         self.assertIn("GUI home buyer send package match helper:fail", product_details)
         self.assertIn("GUI home buyer send receipt match helper:fail", product_details)
         self.assertIn("GUI home buyer send next runner:fail", product_details)
@@ -3782,9 +3804,13 @@ tags:
         self.assertIn("GUI sales vertical action rail:pass", launcher_details)
         self.assertIn("GUI home buyer send status row:pass", launcher_details)
         self.assertIn("GUI home buyer send summary helper:pass", launcher_details)
+        self.assertIn("GUI home buyer send package verification:pass", launcher_details)
+        self.assertIn("GUI home buyer send package verification summary:pass", launcher_details)
+        self.assertIn("GUI home buyer send package verification warning:pass", launcher_details)
         self.assertIn("GUI home buyer send next action:pass", launcher_details)
         self.assertIn("GUI home buyer send dynamic button:pass", launcher_details)
         self.assertIn("GUI home buyer send action helper:pass", launcher_details)
+        self.assertIn("GUI home buyer send package verification action:pass", launcher_details)
         self.assertIn("GUI home buyer send package match helper:pass", launcher_details)
         self.assertIn("GUI home buyer send receipt match helper:pass", launcher_details)
         self.assertIn("GUI home buyer send next runner:pass", launcher_details)

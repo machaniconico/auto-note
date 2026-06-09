@@ -4140,10 +4140,14 @@ class AutoNoteApp(tk.Tk):
             buyer_messages=buyer_messages,
             materials=materials,
         )
+        buyer_package_errors = (
+            verify_buyer_delivery_package(latest_buyer_package) if latest_buyer_package else []
+        )
+        buyer_package_text = "NG" if buyer_package_errors else ("あり" if buyer_packages else "なし")
         self.home_sales_status_var.set(f"販売準備: {status} / 軽量 {score}/100")
         self.home_sales_detail_var.set(
             f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
-            f"生成物不足 {artifact_remaining} / 購入者ZIP {'あり' if buyer_packages else 'なし'} / "
+            f"生成物不足 {artifact_remaining} / 購入者ZIP {buyer_package_text} / "
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
             f"サポート {support_text}"
         )
@@ -4160,6 +4164,7 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_package,
             latest_buyer_message,
             latest_seller_receipt,
+            package_errors=buyer_package_errors,
             message_matches_package=buyer_message_matches_package,
             receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
@@ -4167,6 +4172,7 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_package,
             latest_buyer_message,
             latest_seller_receipt,
+            package_errors=buyer_package_errors,
             message_matches_package=buyer_message_matches_package,
             receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
@@ -4180,11 +4186,12 @@ class AutoNoteApp(tk.Tk):
             f"{complete}/{total}" if seller_remaining == 0 else f"残件 {seller_remaining}",
         )
         self._set_home_sales_stage("release", "ok" if releases else "warn", "あり" if releases else "未作成")
-        buyer_ready = bool(buyer_packages and buyer_messages)
+        buyer_package_ready = bool(buyer_packages and not buyer_package_errors)
+        buyer_ready = bool(buyer_package_ready and buyer_messages)
         self._set_home_sales_stage(
             "buyer",
-            "ok" if buyer_ready else "warn",
-            "ZIP+送付文" if buyer_ready else "未完了",
+            "fail" if buyer_package_errors else ("ok" if buyer_ready else "warn"),
+            "ZIP NG" if buyer_package_errors else ("ZIP+送付文" if buyer_ready else "未完了"),
         )
         send_ready = bool(buyer_ready and seller_receipts)
         self._set_home_sales_stage(
@@ -4393,6 +4400,8 @@ class AutoNoteApp(tk.Tk):
         action = self.home_buyer_send_action_var.get()
         if action in {"購入者ZIP作成", "送付文作成"}:
             self.create_sales_finalize_with_template_action()
+        elif action == "購入者ZIP検証":
+            self.verify_latest_buyer_delivery_action()
         elif action == "送付記録":
             self.create_seller_delivery_receipt_action()
         elif action == "送付文コピー":
@@ -6826,6 +6835,7 @@ def _home_support_next_button_label(action: str) -> str:
 def _home_buyer_send_button_label(action: str) -> str:
     return {
         "購入者ZIP作成": "購入者送付: ZIP作成",
+        "購入者ZIP検証": "購入者送付: ZIP検証",
         "送付文作成": "購入者送付: 文作成",
         "送付記録": "購入者送付: 記録",
         "送付文コピー": "購入者送付: 文コピー",
@@ -6920,6 +6930,7 @@ def _home_buyer_send_summary(
     message_path: Path | None,
     receipt_path: Path | None,
     *,
+    package_errors: list[str] | None = None,
     message_matches_package: bool | None = None,
     receipt_matches_delivery: bool | None = None,
 ) -> tuple[str, str, str]:
@@ -6934,6 +6945,14 @@ def _home_buyer_send_summary(
         )
     package_name = package_path.name if package_path else "未作成"
     package_detail = f"{package_name} / {_format_file_size(package_path)}"
+    package_error_count = len(package_errors or [])
+    if package_error_count:
+        return (
+            "fail",
+            f"購入者送付: {package_detail} / ZIP検証NG {package_error_count}件 / "
+            f"送付文 {'あり' if message_ok else 'なし'} / 記録 {'あり' if receipt_ok else 'なし'}",
+            "次: 購入者ZIP検証で詳細確認、必要なら販売一括作成で作り直す",
+        )
     if not message_ok:
         return (
             "warn",
@@ -6970,11 +6989,14 @@ def _home_buyer_send_action(
     message_path: Path | None,
     receipt_path: Path | None,
     *,
+    package_errors: list[str] | None = None,
     message_matches_package: bool | None = None,
     receipt_matches_delivery: bool | None = None,
 ) -> str:
     if not (package_path and package_path.exists()):
         return "購入者ZIP作成"
+    if package_errors:
+        return "購入者ZIP検証"
     if not (message_path and message_path.exists()):
         return "送付文作成"
     if message_matches_package is False:
