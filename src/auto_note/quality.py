@@ -280,6 +280,55 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports panel",
+            "直近レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports tree",
+            "home_reports_tree",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports refresh",
+            "_refresh_home_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports display action",
+            "show_selected_home_report_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports location action",
+            "open_selected_home_report_location_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports empty state",
+            "まだ保存レポートがありません",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke recent reports count",
+            "home_report_items=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "README.md",
             "README recovery kit guidance",
             "復旧セット",
@@ -304,6 +353,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README recovery kit GUI report guidance",
             "最新復旧レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home recent reports guidance",
+            "直近レポート",
         )
     )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
@@ -2276,6 +2332,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide home recent reports guidance",
+            "直近レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "docs" / "PRIVACY.md",
             "privacy guide support send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
@@ -2335,6 +2398,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness recovery report guidance",
             "最新復旧レポート",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home recent reports guidance",
+            "直近レポート",
         )
     )
     checks.append(

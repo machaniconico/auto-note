@@ -81,6 +81,7 @@ from .publish_queue import (
     build_publish_queue,
     format_publish_queue_report,
     has_publish_queue_blockers,
+    list_publish_queue_reports,
 )
 from .quality import format_quality_report, run_quality_checks
 from .quickstart import format_quickstart_report, run_quickstart
@@ -166,7 +167,12 @@ from .workflow import (
     set_article_status,
     update_article_metadata,
 )
-from .workflow_smoke import format_workflow_smoke_report, run_workflow_smoke, write_workflow_smoke_report
+from .workflow_smoke import (
+    format_workflow_smoke_report,
+    list_workflow_smoke_reports,
+    run_workflow_smoke,
+    write_workflow_smoke_report,
+)
 
 
 STATUS_ORDER = ("draft", "ready", "scheduled", "published")
@@ -218,6 +224,7 @@ def smoke_gui(project_dir: Path) -> str:
             if hasattr(app, "home_sales_stage_vars")
             else 0
         )
+        home_report_items = len(app.home_reports_tree.get_children()) if hasattr(app, "home_reports_tree") else 0
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -226,6 +233,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"publish_ready_items={publish_ready_items}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
+            f"home_report_items={home_report_items}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -264,6 +272,7 @@ class AutoNoteApp(tk.Tk):
         self.editor_dirty = False
         self._restoring_selection = False
         self._home_sales_next_step = None
+        self._home_report_paths: dict[str, tuple[str, Path]] = {}
 
         self.title("auto-note")
         self.geometry("1240x780")
@@ -617,6 +626,51 @@ class AutoNoteApp(tk.Tk):
             padx=6,
         )
         ttk.Button(action_buttons, text="詳細", command=self.run_action_plan_to_tab).pack(side=tk.LEFT, padx=6)
+
+        reports_box = ttk.LabelFrame(self.home_tab, text="直近レポート", padding=10)
+        reports_box.pack(fill=tk.X, pady=(0, 10))
+        reports_header = ttk.Frame(reports_box, style="Surface.TFrame")
+        reports_header.pack(fill=tk.X, pady=(0, 6))
+        self.home_reports_var = tk.StringVar(
+            value="診断、問い合わせ、復旧、配布の最新レポートを確認中です。"
+        )
+        ttk.Label(reports_header, textvariable=self.home_reports_var, style="Muted.TLabel", wraplength=820).pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            expand=True,
+        )
+        report_actions = ttk.Frame(reports_header, style="Surface.TFrame")
+        report_actions.pack(side=tk.RIGHT)
+        ttk.Button(
+            report_actions,
+            text="表示",
+            style="Primary.TButton",
+            command=self.show_selected_home_report_action,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(report_actions, text="場所", command=self.open_selected_home_report_location_action).pack(
+            side=tk.LEFT,
+            padx=(0, 6),
+        )
+        ttk.Button(report_actions, text="更新", command=self.refresh_home).pack(side=tk.LEFT)
+
+        report_columns = ("kind", "updated", "location", "name")
+        self.home_reports_tree = ttk.Treeview(
+            reports_box,
+            columns=report_columns,
+            show="headings",
+            selectmode="browse",
+            height=5,
+        )
+        self.home_reports_tree.heading("kind", text="種類")
+        self.home_reports_tree.heading("updated", text="更新")
+        self.home_reports_tree.heading("location", text="場所")
+        self.home_reports_tree.heading("name", text="ファイル")
+        self.home_reports_tree.column("kind", width=110, minwidth=92, stretch=False)
+        self.home_reports_tree.column("updated", width=138, minwidth=120, stretch=False)
+        self.home_reports_tree.column("location", width=210, minwidth=160, stretch=False)
+        self.home_reports_tree.column("name", width=560, minwidth=240)
+        self.home_reports_tree.pack(fill=tk.X)
+        self.home_reports_tree.bind("<Double-1>", lambda _event: self.show_selected_home_report_action())
 
         quick = ttk.LabelFrame(self.home_tab, text="次の作業", padding=10)
         quick.pack(fill=tk.X, pady=(0, 10))
@@ -3433,6 +3487,7 @@ class AutoNoteApp(tk.Tk):
             self.home_focus_var.set(self._format_home_focus(action_plan))
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
+        self._refresh_home_reports()
 
         lines = [
             "次にやること",
@@ -3453,6 +3508,122 @@ class AutoNoteApp(tk.Tk):
             format_calendar(self.articles_dir, pattern=self.settings.article_glob, days=14),
         ]
         self._set_text(self.home_text, "\n".join(lines))
+
+    def _refresh_home_reports(self) -> None:
+        if not hasattr(self, "home_reports_tree"):
+            return
+        self._home_report_paths = {}
+        for child in self.home_reports_tree.get_children():
+            self.home_reports_tree.delete(child)
+
+        items = self._latest_home_report_items()
+        if not items:
+            self.home_reports_var.set(
+                "まだ保存レポートがありません。診断レポート、問い合わせ一式、復旧セット、投稿キューを実行するとここに並びます。"
+            )
+            return
+
+        for index, (label, path) in enumerate(items[:8]):
+            item_id = f"report-{index}"
+            self._home_report_paths[item_id] = (label, path)
+            self.home_reports_tree.insert(
+                "",
+                tk.END,
+                iid=item_id,
+                values=(
+                    label,
+                    _format_mtime(path),
+                    _relative_parent_label(self.project_dir, path),
+                    path.name,
+                ),
+            )
+        first_label, first_path = items[0]
+        self.home_reports_var.set(
+            f"最新: {first_label} / {_format_mtime(first_path)} / {first_path.name}"
+        )
+
+    def _latest_home_report_items(self) -> list[tuple[str, Path]]:
+        groups = [
+            ("問い合わせZIP", list_support_bundles(self.project_dir)),
+            ("復旧レポート", list_recovery_kit_reports(self.project_dir)),
+            ("診断ZIP", list_diagnostic_reports(self.project_dir)),
+            ("配布ZIP", list_releases(self.project_dir)),
+            ("投稿キュー", list_publish_queue_reports(self.project_dir)),
+            ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
+            ("運用サマリー", list_overview_reports(self.project_dir)),
+            ("記事CSV", list_reports(self.project_dir)),
+        ]
+        items = [(label, paths[0]) for label, paths in groups if paths]
+        return sorted(items, key=lambda item: _safe_mtime(item[1]), reverse=True)
+
+    def _selected_home_report(self) -> tuple[str, Path] | None:
+        if not hasattr(self, "home_reports_tree"):
+            return None
+        selection = self.home_reports_tree.selection()
+        if selection:
+            item = self._home_report_paths.get(selection[0])
+            if item is not None:
+                return item
+        items = self._latest_home_report_items()
+        return items[0] if items else None
+
+    def show_selected_home_report_action(self) -> None:
+        item = self._selected_home_report()
+        if item is None:
+            messagebox.showinfo(
+                "直近レポート",
+                "まだ保存レポートがありません。診断レポート、問い合わせ一式、復旧セットなどを実行してください。",
+            )
+            self.notify("直近レポートはまだありません", level="warning")
+            return
+        label, path = item
+        if not path.exists():
+            self.notify("選択したレポートが見つかりません", level="warning")
+            self._refresh_home_reports()
+            return
+        text = self._format_home_report_preview(label, path)
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"直近レポートを表示しました: {path.name}", level="success")
+
+    def open_selected_home_report_location_action(self) -> None:
+        item = self._selected_home_report()
+        if item is None:
+            messagebox.showinfo("直近レポート", "まだ保存レポートがありません。")
+            self.notify("直近レポートはまだありません", level="warning")
+            return
+        _label, path = item
+        if not path.exists():
+            self.notify("選択したレポートが見つかりません", level="warning")
+            self._refresh_home_reports()
+            return
+        _open_path(path.parent)
+        self.notify(f"直近レポートの場所を開きました: {path.name}", level="success")
+
+    def _format_home_report_preview(self, label: str, path: Path) -> str:
+        header = [
+            f"直近レポート: {label}",
+            f"file: {path.name}",
+            f"folder: {_relative_parent_label(self.project_dir, path)}",
+            f"updated: {_format_mtime(path)}",
+            f"size: {_format_file_size(path)}",
+            "",
+        ]
+        if label == "問い合わせZIP":
+            return "\n".join([*header, format_support_bundle_verification(path, verify_support_bundle(path))])
+        if label == "配布ZIP":
+            return "\n".join([*header, format_release_verification(path, verify_release_package(path))])
+        if path.suffix.lower() == ".zip":
+            return "\n".join([*header, *_format_zip_report_summary(path)])
+        try:
+            text = path.read_text(encoding="utf-8-sig", errors="replace")
+        except OSError as exc:
+            return "\n".join([*header, f"[NG] レポートを読み取れません: {exc}"])
+        if len(text) > 40000:
+            text = text[-40000:]
+            header.append("[INFO] ファイルが長いため末尾40000文字を表示します。")
+            header.append("")
+        return "\n".join([*header, text or "(empty)"])
 
     def _refresh_home_sales_summary(self) -> None:
         if not hasattr(self, "home_sales_status_var"):
@@ -6102,6 +6273,52 @@ def _read_text(path: Path) -> str:
 
 def _format_timestamp(value: float) -> str:
     return datetime.fromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _safe_mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _format_mtime(path: Path) -> str:
+    timestamp = _safe_mtime(path)
+    if timestamp <= 0:
+        return "確認不可"
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
+
+
+def _format_file_size(path: Path) -> str:
+    try:
+        value = path.stat().st_size
+    except OSError:
+        return "確認不可"
+    if value >= 1024 * 1024:
+        return f"{value / (1024 * 1024):.1f} MB"
+    if value >= 1024:
+        return f"{value / 1024:.1f} KB"
+    return f"{value} B"
+
+
+def _relative_parent_label(project_dir: Path, path: Path) -> str:
+    try:
+        return str(path.parent.resolve().relative_to(project_dir.resolve()))
+    except ValueError:
+        return path.parent.name
+
+
+def _format_zip_report_summary(path: Path) -> list[str]:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            names = archive.namelist()
+    except (OSError, zipfile.BadZipFile) as exc:
+        return [f"[NG] ZIPを読み取れません: {exc}"]
+    lines = [f"ZIP contents: {len(names)} file(s)"]
+    lines.extend(f"- {name}" for name in names[:80])
+    if len(names) > 80:
+        lines.append(f"... and {len(names) - 80} more")
+    return lines
 
 
 def _bounded_int_var(variable: tk.IntVar, default: int, minimum: int, maximum: int) -> int:
