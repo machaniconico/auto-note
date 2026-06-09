@@ -148,6 +148,9 @@ try {
   if ($launchText -notlike "*Marketplace launch confirmation*") {
     throw "Sales launch checklist does not include marketplace launch confirmation items."
   }
+  if ($launchText -notlike "*Platform-specific launch checks*") {
+    throw "Sales launch checklist does not include platform-specific launch checks."
+  }
 
   Write-Host ""
   Write-Host "sales delivery smoke OK"

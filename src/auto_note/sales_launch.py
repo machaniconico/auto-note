@@ -21,6 +21,13 @@ class SalesLaunchCheck:
 
 
 @dataclass(frozen=True)
+class MarketplaceLaunchProfile:
+    name: str
+    source: str
+    items: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class SalesLaunchReport:
     project_dir: Path
     status: str
@@ -28,6 +35,7 @@ class SalesLaunchReport:
     generated_at: datetime
     checks: list[SalesLaunchCheck]
     sales_review: SalesReviewReport
+    marketplace: MarketplaceLaunchProfile
     report_path: Path | None = None
 
     @property
@@ -43,6 +51,7 @@ def run_sales_launch_check(project_dir: Path) -> SalesLaunchReport:
     project_dir = project_dir.resolve()
     settings = load_settings(project_dir)
     review = run_sales_review(project_dir)
+    marketplace = _marketplace_profile_for_url(settings.sales_channel_url)
     checks: list[SalesLaunchCheck] = []
 
     checks.append(_review_gate_check(review))
@@ -67,6 +76,7 @@ def run_sales_launch_check(project_dir: Path) -> SalesLaunchReport:
         generated_at=datetime.now(),
         checks=checks,
         sales_review=review,
+        marketplace=marketplace,
     )
 
 
@@ -122,6 +132,10 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
             "[ ] 販売者用ZIP、診断ZIP、.auto-note、.venv、ログイン情報、支払い情報を送付対象から外した",
             "[ ] 返金条件、ライセンス、サポート範囲が販売ページ、README、利用条件で矛盾していない",
             "[ ] 販売ページのプレビューまたはテスト購入で、購入者が最初に開くファイルまで確認した",
+            "",
+            f"Platform-specific launch checks / 販売先別チェック: {report.marketplace.name}",
+            f"source: {report.marketplace.source}",
+            *[f"[ ] {item}" for item in report.marketplace.items],
             "",
             "Seller note / 販売者メモ",
             "- This checklist is seller-only evidence. Do not attach it to buyer delivery or public support requests.",
@@ -203,6 +217,64 @@ def _marketplace_url_check(value: str) -> SalesLaunchCheck:
             "実際の販売ページURLへ差し替えてから販売直前チェックを保存してください。",
         )
     return SalesLaunchCheck("marketplace listing URL", "pass", "public sales URL is saved")
+
+
+def _marketplace_profile_for_url(value: str) -> MarketplaceLaunchProfile:
+    url = value.strip().lower()
+    if "note.com" in url:
+        return MarketplaceLaunchProfile(
+            "note paid article / note有料記事",
+            "inferred from sales URL",
+            (
+                "有料エリアまたは購入後に見える本文へ、購入者向け送付文のZIP名とSHA-256を貼り付けた",
+                "外部ダウンロードURLを使う場合は、権限、期限、差し替え予定、購入者だけが読める導線を確認した",
+                "無料エリアには購入者向けZIP、販売者用ZIP、診断ZIP、秘密URL、注文管理メモを載せていない",
+                "プレビューまたはテスト購入で、購入後に最初に開く案内まで到達できることを確認した",
+            ),
+        )
+    if "booth.pm" in url:
+        return MarketplaceLaunchProfile(
+            "BOOTH",
+            "inferred from sales URL",
+            (
+                "商品ファイル欄または購入後案内に、最新のbuyer delivery zipだけを設定した",
+                "商品説明、利用条件、返金/サポート範囲、対応OSが販売素材と矛盾していない",
+                "販売者用ZIP、診断ZIP、.auto-note、.venv、ログイン情報を商品ファイルに含めていない",
+                "非公開プレビューまたはテスト購入相当の確認で、購入者がSTART_HERE_FOR_BUYER.txtへ進めることを確認した",
+            ),
+        )
+    if "gumroad.com" in url:
+        return MarketplaceLaunchProfile(
+            "Gumroad",
+            "inferred from sales URL",
+            (
+                "Product filesには最新のbuyer delivery zipだけを登録した",
+                "Receipt/content messageに購入者向け送付文のZIP名、サイズ、SHA-256を反映した",
+                "古いバージョンのファイルや販売者用証跡ファイルを公開側に残していない",
+                "購入後プレビューまたはテスト購入で、ダウンロードファイル名と送付文が一致することを確認した",
+            ),
+        )
+    if "stores.jp" in url:
+        return MarketplaceLaunchProfile(
+            "STORES",
+            "inferred from sales URL",
+            (
+                "デジタル納品または購入後メッセージに、最新のbuyer delivery zipと送付文を設定した",
+                "商品説明、注意事項、返金/サポート範囲、対応OSが販売素材と矛盾していない",
+                "販売者用ZIP、診断ZIP、注文管理メモを購入者へ見える場所に置いていない",
+                "購入後メールまたはダウンロード画面で、ZIP名とSHA-256が送付文と一致することを確認した",
+            ),
+        )
+    return MarketplaceLaunchProfile(
+        "generic marketplace / 汎用販売ページ",
+        "default checklist",
+        (
+            "販売ページの商品説明、価格、対応OS、納品物、サポート範囲を販売素材と照合した",
+            "決済後メッセージ、自動返信、または納品欄へ購入者向け送付文を貼り付けた",
+            "添付または送付対象は最新のbuyer delivery zipだけにした",
+            "公開前プレビューまたはテスト購入で、購入者が最初に開くファイルまで確認した",
+        ),
+    )
 
 
 def _delivery_message_checkout_check(report: SalesReviewReport) -> SalesLaunchCheck:

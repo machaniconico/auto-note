@@ -716,6 +716,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke platform checklist assertion",
+            "Platform-specific launch checks",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "release.py",
             "release first-run checklist",
             "FIRST_RUN_CHECKLIST.txt",
@@ -1545,6 +1552,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch depends on final review",
             "run_sales_review(project_dir)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch marketplace profile",
+            "MarketplaceLaunchProfile",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch marketplace URL inference",
+            "_marketplace_profile_for_url",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch platform checklist",
+            "Platform-specific launch checks",
         )
     )
     checks.append(

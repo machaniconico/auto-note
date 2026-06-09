@@ -29,7 +29,7 @@
 - 販売前の配布ZIP、監査、受入証跡、販売者プロフィール、販売文書、利用条件/商用方針、販売最終確認、サポート連絡先、インストール導線を1枚にまとめる `auto-note commercial-readiness`、GUI `販売準備` / `販売準備保存`
 - 販売前に残るタスクと最新の配布ZIP/販売用一式ZIP/購入者向けZIP/販売素材のそろい具合を優先順、GUI位置、CLIコマンド付きで表示する `auto-note sales-plan` とGUI `販売ナビ`
 - 最新販売素材、販売者設定、購入者向け送付文、購入者ZIP、送付記録を販売ページ/決済後メッセージ目線で照合する `auto-note sales-review` とGUI `最終レビュー` / `レビュー保存`
-- 販売ページ公開直前の決済後メッセージ、添付ZIP、返金/サポート表示、販売者専用証跡、マーケットプレイス目視確認項目を1枚にまとめる `auto-note sales-launch` とGUI `販売直前` / `直前保存`
+- 販売ページ公開直前の決済後メッセージ、添付ZIP、返金/サポート表示、販売者専用証跡、販売ページURLから推定した販売先別の目視確認項目を1枚にまとめる `auto-note sales-launch` とGUI `販売直前` / `直前保存`
 - 販売ページ文案、購入者の最初の10分、納品メッセージ、FAQ、サポート範囲、返金方針要約、掲載前チェックリストを作り、未設定項目や古いZIP名も検証できる `auto-note sales-materials` / `--verify --strict` とGUI `販売素材作成` / `販売素材検証`
 - 最新配布ZIP、販売素材Markdown、販売準備、プライバシー監査、配布ZIP検証結果、購入者向け納品文、購入者の最初の10分、購入者へ送るもの/販売者が保管するものを分けた納品チェックリスト、販売者向け納品記録テンプレ、販売者最終チェックリスト、サポート返信テンプレをmanifest/checksum付きでまとめる `auto-note sales-handoff` とGUI `販売一式作成` / `販売一式検証`
 - 販売者用の販売一式ZIPから、購入者へ送る配布ZIP、`START_HERE_FOR_BUYER.txt`、納品メモ、購入者向けサポートガイド、`BUYER_DELIVERY_MANIFEST.json`、`SHA256SUMS.txt` だけを別フォルダへ取り出し、購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip` も作成し、送付前に余計なファイル混入、最初に読むメモ不足、配布ZIP破損、manifest不一致、チェックサム不一致を検証する `auto-note sales-handoff --extract-buyer` / `--package-buyer` / `--verify-buyer` / `--verify-buyer-package` とGUI `購入者ZIP抽出` / `購入者ZIP検証`

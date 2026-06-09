@@ -2183,6 +2183,9 @@ tags: note
         self.assertIn("Sales launch checklist", sales_launch_text)
         self.assertIn("Verdict: NEEDS REVIEW", sales_launch_text)
         self.assertIn("Marketplace launch confirmation", sales_launch_text)
+        self.assertIn("Platform-specific launch checks", sales_launch_text)
+        self.assertIn("generic marketplace", sales_launch_text)
+        self.assertIn("添付または送付対象は最新のbuyer delivery zipだけにした", sales_launch_text)
         self.assertIn("manual marketplace preview", sales_launch_text)
         self.assertIn(report.buyer_delivery_package_path.name, sales_launch_text)
         self.assertGreaterEqual(len(sales_launch_reports), 1)
@@ -3118,7 +3121,8 @@ tags:
                 "sales-handoff --verify-buyer-package\n"
                 "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt\n"
                 "sales-launch --project-dir . --report\n"
-                "sales-launch-checklist-*.txt\n",
+                "sales-launch-checklist-*.txt\n"
+                "Platform-specific launch checks\n",
                 encoding="utf-8",
             )
             (project / ".github" / "workflows").mkdir(parents=True)
@@ -3216,7 +3220,8 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_launch.py").write_text(
-                "run_sales_launch_check\nwrite_sales_launch_checklist\nrun_sales_review(project_dir)\n",
+                "run_sales_launch_check\nwrite_sales_launch_checklist\nrun_sales_review(project_dir)\n"
+                "MarketplaceLaunchProfile\n_marketplace_profile_for_url\nPlatform-specific launch checks\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
@@ -3570,6 +3575,7 @@ tags:
         self.assertIn("sales delivery smoke send readiness:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
+        self.assertIn("sales delivery smoke platform checklist assertion:fail", product_details)
         self.assertIn("release candidate handoff:fail", product_details)
         self.assertIn("RC handoff release check:fail", product_details)
         self.assertIn("RC handoff sales evidence:fail", product_details)
@@ -3678,6 +3684,9 @@ tags:
         self.assertIn("sales launch checker:fail", product_details)
         self.assertIn("sales launch checklist writer:fail", product_details)
         self.assertIn("sales launch depends on final review:fail", product_details)
+        self.assertIn("sales launch marketplace profile:fail", product_details)
+        self.assertIn("sales launch marketplace URL inference:fail", product_details)
+        self.assertIn("sales launch platform checklist:fail", product_details)
         self.assertIn("privacy audit sales launch checklist:fail", product_details)
         self.assertIn("cleanup sales launch checklist:fail", product_details)
         self.assertIn("maintenance sales launch checklist summary:fail", product_details)
@@ -4140,6 +4149,7 @@ tags:
         self.assertIn("sales delivery smoke send readiness:pass", launcher_details)
         self.assertIn("sales delivery smoke launch checklist:pass", launcher_details)
         self.assertIn("sales delivery smoke launch checklist assertion:pass", launcher_details)
+        self.assertIn("sales delivery smoke platform checklist assertion:pass", launcher_details)
         self.assertIn("release candidate handoff:pass", launcher_details)
         self.assertIn("RC handoff release check:pass", launcher_details)
         self.assertIn("RC handoff sales evidence:pass", launcher_details)
@@ -4236,6 +4246,9 @@ tags:
         self.assertIn("sales launch checker:pass", launcher_details)
         self.assertIn("sales launch checklist writer:pass", launcher_details)
         self.assertIn("sales launch depends on final review:pass", launcher_details)
+        self.assertIn("sales launch marketplace profile:pass", launcher_details)
+        self.assertIn("sales launch marketplace URL inference:pass", launcher_details)
+        self.assertIn("sales launch platform checklist:pass", launcher_details)
         self.assertIn("privacy audit sales launch checklist:pass", launcher_details)
         self.assertIn("cleanup sales launch checklist:pass", launcher_details)
         self.assertIn("maintenance sales launch checklist summary:pass", launcher_details)
@@ -4697,6 +4710,31 @@ tags:
         self.assertIn("shortcut icon:pass", launcher_details)
         self.assertNotIn("article check", product_details)
         self.assertNotIn("article review", product_details)
+
+    def test_sales_launch_marketplace_profile_uses_sales_url(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            save_settings(
+                project,
+                replace(
+                    DEFAULT_SETTINGS,
+                    seller_name="Demo Shop",
+                    sales_channel_url="https://note.com/demo/n/n123456",
+                    refund_policy_url="https://example.com/refund",
+                    support_contact="https://example.com/support",
+                    commercial_terms_reviewed=True,
+                    commercial_support_scope_confirmed=True,
+                ),
+            )
+
+            report = run_sales_launch_check(project)
+            text = format_sales_launch_checklist(report)
+
+        self.assertEqual(report.marketplace.name, "note paid article / note有料記事")
+        self.assertIn("Platform-specific launch checks", text)
+        self.assertIn("note有料記事", text)
+        self.assertIn("有料エリアまたは購入後に見える本文", text)
+        self.assertIn("外部ダウンロードURL", text)
 
     def test_update_article_metadata_preserves_body(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
