@@ -552,6 +552,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
+            ("サポート次実行", self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
         )
         for row_index, (text, command, style_name) in enumerate(sales_action_items):
@@ -4164,6 +4165,11 @@ class AutoNoteApp(tk.Tk):
         self._refresh_support_summary()
         self.notebook.select(self.help_tab)
         self.notify("サポート送付の状態を表示しました", level="info")
+
+    def run_home_support_next_action(self) -> None:
+        self._refresh_support_summary()
+        self.notebook.select(self.help_tab)
+        self.run_support_next_action()
 
     def copy_support_contact_action(self) -> None:
         self._refresh_support_summary()
