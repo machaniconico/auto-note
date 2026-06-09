@@ -428,6 +428,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README command palette keyboard guidance",
+            "上下キーで候補を選び",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README first-run actionable filter guidance",
             "要対応だけ",
         )
@@ -1649,6 +1656,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI command palette match count helper",
             "_command_palette_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette keyboard navigation",
+            "move_command_palette_selection",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette keyboard selector helper",
+            "_command_palette_selection_index",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette listbox return binding",
+            'listbox.bind("<Return>", run_selected)',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette arrow key binding",
+            'entry.bind("<Down>", lambda _event: move_command_palette_selection(1))',
         )
     )
     checks.append(

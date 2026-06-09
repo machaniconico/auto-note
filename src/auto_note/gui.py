@@ -198,8 +198,16 @@ def _command_palette_status(match_count: int, total_count: int, query: str) -> s
     if match_count <= 0:
         return "一致するコマンドがありません。別の言葉で検索してください。"
     if query.strip():
-        return f"{match_count}件のコマンドが見つかりました。Enterで実行できます。"
-    return f"全{total_count}件のコマンドを表示しています。入力すると絞り込めます。"
+        return f"{match_count}件のコマンドが見つかりました。上下キーで選択、Enterで実行できます。"
+    return f"全{total_count}件のコマンドを表示しています。入力すると絞り込めます。上下キーで選択できます。"
+
+
+def _command_palette_selection_index(current: int | None, delta: int, count: int) -> int:
+    if count <= 0:
+        return -1
+    if current is None or current < 0:
+        return 0 if delta >= 0 else count - 1
+    return (current + delta) % count
 
 
 def launch_gui(project_dir: Path) -> int:
@@ -4442,9 +4450,28 @@ class AutoNoteApp(tk.Tk):
             win.destroy()
             action()
 
+        def move_command_palette_selection(delta: int):
+            if not visible:
+                return "break"
+            selection = listbox.curselection()
+            current = selection[0] if selection else None
+            next_index = _command_palette_selection_index(current, delta, len(visible))
+            if next_index < 0:
+                return "break"
+            listbox.selection_clear(0, tk.END)
+            listbox.selection_set(next_index)
+            listbox.activate(next_index)
+            listbox.see(next_index)
+            return "break"
+
         query_var.trace_add("write", lambda *_args: refresh())
         entry.bind("<Return>", run_selected)
+        entry.bind("<Down>", lambda _event: move_command_palette_selection(1))
+        entry.bind("<Up>", lambda _event: move_command_palette_selection(-1))
         listbox.bind("<Double-Button-1>", run_selected)
+        listbox.bind("<Return>", run_selected)
+        listbox.bind("<Down>", lambda _event: move_command_palette_selection(1))
+        listbox.bind("<Up>", lambda _event: move_command_palette_selection(-1))
         win.bind("<Escape>", lambda _event: win.destroy())
         refresh()
 
