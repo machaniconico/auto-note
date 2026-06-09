@@ -155,6 +155,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
+            "support bundle GUI log summary reader",
+            "read_support_gui_log_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
             "support bundle send-only guidance",
             "Send this ZIP only",
         )
@@ -1332,6 +1339,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send log summary action",
+            "show_support_gui_log_summary_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send log summary button",
+            "ZIPログ要約",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI support send log summary reader",
+            "read_support_gui_log_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send next action runner",
             "run_support_next_action",
         )
@@ -2076,6 +2104,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log summary guidance",
             "GUI_LOG_SUMMARY.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide ZIP log summary action guidance",
+            "ZIPログ要約",
         )
     )
     checks.append(

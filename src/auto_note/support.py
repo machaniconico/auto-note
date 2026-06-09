@@ -113,6 +113,20 @@ def read_support_send_checklist(bundle_path: Path) -> str:
         raise ValueError(f"invalid support bundle zip: {exc}") from exc
 
 
+def read_support_gui_log_summary(bundle_path: Path) -> str:
+    if not bundle_path.exists():
+        raise FileNotFoundError(f"support bundle not found: {bundle_path}")
+    try:
+        with zipfile.ZipFile(bundle_path) as archive:
+            return archive.read("GUI_LOG_SUMMARY.txt").decode("utf-8", errors="replace")
+    except KeyError as exc:
+        raise ValueError(
+            "GUI_LOG_SUMMARY.txt is missing from the support bundle. Recreate the support bundle for faster GUI troubleshooting."
+        ) from exc
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"invalid support bundle zip: {exc}") from exc
+
+
 def build_support_request(project_dir: Path, *, include_private: bool = False) -> str:
     privacy = "raw details included" if include_private else "paths, user name, email, and article titles are masked"
     return (

@@ -155,6 +155,7 @@ from auto_note.support import (
     create_support_bundle,
     create_support_request,
     format_support_bundle_verification,
+    read_support_gui_log_summary,
     read_support_send_checklist,
     verify_support_bundle,
 )
@@ -2058,6 +2059,7 @@ tags: note
                 bundle_manifest = json.loads(archive.read("SUPPORT_BUNDLE_MANIFEST.json").decode("utf-8"))
                 checksums = archive.read("CHECKSUMS.txt").decode("utf-8")
             send_checklist_from_api = read_support_send_checklist(bundle)
+            gui_log_summary_from_api = read_support_gui_log_summary(bundle)
             with zipfile.ZipFile(io.BytesIO(diagnostic_bytes)) as nested:
                 diagnostic_names = set(nested.namelist())
             maintenance_preview = preview_diagnostic_report(project)
@@ -2110,6 +2112,7 @@ tags: note
         self.assertNotIn(str(project), gui_log_summary)
         self.assertNotIn("user@example.com", gui_log_summary)
         self.assertEqual(send_checklist_from_api, send_checklist)
+        self.assertEqual(gui_log_summary_from_api, gui_log_summary)
         self.assertIn("auto-note support request", bundled_request)
         self.assertNotIn(str(project), bundled_request)
         self.assertNotIn("問い合わせ記事", bundled_request)
@@ -2228,6 +2231,8 @@ tags: note
 
             errors = verify_support_bundle(bundle)
             verification_text = format_support_bundle_verification(bundle, errors)
+            with self.assertRaises(ValueError):
+                read_support_gui_log_summary(bundle)
 
         self.assertEqual(errors, [])
         self.assertIn("GUI_LOG_SUMMARY.txt: not included", verification_text)
@@ -2577,7 +2582,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nmask_text(text, project_dir)\nGUI_LOG_SUMMARY.txt: present\nSend this ZIP only\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nread_support_gui_log_summary\nmask_text(text, project_dir)\nGUI_LOG_SUMMARY.txt: present\nSend this ZIP only\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
@@ -2606,6 +2611,9 @@ tags:
                 + "GUIログコピー\n"
                 + "GUI log / GUIログ\n"
                 + "self.clipboard_append(text)\n"
+                + "show_support_gui_log_summary_action\n"
+                + "ZIPログ要約\n"
+                + "read_support_gui_log_summary\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
                 + '"送付文コピー": "サポート: 送付文"\n'
@@ -2622,7 +2630,7 @@ tags:
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUI_LOG_SUMMARY.txt\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -2655,6 +2663,7 @@ tags:
         self.assertIn("support bundle GUI log summary:fail", product_details)
         self.assertIn("support bundle GUI log privacy mask:fail", product_details)
         self.assertIn("support bundle GUI log verification detail:fail", product_details)
+        self.assertIn("support bundle GUI log summary reader:fail", product_details)
         self.assertIn("support bundle send-only guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("release check script:fail", product_details)
@@ -2802,6 +2811,9 @@ tags:
         self.assertIn("GUI log preview content:fail", product_details)
         self.assertIn("GUI log clipboard:fail", product_details)
         self.assertIn("GUI support send checklist action:fail", product_details)
+        self.assertIn("GUI support send log summary action:fail", product_details)
+        self.assertIn("GUI support send log summary button:fail", product_details)
+        self.assertIn("GUI support send log summary reader:fail", product_details)
         self.assertIn("GUI support send next action runner:fail", product_details)
         self.assertIn("GUI support send next action palette:fail", product_details)
         self.assertIn("GUI support send dynamic next button:fail", product_details)
@@ -2898,6 +2910,7 @@ tags:
         self.assertIn("support guide GUI log display guidance:fail", product_details)
         self.assertIn("support guide GUI log copy guidance:fail", product_details)
         self.assertIn("support guide GUI log summary guidance:fail", product_details)
+        self.assertIn("support guide ZIP log summary action guidance:fail", product_details)
         self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
@@ -3071,6 +3084,9 @@ tags:
         self.assertIn("GUI log preview content:pass", launcher_details)
         self.assertIn("GUI log clipboard:pass", launcher_details)
         self.assertIn("GUI support send checklist action:pass", launcher_details)
+        self.assertIn("GUI support send log summary action:pass", launcher_details)
+        self.assertIn("GUI support send log summary button:pass", launcher_details)
+        self.assertIn("GUI support send log summary reader:pass", launcher_details)
         self.assertIn("GUI support send next action runner:pass", launcher_details)
         self.assertIn("GUI support send next action palette:pass", launcher_details)
         self.assertIn("GUI support send dynamic next button:pass", launcher_details)
@@ -3167,6 +3183,7 @@ tags:
         self.assertIn("support guide GUI log display guidance:pass", launcher_details)
         self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
         self.assertIn("support guide GUI log summary guidance:pass", launcher_details)
+        self.assertIn("support guide ZIP log summary action guidance:pass", launcher_details)
         self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
@@ -3202,6 +3219,7 @@ tags:
         self.assertIn("support bundle GUI log summary:pass", launcher_details)
         self.assertIn("support bundle GUI log privacy mask:pass", launcher_details)
         self.assertIn("support bundle GUI log verification detail:pass", launcher_details)
+        self.assertIn("support bundle GUI log summary reader:pass", launcher_details)
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("hidden GUI launcher target:pass", launcher_details)
         self.assertIn("hidden GUI launcher no console:pass", launcher_details)

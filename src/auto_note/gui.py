@@ -138,6 +138,7 @@ from .support import (
     create_support_request,
     format_support_bundle_verification,
     list_support_bundles,
+    read_support_gui_log_summary,
     read_support_send_checklist,
     verify_support_bundle,
 )
@@ -1667,6 +1668,7 @@ class AutoNoteApp(tk.Tk):
                 (self.support_next_button_var, self.run_support_next_action, "Primary.TButton"),
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
+                ("ZIPログ要約", self.show_support_gui_log_summary_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
                 ("送付文コピー", self.copy_support_send_message_action),
                 ("最新ZIP場所", self.open_latest_support_bundle_location_action),
@@ -1735,6 +1737,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ作成", self.create_support_request_action),
                 ("問い合わせ一式", self.create_support_bundle_action),
                 ("一式ZIP検証", self.verify_latest_support_bundle_action),
+                ("ZIPログ要約", self.show_support_gui_log_summary_action),
                 ("送付前リスト", self.show_support_send_checklist_action),
                 ("送付文コピー", self.copy_support_send_message_action),
                 ("販売者情報確認", self.show_commercial_setup_status_action),
@@ -3707,7 +3710,7 @@ class AutoNoteApp(tk.Tk):
             "2. GUIで表示されたエラーメッセージ",
             "3. 問題が起きた操作手順",
             "",
-            "問い合わせ一式ZIPには、サポート依頼Markdown、診断レポートZIP、送付前チェックリストが入ります。",
+            "問い合わせ一式ZIPには、サポート依頼Markdown、GUIログ要約、診断レポートZIP、送付前チェックリストが入ります。",
             "manifest/checksumも同梱され、ヘルプの 一式ZIP検証 と 送付前リスト で確認できます。",
             "標準でパス、ユーザー名、メール、記事タイトル、記事ファイル名を隠します。",
         ]
@@ -4061,6 +4064,7 @@ class AutoNoteApp(tk.Tk):
             ("問い合わせ一式", "依頼文と診断ZIPを1つにまとめる", self.create_support_bundle_action),
             ("サポート次実行", "サポート送付の現在の次アクションを実行", self.run_support_next_action),
             ("一式ZIP検証", "最新問い合わせ一式ZIPを検証", self.verify_latest_support_bundle_action),
+            ("ZIPログ要約", "最新問い合わせ一式ZIP内のGUIログ要約を表示", self.show_support_gui_log_summary_action),
             ("送付前リスト", "問い合わせ一式ZIPの送付前チェックリストを表示", self.show_support_send_checklist_action),
             ("送付文コピー", "連絡先と最新問い合わせ一式ZIPを送付メモとしてコピー", self.copy_support_send_message_action),
             ("最新ZIP場所", "最新問い合わせ一式ZIPがあるフォルダを開く", self.open_latest_support_bundle_location_action),
@@ -5437,6 +5441,49 @@ class AutoNoteApp(tk.Tk):
             self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
         else:
             self.notify(f"問い合わせ一式ZIPを検証しました: {latest.name}", level="success")
+
+    def show_support_gui_log_summary_action(self) -> None:
+        bundles = list_support_bundles(self.project_dir)
+        if not bundles:
+            messagebox.showinfo("ZIPログ要約", "問い合わせ一式ZIPがまだありません。先に 問い合わせ一式 を作成してください。")
+            self.notify("問い合わせ一式ZIPがありません", level="warning")
+            self._refresh_support_summary()
+            return
+        latest = bundles[0]
+        errors = verify_support_bundle(latest)
+        self._refresh_support_summary()
+        try:
+            summary = read_support_gui_log_summary(latest)
+        except (OSError, ValueError) as exc:
+            self._set_text(
+                self.help_text,
+                "\n\n".join(
+                    [
+                        f"ZIPログ要約: {latest}",
+                        format_support_bundle_verification(latest, errors),
+                        f"[INFO] GUIログ要約を表示できません: {exc}",
+                        "最新形式で作り直すには、ヘルプの 問い合わせ一式 を実行してください。",
+                    ]
+                ),
+            )
+            self.notebook.select(self.help_tab)
+            self.notify("GUIログ要約を表示できません", level="warning")
+            return
+        self._set_text(
+            self.help_text,
+            "\n\n".join(
+                [
+                    f"ZIPログ要約: {latest}",
+                    summary,
+                    format_support_bundle_verification(latest, errors),
+                ]
+            ),
+        )
+        self.notebook.select(self.help_tab)
+        if errors:
+            self.notify("問い合わせ一式ZIPの検証で問題が見つかりました", level="error")
+        else:
+            self.notify(f"GUIログ要約を表示しました: {latest.name}", level="success")
 
     def open_latest_support_bundle_location_action(self) -> None:
         bundles = list_support_bundles(self.project_dir)
