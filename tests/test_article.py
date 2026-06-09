@@ -3057,7 +3057,11 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
-                + 'UI_FONT = "Yu Gothic UI"\n'
+                + '"Yu Gothic UI"\n'
+                + "UI_FONT_CANDIDATES\n"
+                + "_resolve_font_family\n"
+                + "_enable_windows_dpi_awareness\n"
+                + "SetProcessDpiAwareness\n"
                 + 'style.configure("TEntry"\n'
                 + "ChromeChip.TLabel\n"
                 + 'selectbackground=UI_COLORS["accent"]\n'
@@ -3518,6 +3522,10 @@ tags:
         self.assertIn("GUI modern design tokens:fail", product_details)
         self.assertIn("GUI modern text area styling:fail", product_details)
         self.assertIn("GUI readable Japanese font:fail", product_details)
+        self.assertIn("GUI Japanese font fallback:fail", product_details)
+        self.assertIn("GUI resolved font family:fail", product_details)
+        self.assertIn("GUI Windows DPI awareness:fail", product_details)
+        self.assertIn("GUI Windows DPI API:fail", product_details)
         self.assertIn("GUI modern input styling:fail", product_details)
         self.assertIn("GUI modern workspace chips:fail", product_details)
         self.assertIn("GUI modern command palette surface:fail", product_details)
@@ -3964,6 +3972,10 @@ tags:
         self.assertIn("GUI modern design tokens:pass", launcher_details)
         self.assertIn("GUI modern text area styling:pass", launcher_details)
         self.assertIn("GUI readable Japanese font:pass", launcher_details)
+        self.assertIn("GUI Japanese font fallback:pass", launcher_details)
+        self.assertIn("GUI resolved font family:pass", launcher_details)
+        self.assertIn("GUI Windows DPI awareness:pass", launcher_details)
+        self.assertIn("GUI Windows DPI API:pass", launcher_details)
         self.assertIn("GUI modern input styling:pass", launcher_details)
         self.assertIn("GUI modern workspace chips:pass", launcher_details)
         self.assertIn("GUI modern command palette surface:pass", launcher_details)

@@ -2005,7 +2005,35 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            'UI_FONT = "Yu Gothic UI"',
+            '"Yu Gothic UI"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI Japanese font fallback",
+            "UI_FONT_CANDIDATES",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI resolved font family",
+            "_resolve_font_family",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI Windows DPI awareness",
+            "_enable_windows_dpi_awareness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI Windows DPI API",
+            "SetProcessDpiAwareness",
         )
     )
     checks.append(

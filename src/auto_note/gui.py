@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 from dataclasses import replace
 from datetime import datetime
 import hashlib
@@ -7,6 +8,7 @@ from pathlib import Path
 import os
 import sys
 import tkinter as tk
+import tkinter.font as tkfont
 import traceback
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
@@ -186,8 +188,11 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-UI_FONT = "Yu Gothic UI"
+UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "MS Gothic", "Segoe UI")
+CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
+UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
+_DPI_AWARENESS_ENABLED = False
 UI_COLORS = {
     "bg": "#eef3f8",
     "surface": "#ffffff",
@@ -225,6 +230,32 @@ STATUS_COLORS = {
     "published": ("#dff3ed", "#105f54"),
 }
 AUTOSAVE_INTERVAL_MS = 30_000
+
+
+def _enable_windows_dpi_awareness() -> None:
+    global _DPI_AWARENESS_ENABLED
+    if _DPI_AWARENESS_ENABLED or os.name != "nt":
+        return
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except (AttributeError, OSError):
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except (AttributeError, OSError):
+            pass
+    _DPI_AWARENESS_ENABLED = True
+
+
+def _resolve_font_family(root: tk.Misc, candidates: tuple[str, ...]) -> str:
+    try:
+        available = {family.lower(): family for family in tkfont.families(root)}
+    except tk.TclError:
+        return candidates[0]
+    for candidate in candidates:
+        resolved = available.get(candidate.lower())
+        if resolved:
+            return resolved
+    return candidates[-1]
 
 
 def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
@@ -300,6 +331,7 @@ def _home_gui_log_status(path: Path) -> tuple[str, str]:
 
 def launch_gui(project_dir: Path) -> int:
     project_dir = _clean_path(project_dir)
+    _enable_windows_dpi_awareness()
     app = AutoNoteApp(project_dir)
     app.mainloop()
     return 0
@@ -307,6 +339,7 @@ def launch_gui(project_dir: Path) -> int:
 
 def smoke_gui(project_dir: Path) -> str:
     project_dir = _clean_path(project_dir)
+    _enable_windows_dpi_awareness()
     app: AutoNoteApp | None = None
     try:
         app = AutoNoteApp(project_dir)
@@ -412,6 +445,7 @@ def _clean_path(path: Path) -> Path:
 
 class AutoNoteApp(tk.Tk):
     def __init__(self, project_dir: Path) -> None:
+        _enable_windows_dpi_awareness()
         super().__init__()
         self.project_dir = project_dir.resolve()
         self.articles_dir = self.project_dir / "articles"
@@ -460,11 +494,14 @@ class AutoNoteApp(tk.Tk):
         self.schedule_autosave()
 
     def _configure_style(self) -> None:
+        global UI_FONT, CODE_FONT
         style = ttk.Style(self)
         try:
             style.theme_use("clam")
         except tk.TclError:
             pass
+        UI_FONT = _resolve_font_family(self, UI_FONT_CANDIDATES)
+        CODE_FONT = _resolve_font_family(self, CODE_FONT_CANDIDATES)
         font = UI_FONT
         self.option_add("*Font", f"{{{font}}} 10")
         bg = UI_COLORS["bg"]
