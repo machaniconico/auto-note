@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from .maintenance import cleanup_generated_files
+from .paths import unique_path
 from .readiness import run_readiness
 from .setup_check import run_setup_check
 from .support import (
@@ -33,6 +35,7 @@ class RepairReport:
 @dataclass(frozen=True)
 class RecoveryKitReport:
     project_dir: Path
+    generated_at: datetime
     before: TroubleshootReport
     repair: RepairReport
     after: TroubleshootReport
@@ -160,6 +163,7 @@ def run_recovery_kit(
     create_bundle_on_issue: bool = True,
 ) -> RecoveryKitReport:
     project_dir = project_dir.resolve()
+    generated_at = datetime.now()
     before = run_troubleshoot(project_dir)
     repair = run_repair(project_dir, apply=True)
     after = run_troubleshoot(project_dir)
@@ -176,6 +180,7 @@ def run_recovery_kit(
 
     return RecoveryKitReport(
         project_dir=project_dir,
+        generated_at=generated_at,
         before=before,
         repair=repair,
         after=after,
@@ -183,6 +188,28 @@ def run_recovery_kit(
         support_bundle_errors=support_bundle_errors,
         support_bundle_error=support_bundle_error,
     )
+
+
+def write_recovery_kit_report(
+    project_dir: Path,
+    *,
+    report: RecoveryKitReport | None = None,
+    create_bundle_on_issue: bool = True,
+) -> Path:
+    project_dir = project_dir.resolve()
+    report = report or run_recovery_kit(project_dir, create_bundle_on_issue=create_bundle_on_issue)
+    reports_dir = project_dir / ".auto-note" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    path = unique_path(reports_dir / f"recovery-kit-{report.generated_at:%Y%m%d-%H%M%S}.txt")
+    path.write_text(format_recovery_kit_report(report) + "\n", encoding="utf-8")
+    return path
+
+
+def list_recovery_kit_reports(project_dir: Path) -> list[Path]:
+    reports_dir = project_dir / ".auto-note" / "reports"
+    if not reports_dir.exists():
+        return []
+    return sorted(reports_dir.glob("recovery-kit-*.txt"), key=lambda path: path.stat().st_mtime, reverse=True)
 
 
 def format_repair_report(report: RepairReport) -> str:

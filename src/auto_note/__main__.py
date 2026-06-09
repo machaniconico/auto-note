@@ -340,13 +340,26 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if has_repair_blockers(report, strict=args.strict) else 0
 
         if args.command == "recovery-kit":
-            from .repair import format_recovery_kit_report, has_recovery_kit_blockers, run_recovery_kit
+            from .repair import (
+                format_recovery_kit_report,
+                has_recovery_kit_blockers,
+                run_recovery_kit,
+                write_recovery_kit_report,
+            )
 
+            project_dir = args.project_dir.resolve()
             report = run_recovery_kit(
-                args.project_dir.resolve(),
+                project_dir,
                 create_bundle_on_issue=not args.no_support_bundle,
             )
             print(format_recovery_kit_report(report))
+            if args.report:
+                path = write_recovery_kit_report(project_dir, report=report)
+                try:
+                    display_path = path.resolve().relative_to(project_dir)
+                except ValueError:
+                    display_path = Path(path.name)
+                print(f"recovery kit report saved: {display_path}")
             return 1 if has_recovery_kit_blockers(report, strict=args.strict) else 0
 
         if args.command == "troubleshoot":
@@ -1207,6 +1220,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not create a support bundle when troubleshooting still reports issues.",
     )
+    recovery_kit.add_argument("--report", action="store_true", help="Save the recovery kit report under .auto-note/reports.")
     recovery_kit.add_argument("--strict", action="store_true", help="Exit with an error on warnings too.")
 
     troubleshoot = subparsers.add_parser("troubleshoot", help="Diagnose common startup/login/support/privacy issues.")

@@ -133,6 +133,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "auto-note-gui.bat",
+            "GUI launcher recovery kit report guidance",
+            "--report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
             "support bundle send checklist",
             "SUPPORT_SEND_CHECKLIST.txt",
@@ -189,6 +196,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "repair.py",
+            "recovery kit report writer",
+            "write_recovery_kit_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "repair.py",
+            "recovery kit report lister",
+            "list_recovery_kit_reports",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI recovery kit action",
             "run_recovery_kit_to_tab",
@@ -213,6 +234,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README recovery kit CLI guidance",
             "auto-note recovery-kit",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README recovery kit report guidance",
+            "recovery-kit-*.txt",
         )
     )
     checks.append(_path_check(project_dir / "scripts" / "launch-gui.vbs", "hidden GUI launcher"))
@@ -319,6 +347,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "__main__.py",
             "CLI recovery kit command",
             "recovery-kit",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI recovery kit report option",
+            "--report",
         )
     )
     checks.append(

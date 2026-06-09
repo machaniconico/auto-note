@@ -99,8 +99,10 @@ from auto_note.repair import (
     format_recovery_kit_report,
     format_repair_report,
     has_repair_blockers,
+    list_recovery_kit_reports,
     run_recovery_kit,
     run_repair,
+    write_recovery_kit_report,
 )
 from auto_note.release import create_release_package, format_release_verification, verify_release_package
 from auto_note.review import format_review_report, has_review_blockers, review_article, review_path
@@ -2518,7 +2520,7 @@ tags:
             product_checks = run_quality_checks(project, include_articles=False)
             (project / "auto-note-gui.bat").write_text(
                 "python -m auto_note gui --smoke\n"
-                "python -m auto_note recovery-kit --project-dir .\n"
+                "python -m auto_note recovery-kit --project-dir . --report\n"
                 "python -m auto_note support --project-dir . --bundle\n",
                 encoding="utf-8",
             )
@@ -2554,7 +2556,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\ntroubleshoot\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "commercial.py").write_text(
@@ -2594,7 +2596,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
-                "run_recovery_kit\ncreate_bundle_on_issue\n",
+                "run_recovery_kit\ncreate_bundle_on_issue\nwrite_recovery_kit_report\nlist_recovery_kit_reports\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
@@ -2639,7 +2641,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\nauto-note recovery-kit\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -2674,6 +2676,7 @@ tags:
         self.assertIn("GUI launcher smoke check:fail", product_details)
         self.assertIn("GUI launcher support bundle guidance:fail", product_details)
         self.assertIn("GUI launcher recovery kit guidance:fail", product_details)
+        self.assertIn("GUI launcher recovery kit report guidance:fail", product_details)
         self.assertIn("support bundle send checklist:fail", product_details)
         self.assertIn("support bundle GUI log summary:fail", product_details)
         self.assertIn("support bundle GUI log privacy mask:fail", product_details)
@@ -2682,6 +2685,8 @@ tags:
         self.assertIn("support bundle send-only guidance:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
+        self.assertIn("recovery kit report writer:fail", product_details)
+        self.assertIn("recovery kit report lister:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("release check script:fail", product_details)
         self.assertIn("release check unit tests:fail", product_details)
@@ -2705,6 +2710,7 @@ tags:
         self.assertIn("CLI starter cleanup command:fail", product_details)
         self.assertIn("CLI repair command:fail", product_details)
         self.assertIn("CLI recovery kit command:fail", product_details)
+        self.assertIn("CLI recovery kit report option:fail", product_details)
         self.assertIn("CLI troubleshoot command:fail", product_details)
         self.assertIn("CLI acceptance command:fail", product_details)
         self.assertIn("CLI acceptance full command:fail", product_details)
@@ -2900,6 +2906,7 @@ tags:
         self.assertIn("README starter pack guidance:fail", product_details)
         self.assertIn("README recovery kit guidance:fail", product_details)
         self.assertIn("README recovery kit CLI guidance:fail", product_details)
+        self.assertIn("README recovery kit report guidance:fail", product_details)
         self.assertIn("README repair guidance:fail", product_details)
         self.assertIn("README troubleshoot guidance:fail", product_details)
         self.assertIn("README acceptance guidance:fail", product_details)
@@ -2983,6 +2990,7 @@ tags:
         self.assertIn("CLI starter cleanup command:pass", launcher_details)
         self.assertIn("CLI repair command:pass", launcher_details)
         self.assertIn("CLI recovery kit command:pass", launcher_details)
+        self.assertIn("CLI recovery kit report option:pass", launcher_details)
         self.assertIn("CLI troubleshoot command:pass", launcher_details)
         self.assertIn("CLI acceptance command:pass", launcher_details)
         self.assertIn("CLI acceptance full command:pass", launcher_details)
@@ -3178,6 +3186,7 @@ tags:
         self.assertIn("README starter pack guidance:pass", launcher_details)
         self.assertIn("README recovery kit guidance:pass", launcher_details)
         self.assertIn("README recovery kit CLI guidance:pass", launcher_details)
+        self.assertIn("README recovery kit report guidance:pass", launcher_details)
         self.assertIn("README repair guidance:pass", launcher_details)
         self.assertIn("README troubleshoot guidance:pass", launcher_details)
         self.assertIn("README acceptance guidance:pass", launcher_details)
@@ -3243,6 +3252,7 @@ tags:
         self.assertIn("GUI launcher smoke check:pass", launcher_details)
         self.assertIn("GUI launcher support bundle guidance:pass", launcher_details)
         self.assertIn("GUI launcher recovery kit guidance:pass", launcher_details)
+        self.assertIn("GUI launcher recovery kit report guidance:pass", launcher_details)
         self.assertIn("support bundle send checklist:pass", launcher_details)
         self.assertIn("support bundle GUI log summary:pass", launcher_details)
         self.assertIn("support bundle GUI log privacy mask:pass", launcher_details)
@@ -3251,6 +3261,8 @@ tags:
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
         self.assertIn("recovery kit support bundle fallback:pass", launcher_details)
+        self.assertIn("recovery kit report writer:pass", launcher_details)
+        self.assertIn("recovery kit report lister:pass", launcher_details)
         self.assertIn("hidden GUI launcher target:pass", launcher_details)
         self.assertIn("hidden GUI launcher no console:pass", launcher_details)
         self.assertIn("hidden GUI launcher check mode:pass", launcher_details)
@@ -3670,8 +3682,14 @@ tags:
             support_bundle_exists = report.support_bundle is not None and report.support_bundle.exists()
             cli_output = io.StringIO()
             with redirect_stdout(cli_output):
-                code = cli_main(["recovery-kit", "--project-dir", str(project)])
+                code = cli_main(["recovery-kit", "--project-dir", str(project), "--report"])
             cli_text = cli_output.getvalue()
+            direct_report_path = write_recovery_kit_report(project, report=report)
+            direct_report_exists = direct_report_path.exists()
+            direct_report_text = direct_report_path.read_text(encoding="utf-8")
+            recovery_reports = list_recovery_kit_reports(project)
+            recovery_report_count = len(recovery_reports)
+            recovery_report_names = [path.name for path in recovery_reports]
 
         self.assertEqual(report.status, "warn")
         self.assertEqual(report.before.status, "warn")
@@ -3689,7 +3707,13 @@ tags:
         self.assertEqual(code, 0)
         self.assertIn("Recovery kit / 復旧セット", cli_text)
         self.assertIn("Support bundle:", cli_text)
+        self.assertIn("recovery kit report saved:", cli_text)
         self.assertNotIn(str(project), cli_text)
+        self.assertTrue(direct_report_exists)
+        self.assertGreaterEqual(recovery_report_count, 2)
+        self.assertTrue(any(name.startswith("recovery-kit-") for name in recovery_report_names))
+        self.assertIn("Recovery kit / 復旧セット", direct_report_text)
+        self.assertNotIn(str(project), direct_report_text)
 
     def test_repair_privacy_cleanup_summarizes_release_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
