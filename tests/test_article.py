@@ -3009,6 +3009,8 @@ tags: note
         self.assertIn("display_font_family=", text)
         self.assertIn("display_font_linespace=", text)
         self.assertIn("display_badge_linespace=", text)
+        self.assertIn("active_ui_density_chars=", text)
+        self.assertIn("display_safe_mode=False", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3192,7 +3194,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "settings.py").write_text(
@@ -3290,10 +3292,13 @@ tags:
                 + "UI_DENSITY_LABELS\n"
                 + "ui_density_var\n"
                 + "_apply_ui_density\n"
+                + "ui_density_override\n"
                 + "_configure_tk_font_defaults\n"
                 + "_refresh_text_widget_readability\n"
                 + "readability_style_chars=\n"
                 + "ui_density_chars=\n"
+                + "active_ui_density_chars=\n"
+                + "display_safe_mode=\n"
                 + "header_ui_density_var\n"
                 + "header_ui_density_combo\n"
                 + "header_display_reset_button\n"
@@ -3354,6 +3359,7 @@ tags:
                 + "show_display_diagnostics_action\n"
                 + "copy_display_diagnostics_action\n"
                 + "Display diagnostics / 表示診断\n"
+                + "safe display mode:\n"
                 + "Readability check / 可読性チェック\n"
                 + "- status:\n"
                 + "/ action:\n"
@@ -3561,7 +3567,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nauto-note gui --project-dir . --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3652,6 +3658,7 @@ tags:
         self.assertIn("self-test direct launcher fallback:fail", product_details)
         self.assertIn("CLI troubleshoot command:fail", product_details)
         self.assertIn("CLI support open option:fail", product_details)
+        self.assertIn("CLI GUI safe display option:fail", product_details)
         self.assertIn("CLI acceptance command:fail", product_details)
         self.assertIn("CLI acceptance full command:fail", product_details)
         self.assertIn("CLI commercial readiness command:fail", product_details)
@@ -3878,9 +3885,12 @@ tags:
         self.assertIn("GUI header UI density binding:fail", product_details)
         self.assertIn("GUI header UI density action:fail", product_details)
         self.assertIn("GUI UI density style apply:fail", product_details)
+        self.assertIn("GUI safe display launch override:fail", product_details)
         self.assertIn("GUI UI density text refresh:fail", product_details)
         self.assertIn("GUI smoke readable style metrics:fail", product_details)
         self.assertIn("GUI smoke UI density metrics:fail", product_details)
+        self.assertIn("GUI smoke active UI density metrics:fail", product_details)
+        self.assertIn("GUI smoke safe display metric:fail", product_details)
         self.assertIn("GUI smoke header UI density metrics:fail", product_details)
         self.assertIn("GUI smoke header display reset metrics:fail", product_details)
         self.assertIn("GUI smoke UI density command metrics:fail", product_details)
@@ -3908,6 +3918,7 @@ tags:
         self.assertIn("GUI modern first-run subtitle:fail", product_details)
         self.assertIn("GUI modern settings subtitle:fail", product_details)
         self.assertIn("README UI density guidance:fail", product_details)
+        self.assertIn("README safe display guidance:fail", product_details)
         self.assertIn("README UI density command guidance:fail", product_details)
         self.assertIn("README UI density header guidance:fail", product_details)
         self.assertIn("README display reset guidance:fail", product_details)
@@ -3919,6 +3930,7 @@ tags:
         self.assertIn("GUI display diagnostics action:fail", product_details)
         self.assertIn("GUI display diagnostics copy action:fail", product_details)
         self.assertIn("GUI display diagnostics report:fail", product_details)
+        self.assertIn("GUI display diagnostics safe display mode:fail", product_details)
         self.assertIn("GUI display readability checks:fail", product_details)
         self.assertIn("GUI display readability status line:fail", product_details)
         self.assertIn("GUI display readability warning actions:fail", product_details)
@@ -4223,6 +4235,7 @@ tags:
         self.assertIn("self-test direct launcher fallback:pass", launcher_details)
         self.assertIn("CLI troubleshoot command:pass", launcher_details)
         self.assertIn("CLI support open option:pass", launcher_details)
+        self.assertIn("CLI GUI safe display option:pass", launcher_details)
         self.assertIn("CLI acceptance command:pass", launcher_details)
         self.assertIn("CLI acceptance full command:pass", launcher_details)
         self.assertIn("CLI commercial readiness command:pass", launcher_details)
@@ -4449,9 +4462,12 @@ tags:
         self.assertIn("GUI header UI density binding:pass", launcher_details)
         self.assertIn("GUI header UI density action:pass", launcher_details)
         self.assertIn("GUI UI density style apply:pass", launcher_details)
+        self.assertIn("GUI safe display launch override:pass", launcher_details)
         self.assertIn("GUI UI density text refresh:pass", launcher_details)
         self.assertIn("GUI smoke readable style metrics:pass", launcher_details)
         self.assertIn("GUI smoke UI density metrics:pass", launcher_details)
+        self.assertIn("GUI smoke active UI density metrics:pass", launcher_details)
+        self.assertIn("GUI smoke safe display metric:pass", launcher_details)
         self.assertIn("GUI smoke header UI density metrics:pass", launcher_details)
         self.assertIn("GUI smoke header display reset metrics:pass", launcher_details)
         self.assertIn("GUI smoke UI density command metrics:pass", launcher_details)
@@ -4479,6 +4495,7 @@ tags:
         self.assertIn("GUI modern first-run subtitle:pass", launcher_details)
         self.assertIn("GUI modern settings subtitle:pass", launcher_details)
         self.assertIn("README UI density guidance:pass", launcher_details)
+        self.assertIn("README safe display guidance:pass", launcher_details)
         self.assertIn("README UI density command guidance:pass", launcher_details)
         self.assertIn("README UI density header guidance:pass", launcher_details)
         self.assertIn("README display reset guidance:pass", launcher_details)
@@ -4490,6 +4507,7 @@ tags:
         self.assertIn("GUI display diagnostics action:pass", launcher_details)
         self.assertIn("GUI display diagnostics copy action:pass", launcher_details)
         self.assertIn("GUI display diagnostics report:pass", launcher_details)
+        self.assertIn("GUI display diagnostics safe display mode:pass", launcher_details)
         self.assertIn("GUI display readability checks:pass", launcher_details)
         self.assertIn("GUI display readability status line:pass", launcher_details)
         self.assertIn("GUI display readability warning actions:pass", launcher_details)

@@ -227,9 +227,9 @@ def main(argv: list[str] | None = None) -> int:
             from .gui import launch_gui, smoke_gui
 
             if args.smoke:
-                print(smoke_gui(args.project_dir))
+                print(smoke_gui(args.project_dir, safe_display=args.safe_display))
                 return 0
-            return launch_gui(args.project_dir)
+            return launch_gui(args.project_dir, safe_display=args.safe_display)
 
         if args.command == "diagnose":
             from .diagnostics import (
@@ -1169,6 +1169,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--smoke",
         action="store_true",
         help="Start and immediately close the GUI to verify it can initialize.",
+    )
+    gui.add_argument(
+        "--safe-display",
+        action="store_true",
+        help="Start the GUI with large readable spacing for display/font issues.",
     )
 
     diagnose = subparsers.add_parser("diagnose", help="Run environment diagnostics.")

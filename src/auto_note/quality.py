@@ -808,6 +808,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI GUI safe display option",
+            "--safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
             "CLI acceptance command",
             "acceptance",
         )
@@ -2467,6 +2474,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI safe display launch override",
+            "ui_density_override",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI UI density text refresh",
             "_refresh_text_widget_readability",
         )
@@ -2483,6 +2497,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke UI density metrics",
             "ui_density_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke active UI density metrics",
+            "active_ui_density_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke safe display metric",
+            "display_safe_mode=",
         )
     )
     checks.append(
@@ -2810,6 +2838,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README safe display guidance",
+            "auto-note gui --project-dir . --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README UI density command guidance",
             "表示サイズ: 大きめ",
         )
@@ -2889,6 +2924,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI display diagnostics report",
             "Display diagnostics / 表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics safe display mode",
+            "safe display mode:",
         )
     )
     checks.append(

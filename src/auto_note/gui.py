@@ -550,20 +550,20 @@ def _home_gui_log_status(path: Path) -> tuple[str, str]:
     return "warn", f"GUIログ: 要確認 / {_format_mtime(path)} / {_format_file_size(path)}"
 
 
-def launch_gui(project_dir: Path) -> int:
+def launch_gui(project_dir: Path, *, safe_display: bool = False) -> int:
     project_dir = _clean_path(project_dir)
     _enable_windows_dpi_awareness()
-    app = AutoNoteApp(project_dir)
+    app = AutoNoteApp(project_dir, ui_density_override="large" if safe_display else None)
     app.mainloop()
     return 0
 
 
-def smoke_gui(project_dir: Path) -> str:
+def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
     project_dir = _clean_path(project_dir)
     _enable_windows_dpi_awareness()
     app: AutoNoteApp | None = None
     try:
-        app = AutoNoteApp(project_dir)
+        app = AutoNoteApp(project_dir, ui_density_override="large" if safe_display else None)
         app.withdraw()
         app.update_idletasks()
         tabs = len(app.notebook.tabs())
@@ -636,6 +636,8 @@ def smoke_gui(project_dir: Path) -> str:
             + str(style.lookup("TButton", "padding"))
         )
         ui_density_chars = len(getattr(app.settings, "ui_density", ""))
+        active_ui_density_chars = len(app._active_ui_density()) if hasattr(app, "_active_ui_density") else 0
+        display_safe_mode = getattr(app, "display_safe_mode", False)
         header_ui_density_chars = len(app.header_ui_density_var.get()) if hasattr(app, "header_ui_density_var") else 0
         header_display_reset_chars = (
             len(str(app.header_display_reset_button.cget("text")))
@@ -689,6 +691,8 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_gui_log_chars={home_gui_log_chars}, "
             f"readability_style_chars={readability_style_chars}, "
             f"ui_density_chars={ui_density_chars}, "
+            f"active_ui_density_chars={active_ui_density_chars}, "
+            f"display_safe_mode={display_safe_mode}, "
             f"header_ui_density_chars={header_ui_density_chars}, "
             f"header_display_reset_chars={header_display_reset_chars}, "
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
@@ -717,13 +721,15 @@ def _clean_path(path: Path) -> Path:
 
 
 class AutoNoteApp(tk.Tk):
-    def __init__(self, project_dir: Path) -> None:
+    def __init__(self, project_dir: Path, ui_density_override: str | None = None) -> None:
         _enable_windows_dpi_awareness()
         super().__init__()
         self.project_dir = project_dir.resolve()
         self.articles_dir = self.project_dir / "articles"
         self.output_dir = self.project_dir / ".auto-note"
         self.settings = load_settings(self.project_dir)
+        self.display_density_override = _normalise_ui_density(ui_density_override) if ui_density_override else ""
+        self.display_safe_mode = bool(self.display_density_override)
         self.article_paths: list[Path] = []
         self.selected_article: Article | None = None
         self.idea_ids: list[int] = []
@@ -763,12 +769,20 @@ class AutoNoteApp(tk.Tk):
         self.refresh_help()
         self.run_check_all(show_popup=False)
         self.run_diagnostics_to_tab()
+        if self.display_safe_mode:
+            self.after(
+                500,
+                lambda: self.notify("表示セーフモード: 大きめ表示で起動しました", level="warning"),
+            )
         self.after(350, self.show_onboarding_if_needed)
         self.schedule_autosave()
 
+    def _active_ui_density(self) -> str:
+        return self.display_density_override or _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+
     def _configure_style(self) -> None:
         global UI_FONT, CODE_FONT
-        _apply_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+        _apply_ui_density(self._active_ui_density())
         style = ttk.Style(self)
         try:
             style.theme_use("clam")
@@ -1114,6 +1128,8 @@ class AutoNoteApp(tk.Tk):
         meta.pack(anchor=tk.W, pady=(4, 0))
         ttk.Label(meta, text="LOCAL WORKSPACE", style="ChromeChip.TLabel").pack(side=tk.LEFT)
         ttk.Label(meta, text=f"v{__version__}", style="ChromeChip.TLabel").pack(side=tk.LEFT, padx=(6, 0))
+        if self.display_safe_mode:
+            ttk.Label(meta, text="SAFE DISPLAY", style="ChromeChip.TLabel").pack(side=tk.LEFT, padx=(6, 0))
         ttk.Label(meta, text=self.project_dir.name, style="ChromeMuted.TLabel").pack(side=tk.LEFT, padx=(8, 0))
         ttk.Label(
             brand,
@@ -1130,7 +1146,7 @@ class AutoNoteApp(tk.Tk):
         density = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
         density.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Label(density, text="表示", style="ChromeAction.TLabel").pack(side=tk.LEFT)
-        self.header_ui_density_var = tk.StringVar(value=_ui_density_label(self.settings.ui_density))
+        self.header_ui_density_var = tk.StringVar(value=_ui_density_label(self._active_ui_density()))
         self.header_ui_density_combo = ttk.Combobox(
             density,
             textvariable=self.header_ui_density_var,
@@ -5866,11 +5882,13 @@ class AutoNoteApp(tk.Tk):
 
     def set_ui_density_action(self, density: str) -> None:
         density = _normalise_ui_density(density)
-        current = _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+        current = self._active_ui_density()
         label = _ui_density_label(density)
-        if current == density:
+        if current == density and not self.display_safe_mode:
             self.notify(f"表示サイズはすでに{label}です", level="info")
             return
+        self.display_density_override = ""
+        self.display_safe_mode = False
         self.settings = replace(self.settings, ui_density=density)
         save_settings(self.project_dir, self.settings)
         self._configure_style()
@@ -5888,6 +5906,8 @@ class AutoNoteApp(tk.Tk):
 
     def reset_display_action(self) -> None:
         density = _normalise_ui_density(DEFAULT_SETTINGS.ui_density)
+        self.display_density_override = ""
+        self.display_safe_mode = False
         self.settings = replace(self.settings, ui_density=density)
         save_settings(self.project_dir, self.settings)
         self._configure_style()
@@ -6038,7 +6058,7 @@ class AutoNoteApp(tk.Tk):
         if hasattr(self, "ui_density_var"):
             self.ui_density_var.set(_ui_density_label(self.settings.ui_density))
         if hasattr(self, "header_ui_density_var"):
-            self.header_ui_density_var.set(_ui_density_label(self.settings.ui_density))
+            self.header_ui_density_var.set(_ui_density_label(self._active_ui_density()))
         if hasattr(self, "support_contact_var"):
             self.support_contact_var.set(self.settings.support_contact)
         if hasattr(self, "seller_name_var"):
@@ -6321,6 +6341,8 @@ class AutoNoteApp(tk.Tk):
             image_max_width=_bounded_int_var(self.image_max_width_var, 1600, 320, 4000),
             image_quality=_bounded_int_var(self.image_quality_var, 85, 30, 100),
         )
+        self.display_density_override = ""
+        self.display_safe_mode = False
         save_settings(self.project_dir, settings)
         self.settings = settings
         self._configure_style()
@@ -6550,7 +6572,9 @@ class AutoNoteApp(tk.Tk):
                 return f"unavailable ({exc})"
 
         style = ttk.Style(self)
-        density = _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+        saved_density = _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+        density = self._active_ui_density()
+        safe_display = "on" if self.display_safe_mode else "off"
         scaling = _safe(lambda: self.tk.call("tk", "scaling"))
         fpixels = _safe(lambda: round(float(self.winfo_fpixels("1i")), 2))
         tree_height = _safe(lambda: style.lookup("Treeview", "rowheight"))
@@ -6570,6 +6594,8 @@ class AutoNoteApp(tk.Tk):
             *readability_lines,
             "",
             "Current display settings",
+            f"- safe display mode: {safe_display}",
+            f"- saved display density: {saved_density} / {_ui_density_label(saved_density)}",
             f"- display density: {density} / {_ui_density_label(density)}",
             f"- UI font: {UI_FONT}",
             f"- code font: {CODE_FONT}",
