@@ -1913,6 +1913,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette UI density large action",
+            "表示サイズ: 大きめ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette UI density quick apply",
+            "set_ui_density_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette UI density settings focus",
+            "focus_ui_density_setting_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI command palette empty state",
             "一致するコマンドがありません",
         )
@@ -2104,6 +2125,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke UI density metrics",
             "ui_density_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke UI density command metrics",
+            "command_palette_ui_density_actions=",
         )
     )
     checks.append(
@@ -2328,6 +2356,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README UI density guidance",
             "表示サイズ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README UI density command guidance",
+            "表示サイズ: 大きめ",
         )
     )
     checks.append(

@@ -507,6 +507,9 @@ def smoke_gui(project_dir: Path) -> str:
             + str(style.lookup("TButton", "padding"))
         )
         ui_density_chars = len(getattr(app.settings, "ui_density", ""))
+        command_palette_ui_density_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label.startswith("表示サイズ")
+        )
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
         return (
             f"GUI smoke OK: tabs={tabs}, articles={articles}, "
@@ -532,6 +535,7 @@ def smoke_gui(project_dir: Path) -> str:
             f"home_gui_log_chars={home_gui_log_chars}, "
             f"readability_style_chars={readability_style_chars}, "
             f"ui_density_chars={ui_density_chars}, "
+            f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
             f"diagnostics_chars={diagnostics_chars}"
         )
     except Exception as exc:
@@ -2235,17 +2239,18 @@ class AutoNoteApp(tk.Tk):
             ),
         )
         self._form_row(form, 2, "記事検索パターン", ttk.Entry(form, textvariable=self.article_glob_var))
+        self.ui_density_combo = ttk.Combobox(
+            form,
+            textvariable=self.ui_density_var,
+            values=tuple(UI_DENSITY_LABELS.values()),
+            state="readonly",
+            width=14,
+        )
         self._form_row(
             form,
             3,
             "表示サイズ",
-            ttk.Combobox(
-                form,
-                textvariable=self.ui_density_var,
-                values=tuple(UI_DENSITY_LABELS.values()),
-                state="readonly",
-                width=14,
-            ),
+            self.ui_density_combo,
         )
         self.support_contact_entry = ttk.Entry(form, textvariable=self.support_contact_var)
         self.seller_name_entry = ttk.Entry(form, textvariable=self.seller_name_var)
@@ -5558,7 +5563,7 @@ class AutoNoteApp(tk.Tk):
             selectbackground=UI_COLORS["accent"],
             selectforeground="#ffffff",
             activestyle="none",
-            font=(UI_FONT, 10),
+            font=(UI_FONT, UI_TEXT_SIZE),
         )
         listbox.pack(fill=tk.BOTH, expand=True)
 
@@ -5612,6 +5617,28 @@ class AutoNoteApp(tk.Tk):
         win.bind("<Escape>", lambda _event: win.destroy())
         refresh()
 
+    def set_ui_density_action(self, density: str) -> None:
+        density = _normalise_ui_density(density)
+        current = _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+        label = _ui_density_label(density)
+        if current == density:
+            self.notify(f"表示サイズはすでに{label}です", level="info")
+            return
+        self.settings = replace(self.settings, ui_density=density)
+        save_settings(self.project_dir, self.settings)
+        self._configure_style()
+        self._refresh_manual_readability_widgets()
+        self._refresh_text_widget_readability()
+        self.sync_settings_tab()
+        self.refresh_all()
+        self.notify(f"表示サイズを{label}に変更しました", level="success")
+
+    def focus_ui_density_setting_action(self) -> None:
+        self.notebook.select(self.settings_tab)
+        if hasattr(self, "ui_density_combo"):
+            self.ui_density_combo.focus_set()
+        self.notify("表示サイズを選んで保存できます", level="info")
+
     def command_palette_actions(self):
         return [
             ("新規記事", "テンプレートから記事を作成", self.new_article),
@@ -5619,6 +5646,10 @@ class AutoNoteApp(tk.Tk):
             ("スターター整理", "スターター由来の記事と未使用アイデアを安全に整理", self.cleanup_starter_pack_action),
             ("練習記事作成", "初回投稿の練習用記事を作成", self.create_practice_article_action),
             ("更新", "記事一覧と各タブを再読み込み", self.refresh_all),
+            ("表示サイズ: 大きめ", "文字や行高が潰れる時にすぐ拡大", lambda: self.set_ui_density_action("large")),
+            ("表示サイズ: ゆったり", "標準より少し余白を増やして読みやすくする", lambda: self.set_ui_density_action("comfortable")),
+            ("表示サイズ: 標準", "表示密度を標準に戻す", lambda: self.set_ui_density_action("standard")),
+            ("表示サイズ設定へ", "設定タブの表示サイズを開く", self.focus_ui_density_setting_action),
             ("作業進行: 初回", "ホームの初回工程を開く", lambda: self.open_home_progress_stage("setup")),
             ("作業進行: 記事", "ホームの記事工程を開く", lambda: self.open_home_progress_stage("article")),
             ("作業進行: 仕上げ", "ホームの仕上げ工程を開く", lambda: self.open_home_progress_stage("review")),
