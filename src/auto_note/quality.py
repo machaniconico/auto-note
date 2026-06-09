@@ -1580,6 +1580,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report estimated reclaim summary",
+            "見込み解放容量:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report reason breakdown",
+            "種類別:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report dry-run safety guidance",
+            "削除はまだ実行していません",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup privacy summary grouping",
+            "_cleanup_summary_reason",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "sales finalize delivery verification SHA-256",
             "_delivery_verification_lines",

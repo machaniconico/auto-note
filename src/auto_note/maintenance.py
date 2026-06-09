@@ -319,16 +319,51 @@ def cleanup_generated_files(
 
 def format_cleanup_report(result: CleanupResult, *, dry_run: bool = True) -> str:
     action = "削除候補" if dry_run else "削除済み"
+    total_bytes = sum(item.size_bytes for item in result.items)
     lines = [f"生成物整理: {action} {len(result.items)}件"]
-    if not dry_run:
+    if dry_run:
+        lines.append(f"見込み解放容量: {_format_bytes(total_bytes)}")
+    else:
         lines.append(f"解放容量: {_format_bytes(result.reclaimed_bytes)}")
     if not result.items:
         lines.append("対象ファイルはありません。")
         return "\n".join(lines)
     lines.append("")
+    lines.append("種類別:")
+    for reason, count, size_bytes in _cleanup_reason_summary(result.items):
+        lines.append(f"- {reason}: {count}件 / {_format_bytes(size_bytes)}")
+    lines.append("")
+    if dry_run:
+        lines.append("削除はまだ実行していません。内容を確認してから --apply または GUIの整理実行を使ってください。")
+    else:
+        lines.append("削除したファイル一覧:")
+    lines.append("")
     for item in result.items:
         lines.append(f"- {item.path} ({_format_bytes(item.size_bytes)}): {item.reason}")
     return "\n".join(lines)
+
+
+def _cleanup_reason_summary(items: list[CleanupItem]) -> list[tuple[str, int, int]]:
+    summary: dict[str, tuple[int, int]] = {}
+    for item in items:
+        reason = _cleanup_summary_reason(item.reason)
+        count, size_bytes = summary.get(reason, (0, 0))
+        summary[reason] = (count + 1, size_bytes + item.size_bytes)
+    return [
+        (reason, count, size_bytes)
+        for reason, (count, size_bytes) in sorted(
+            summary.items(),
+            key=lambda entry: (-entry[1][0], entry[0]),
+        )
+    ]
+
+
+def _cleanup_summary_reason(reason: str) -> str:
+    prefix, separator, detail = reason.partition(": ")
+    if separator and prefix == "privacy audit NG":
+        artifact_name, _separator, _detail = detail.partition(": ")
+        return f"{prefix}: {artifact_name}"
+    return reason
 
 
 def _generated_html_files(output_dir: Path) -> list[Path]:

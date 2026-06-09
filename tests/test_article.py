@@ -3291,7 +3291,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
-                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n",
+                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n_cleanup_summary_reason\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_plan.py").write_text(
@@ -3846,6 +3846,10 @@ tags:
         self.assertIn("seller checklist sales evidence manifest:fail", product_details)
         self.assertIn("privacy audit sales evidence manifest:fail", product_details)
         self.assertIn("cleanup sales evidence manifest:fail", product_details)
+        self.assertIn("cleanup report estimated reclaim summary:fail", product_details)
+        self.assertIn("cleanup report reason breakdown:fail", product_details)
+        self.assertIn("cleanup report dry-run safety guidance:fail", product_details)
+        self.assertIn("cleanup privacy summary grouping:fail", product_details)
         self.assertIn("GUI starter pack action:fail", product_details)
         self.assertIn("GUI starter cleanup action:fail", product_details)
         self.assertIn("GUI repair action:fail", product_details)
@@ -4439,6 +4443,10 @@ tags:
         self.assertIn("seller checklist sales evidence manifest:pass", launcher_details)
         self.assertIn("privacy audit sales evidence manifest:pass", launcher_details)
         self.assertIn("cleanup sales evidence manifest:pass", launcher_details)
+        self.assertIn("cleanup report estimated reclaim summary:pass", launcher_details)
+        self.assertIn("cleanup report reason breakdown:pass", launcher_details)
+        self.assertIn("cleanup report dry-run safety guidance:pass", launcher_details)
+        self.assertIn("cleanup privacy summary grouping:pass", launcher_details)
         self.assertIn("GUI starter pack action:pass", launcher_details)
         self.assertIn("GUI starter cleanup action:pass", launcher_details)
         self.assertIn("GUI repair action:pass", launcher_details)
@@ -4984,6 +4992,10 @@ tags:
 
             self.assertEqual(len(preview.items), 2)
             self.assertIn("生成物整理: 削除候補 2件", report)
+            self.assertIn("見込み解放容量:", report)
+            self.assertIn("種類別:", report)
+            self.assertIn("generated helper HTML: 2件", report)
+            self.assertIn("削除はまだ実行していません", report)
             self.assertEqual(result.deleted, 2)
             self.assertFalse(old_file.exists())
             self.assertFalse(nested_old_file.exists())
@@ -5073,6 +5085,7 @@ tags:
                 include_releases=True,
                 keep_latest=1,
             )
+            release_report = format_cleanup_report(release_preview, dry_run=True)
             latest_report_kept = report_paths[-1].exists()
             latest_support_kept = support_paths[-1].exists()
             latest_sales_kept = sales_paths[-1].exists()
@@ -5094,6 +5107,7 @@ tags:
             self.assertEqual(result.deleted, 28)
             self.assertEqual(len(release_preview.items), 2)
             self.assertTrue(all(item.reason == "release package ZIP" for item in release_preview.items))
+            self.assertIn("release package ZIP: 2件", release_report)
             self.assertTrue(latest_report_kept)
             self.assertTrue(latest_support_kept)
             self.assertTrue(latest_sales_kept)
@@ -5169,6 +5183,9 @@ tags:
         self.assertTrue(all("privacy audit NG" in item.reason for item in release_preview.items))
         self.assertEqual(code, 0)
         self.assertIn("privacy audit NG", cli_output.getvalue())
+        self.assertIn("見込み解放容量:", cli_output.getvalue())
+        self.assertIn("種類別:", cli_output.getvalue())
+        self.assertIn("削除はまだ実行していません", cli_output.getvalue())
         self.assertTrue(any(item.name == "privacy cleanup" and item.status == "info" for item in readiness.items))
         self.assertIn("privacy cleanup", readiness_text)
         self.assertEqual(result.deleted, 3)
