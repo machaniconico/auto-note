@@ -1584,6 +1584,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP folder button",
+            "診断ZIP場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP path button",
+            "診断ZIPパス",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP location action",
+            "open_latest_diagnostic_report_location_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP path action",
+            "copy_latest_diagnostic_report_path_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI diagnostic ZIP path clipboard",
+            "self.clipboard_append(str(latest.resolve()))",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log preview content",
             "GUI log / GUIログ",
         )
@@ -1600,6 +1635,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README GUI log folder guidance",
             "GUIログ場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README diagnostic ZIP path guidance",
+            "診断ZIPパス",
         )
     )
     checks.append(
@@ -2398,6 +2440,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log folder guidance",
             "GUIログ場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide diagnostic ZIP path guidance",
+            "診断ZIPパス",
         )
     )
     checks.append(

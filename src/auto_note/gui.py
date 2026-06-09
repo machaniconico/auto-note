@@ -1594,6 +1594,8 @@ class AutoNoteApp(tk.Tk):
                 ("品質チェック", self.run_quality_to_tab),
                 ("診断プレビュー", self.preview_diagnostic_report_action),
                 ("診断レポート", self.create_diagnostic_report_action),
+                ("診断ZIP場所", self.open_latest_diagnostic_report_location_action),
+                ("診断ZIPパス", self.copy_latest_diagnostic_report_path_action),
                 ("バックアップ作成", self.create_backup_action),
                 ("バックアップ確認", self.inspect_backup_action),
                 ("バックアップ復元", self.restore_backup_action),
@@ -1843,6 +1845,8 @@ class AutoNoteApp(tk.Tk):
                 ("記事CSV出力", self.export_inventory_action),
                 ("診断プレビュー", self.preview_diagnostic_report_action),
                 ("診断レポート作成", self.create_diagnostic_report_action),
+                ("診断ZIP場所", self.open_latest_diagnostic_report_location_action),
+                ("診断ZIPパス", self.copy_latest_diagnostic_report_path_action),
                 ("プライバシー監査", self.run_privacy_audit_to_tab),
                 ("危険生成物確認", self.preview_privacy_failed_cleanup_action),
                 ("出荷ZIP作成", self.run_preflight_create_release_to_tab),
@@ -4334,6 +4338,8 @@ class AutoNoteApp(tk.Tk):
             ("品質チェック", "販売/配布前チェックを実行", self.run_quality_to_tab),
             ("診断プレビュー", "診断レポートの内容を確認", self.preview_diagnostic_report_action),
             ("診断レポート作成", "匿名化済み診断ZIPを作成", self.create_diagnostic_report_action),
+            ("診断ZIP場所", "最新診断ZIPがあるフォルダを開く", self.open_latest_diagnostic_report_location_action),
+            ("診断ZIPパス", "最新診断ZIPの絶対パスをコピー", self.copy_latest_diagnostic_report_path_action),
             ("危険生成物確認", "プライバシー監査NGの生成物だけを表示", self.preview_privacy_failed_cleanup_action),
             ("危険生成物整理", "プライバシー監査NGの生成物だけを削除", self.apply_privacy_failed_cleanup_action),
             ("バックアップ作成", "記事と設定をZIP保存", self.create_backup_action),
@@ -5376,6 +5382,33 @@ class AutoNoteApp(tk.Tk):
             return
         self.run_diagnostics_to_tab()
         self.notify(f"診断レポートを作成しました: {path.name}", level="success")
+
+    def open_latest_diagnostic_report_location_action(self) -> None:
+        reports = list_diagnostic_reports(self.project_dir)
+        if not reports:
+            messagebox.showinfo("診断ZIP場所", "診断レポートZIPがまだありません。先に 診断レポート を作成してください。")
+            self.notify("診断レポートZIPがありません", level="warning")
+            return
+        latest = reports[0]
+        _open_path(latest.parent)
+        self.notify(f"最新診断ZIPの場所を開きました: {latest.name}", level="success")
+
+    def copy_latest_diagnostic_report_path_action(self) -> None:
+        reports = list_diagnostic_reports(self.project_dir)
+        if not reports:
+            messagebox.showinfo("診断ZIPパス", "診断レポートZIPがまだありません。先に 診断レポート を作成してください。")
+            self.notify("診断レポートZIPがありません", level="warning")
+            return
+        latest = reports[0]
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(str(latest.resolve()))
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("診断レポートZIPのパスをコピーできませんでした", level="error")
+            messagebox.showerror("診断ZIPパス", str(exc))
+            return
+        self.notify(f"診断レポートZIPのパスをコピーしました: {latest.name}", level="success")
 
     def create_release_action(self) -> None:
         try:

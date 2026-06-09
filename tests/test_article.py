@@ -2628,6 +2628,12 @@ tags:
                 + "GUIログの保存場所を開きました\n"
                 + "GUI log / GUIログ\n"
                 + "self.clipboard_append(text)\n"
+                + "診断ZIP場所\n"
+                + "診断ZIPパス\n"
+                + "open_latest_diagnostic_report_location_action\n"
+                + "copy_latest_diagnostic_report_path_action\n"
+                + "診断レポートZIPのパスをコピーしました\n"
+                + "self.clipboard_append(str(latest.resolve()))\n"
                 + "show_support_gui_log_summary_action\n"
                 + "ZIPログ要約\n"
                 + "read_support_gui_log_summary\n"
@@ -2663,12 +2669,12 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nGUIログ場所\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nGUIログ場所\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nZIPログ要約\n復旧レポートコピー\n直近レポート\nパスコピー\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -2856,6 +2862,11 @@ tags:
         self.assertIn("GUI log display button:fail", product_details)
         self.assertIn("GUI log copy button:fail", product_details)
         self.assertIn("GUI log folder button:fail", product_details)
+        self.assertIn("GUI diagnostic ZIP folder button:fail", product_details)
+        self.assertIn("GUI diagnostic ZIP path button:fail", product_details)
+        self.assertIn("GUI diagnostic ZIP location action:fail", product_details)
+        self.assertIn("GUI diagnostic ZIP path action:fail", product_details)
+        self.assertIn("GUI diagnostic ZIP path clipboard:fail", product_details)
         self.assertIn("GUI log preview content:fail", product_details)
         self.assertIn("GUI log clipboard:fail", product_details)
         self.assertIn("GUI recovery kit action:fail", product_details)
@@ -2986,10 +2997,12 @@ tags:
         self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
         self.assertIn("README GUI log folder guidance:fail", product_details)
+        self.assertIn("README diagnostic ZIP path guidance:fail", product_details)
         self.assertIn("support guide send checklist guidance:fail", product_details)
         self.assertIn("support guide GUI log display guidance:fail", product_details)
         self.assertIn("support guide GUI log copy guidance:fail", product_details)
         self.assertIn("support guide GUI log folder guidance:fail", product_details)
+        self.assertIn("support guide diagnostic ZIP path guidance:fail", product_details)
         self.assertIn("support guide GUI log summary guidance:fail", product_details)
         self.assertIn("support guide ZIP log summary action guidance:fail", product_details)
         self.assertIn("support guide recovery report guidance:fail", product_details)
@@ -3173,6 +3186,11 @@ tags:
         self.assertIn("GUI log display button:pass", launcher_details)
         self.assertIn("GUI log copy button:pass", launcher_details)
         self.assertIn("GUI log folder button:pass", launcher_details)
+        self.assertIn("GUI diagnostic ZIP folder button:pass", launcher_details)
+        self.assertIn("GUI diagnostic ZIP path button:pass", launcher_details)
+        self.assertIn("GUI diagnostic ZIP location action:pass", launcher_details)
+        self.assertIn("GUI diagnostic ZIP path action:pass", launcher_details)
+        self.assertIn("GUI diagnostic ZIP path clipboard:pass", launcher_details)
         self.assertIn("GUI log preview content:pass", launcher_details)
         self.assertIn("GUI log clipboard:pass", launcher_details)
         self.assertIn("GUI recovery kit action:pass", launcher_details)
@@ -3303,10 +3321,12 @@ tags:
         self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
         self.assertIn("README GUI log folder guidance:pass", launcher_details)
+        self.assertIn("README diagnostic ZIP path guidance:pass", launcher_details)
         self.assertIn("support guide send checklist guidance:pass", launcher_details)
         self.assertIn("support guide GUI log display guidance:pass", launcher_details)
         self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
         self.assertIn("support guide GUI log folder guidance:pass", launcher_details)
+        self.assertIn("support guide diagnostic ZIP path guidance:pass", launcher_details)
         self.assertIn("support guide GUI log summary guidance:pass", launcher_details)
         self.assertIn("support guide ZIP log summary action guidance:pass", launcher_details)
         self.assertIn("support guide recovery report guidance:pass", launcher_details)
