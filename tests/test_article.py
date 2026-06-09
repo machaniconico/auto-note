@@ -3116,7 +3116,9 @@ tags:
             (project / "scripts" / "smoke-sales-delivery.ps1").write_text(
                 "sales-finalize --project-dir . --no-report\n"
                 "sales-handoff --verify-buyer-package\n"
-                "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt\n",
+                "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt\n"
+                "sales-launch --project-dir . --report\n"
+                "sales-launch-checklist-*.txt\n",
                 encoding="utf-8",
             )
             (project / ".github" / "workflows").mkdir(parents=True)
@@ -3526,6 +3528,7 @@ tags:
             (project / "docs" / "RC_HANDOFF.md").write_text(
                 "check-release.ps1 -Full\n"
                 "sales-finalize --project-dir . --strict --gui-smoke\n"
+                "sales-launch --project-dir . --report\n"
                 "止める条件\n",
                 encoding="utf-8",
             )
@@ -3565,9 +3568,12 @@ tags:
         self.assertIn("sales delivery smoke finalize:fail", product_details)
         self.assertIn("sales delivery smoke buyer package verify:fail", product_details)
         self.assertIn("sales delivery smoke send readiness:fail", product_details)
+        self.assertIn("sales delivery smoke launch checklist:fail", product_details)
+        self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
         self.assertIn("release candidate handoff:fail", product_details)
         self.assertIn("RC handoff release check:fail", product_details)
         self.assertIn("RC handoff sales evidence:fail", product_details)
+        self.assertIn("RC handoff sales launch evidence:fail", product_details)
         self.assertIn("RC handoff stop conditions:fail", product_details)
         self.assertIn("release checklist RC handoff guidance:fail", product_details)
         self.assertIn("version consistency:fail", product_details)
@@ -4132,9 +4138,12 @@ tags:
         self.assertIn("sales delivery smoke finalize:pass", launcher_details)
         self.assertIn("sales delivery smoke buyer package verify:pass", launcher_details)
         self.assertIn("sales delivery smoke send readiness:pass", launcher_details)
+        self.assertIn("sales delivery smoke launch checklist:pass", launcher_details)
+        self.assertIn("sales delivery smoke launch checklist assertion:pass", launcher_details)
         self.assertIn("release candidate handoff:pass", launcher_details)
         self.assertIn("RC handoff release check:pass", launcher_details)
         self.assertIn("RC handoff sales evidence:pass", launcher_details)
+        self.assertIn("RC handoff sales launch evidence:pass", launcher_details)
         self.assertIn("RC handoff stop conditions:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)

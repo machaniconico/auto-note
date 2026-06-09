@@ -117,10 +117,17 @@ try {
     & $python -m auto_note sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt
   }
 
+  Invoke-Smoke "Sales launch checklist" {
+    & $python -m auto_note sales-launch --project-dir . --report
+  }
+
   $readinessReport = Get-ChildItem -LiteralPath $salesDir -Filter "buyer-send-readiness-*.txt" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
   $deliveryReceipt = Get-ChildItem -LiteralPath $salesDir -Filter "seller-delivery-receipt-*.txt" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+  $launchChecklist = Get-ChildItem -LiteralPath $salesDir -Filter "sales-launch-checklist-*.txt" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
@@ -130,8 +137,17 @@ try {
   if (-not $deliveryReceipt) {
     throw "Seller delivery receipt was not created."
   }
+  if (-not $launchChecklist) {
+    throw "Sales launch checklist was not created."
+  }
   Assert-Exists $readinessReport.FullName "Buyer send readiness report was not created."
   Assert-Exists $deliveryReceipt.FullName "Seller delivery receipt was not created."
+  Assert-Exists $launchChecklist.FullName "Sales launch checklist was not created."
+
+  $launchText = Get-Content -LiteralPath $launchChecklist.FullName -Raw -Encoding UTF8
+  if ($launchText -notlike "*Marketplace launch confirmation*") {
+    throw "Sales launch checklist does not include marketplace launch confirmation items."
+  }
 
   Write-Host ""
   Write-Host "sales delivery smoke OK"
@@ -139,6 +155,7 @@ try {
   Write-Host "- buyer zip: $($buyerPackage.Name)"
   Write-Host "- send readiness: $($readinessReport.Name)"
   Write-Host "- seller receipt: $($deliveryReceipt.Name)"
+  Write-Host "- launch checklist: $($launchChecklist.Name)"
 } finally {
   if ($pushedLocation) {
     Pop-Location

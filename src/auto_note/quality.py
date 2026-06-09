@@ -61,6 +61,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff sales launch evidence",
+            "sales-launch --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
             "RC handoff stop conditions",
             "止める条件",
         )
@@ -691,6 +698,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "scripts" / "smoke-sales-delivery.ps1",
             "sales delivery smoke send readiness",
             "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke launch checklist",
+            "sales-launch --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke launch checklist assertion",
+            "sales-launch-checklist-*.txt",
         )
     )
     checks.append(
