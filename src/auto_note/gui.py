@@ -900,7 +900,7 @@ class AutoNoteApp(tk.Tk):
         reports_header = ttk.Frame(reports_box, style="Surface.TFrame")
         reports_header.pack(fill=tk.X, pady=(0, 6))
         self.home_reports_var = tk.StringVar(
-            value="診断、問い合わせ、復旧、配布の最新レポートを確認中です。"
+            value="診断、問い合わせ、復旧、配布、購入者送付の最新ファイルを確認中です。"
         )
         ttk.Label(reports_header, textvariable=self.home_reports_var, style="Muted.TLabel", wraplength=820).pack(
             side=tk.LEFT,
@@ -3986,6 +3986,9 @@ class AutoNoteApp(tk.Tk):
             ("復旧レポート", list_recovery_kit_reports(self.project_dir)),
             ("診断ZIP", list_diagnostic_reports(self.project_dir)),
             ("配布ZIP", list_releases(self.project_dir)),
+            ("購入者ZIP", list_buyer_delivery_packages(self.project_dir)),
+            ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
+            ("送付記録", list_seller_delivery_receipts(self.project_dir)),
             ("投稿キュー", list_publish_queue_reports(self.project_dir)),
             ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
             ("運用サマリー", list_overview_reports(self.project_dir)),

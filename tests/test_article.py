@@ -2899,6 +2899,9 @@ tags:
                 + "copy_selected_home_report_path_action\n"
                 + "self.clipboard_append(str(path.resolve()))\n"
                 + "_home_report_status\n"
+                + "購入者ZIP\n"
+                + "購入者送付文\n"
+                + "送付記録\n"
                 + "home_report_items=\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
@@ -3002,7 +3005,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3260,6 +3263,9 @@ tags:
         self.assertIn("GUI home recent reports copy path action:fail", product_details)
         self.assertIn("GUI home recent reports copy path clipboard:fail", product_details)
         self.assertIn("GUI home recent reports verification status:fail", product_details)
+        self.assertIn("GUI home recent reports buyer delivery ZIP:fail", product_details)
+        self.assertIn("GUI home recent reports buyer delivery message:fail", product_details)
+        self.assertIn("GUI home recent reports seller receipt:fail", product_details)
         self.assertIn("GUI smoke recent reports count:fail", product_details)
         self.assertIn("README home progress lane guidance:fail", product_details)
         self.assertIn("README home progress direct open guidance:fail", product_details)
@@ -3354,6 +3360,7 @@ tags:
         self.assertIn("README recovery kit GUI report guidance:fail", product_details)
         self.assertIn("README home recent reports guidance:fail", product_details)
         self.assertIn("README home recent reports copy guidance:fail", product_details)
+        self.assertIn("README home recent reports buyer delivery guidance:fail", product_details)
         self.assertIn("README first-run actionable filter guidance:fail", product_details)
         self.assertIn("README repair guidance:fail", product_details)
         self.assertIn("README troubleshoot guidance:fail", product_details)
@@ -3647,6 +3654,9 @@ tags:
         self.assertIn("GUI home recent reports copy path action:pass", launcher_details)
         self.assertIn("GUI home recent reports copy path clipboard:pass", launcher_details)
         self.assertIn("GUI home recent reports verification status:pass", launcher_details)
+        self.assertIn("GUI home recent reports buyer delivery ZIP:pass", launcher_details)
+        self.assertIn("GUI home recent reports buyer delivery message:pass", launcher_details)
+        self.assertIn("GUI home recent reports seller receipt:pass", launcher_details)
         self.assertIn("GUI smoke recent reports count:pass", launcher_details)
         self.assertIn("README home progress lane guidance:pass", launcher_details)
         self.assertIn("README home progress direct open guidance:pass", launcher_details)
@@ -3741,6 +3751,7 @@ tags:
         self.assertIn("README recovery kit GUI report guidance:pass", launcher_details)
         self.assertIn("README home recent reports guidance:pass", launcher_details)
         self.assertIn("README home recent reports copy guidance:pass", launcher_details)
+        self.assertIn("README home recent reports buyer delivery guidance:pass", launcher_details)
         self.assertIn("README first-run actionable filter guidance:pass", launcher_details)
         self.assertIn("README repair guidance:pass", launcher_details)
         self.assertIn("README troubleshoot guidance:pass", launcher_details)

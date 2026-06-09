@@ -351,6 +351,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports buyer delivery ZIP",
+            "購入者ZIP",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports buyer delivery message",
+            "購入者送付文",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home recent reports seller receipt",
+            "送付記録",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke recent reports count",
             "home_report_items=",
         )
@@ -395,6 +416,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home recent reports copy guidance",
             "パスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home recent reports buyer delivery guidance",
+            "購入者ZIP、購入者送付文、送付記録",
         )
     )
     checks.append(
