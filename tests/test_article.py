@@ -3056,6 +3056,11 @@ tags:
             gui_fixture = project / "src" / "auto_note" / "gui.py"
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "_style_text_widget\n"
+                + 'UI_FONT = "Yu Gothic UI"\n'
+                + 'style.configure("TEntry"\n'
+                + "ChromeChip.TLabel\n"
+                + 'selectbackground=UI_COLORS["accent"]\n'
                 + "commercial_setup_tree\n"
                 + "commercial_setup_action_var\n"
                 + "_commercial_setup_field_rows\n"
@@ -3511,6 +3516,11 @@ tags:
         self.assertIn("GUI modern app title style:fail", product_details)
         self.assertIn("GUI modern KPI typography:fail", product_details)
         self.assertIn("GUI modern design tokens:fail", product_details)
+        self.assertIn("GUI modern text area styling:fail", product_details)
+        self.assertIn("GUI readable Japanese font:fail", product_details)
+        self.assertIn("GUI modern input styling:fail", product_details)
+        self.assertIn("GUI modern workspace chips:fail", product_details)
+        self.assertIn("GUI modern command palette surface:fail", product_details)
         self.assertIn("GUI modern quiet header action:fail", product_details)
         self.assertIn("GUI modern command search header:fail", product_details)
         self.assertIn("GUI modern KPI accent rail:fail", product_details)
@@ -3952,6 +3962,11 @@ tags:
         self.assertIn("GUI modern app title style:pass", launcher_details)
         self.assertIn("GUI modern KPI typography:pass", launcher_details)
         self.assertIn("GUI modern design tokens:pass", launcher_details)
+        self.assertIn("GUI modern text area styling:pass", launcher_details)
+        self.assertIn("GUI readable Japanese font:pass", launcher_details)
+        self.assertIn("GUI modern input styling:pass", launcher_details)
+        self.assertIn("GUI modern workspace chips:pass", launcher_details)
+        self.assertIn("GUI modern command palette surface:pass", launcher_details)
         self.assertIn("GUI modern quiet header action:pass", launcher_details)
         self.assertIn("GUI modern command search header:pass", launcher_details)
         self.assertIn("GUI modern KPI accent rail:pass", launcher_details)

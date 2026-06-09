@@ -186,19 +186,24 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
+UI_FONT = "Yu Gothic UI"
+CODE_FONT = "Consolas"
 UI_COLORS = {
-    "bg": "#f5f7fb",
+    "bg": "#eef3f8",
     "surface": "#ffffff",
-    "surface_alt": "#f8fafc",
-    "surface_hover": "#eef4f8",
-    "surface_strong": "#edf7f5",
-    "surface_selected": "#eef6f3",
-    "ink": "#172033",
-    "muted": "#5f6b7a",
-    "line": "#d8e0ea",
-    "chrome": "#16202f",
-    "chrome_alt": "#1f2a3a",
-    "chrome_muted": "#b9c6d6",
+    "surface_alt": "#f6f8fb",
+    "surface_hover": "#edf4f7",
+    "surface_strong": "#e8f7f3",
+    "surface_selected": "#e6f4ef",
+    "text_bg": "#fbfdff",
+    "ink": "#101828",
+    "muted": "#667085",
+    "line": "#d6dee8",
+    "line_strong": "#bac6d5",
+    "chrome": "#111827",
+    "chrome_alt": "#263142",
+    "chrome_muted": "#cbd5e1",
+    "chrome_chip": "#202b3d",
     "accent": "#0f766e",
     "accent_hover": "#0d5f59",
     "accent_pressed": "#0a4e49",
@@ -220,6 +225,24 @@ STATUS_COLORS = {
     "published": ("#dff3ed", "#105f54"),
 }
 AUTOSAVE_INTERVAL_MS = 30_000
+
+
+def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
+    widget.configure(
+        background=UI_COLORS["text_bg"],
+        foreground=UI_COLORS["ink"],
+        insertbackground=UI_COLORS["accent"],
+        selectbackground=UI_COLORS["accent_soft"],
+        selectforeground=UI_COLORS["ink"],
+        relief=tk.FLAT,
+        borderwidth=0,
+        highlightthickness=1,
+        highlightbackground=UI_COLORS["line"],
+        highlightcolor=UI_COLORS["focus"],
+        padx=10,
+        pady=10,
+        font=(CODE_FONT if code else UI_FONT, 10),
+    )
 
 
 def _command_palette_status(match_count: int, total_count: int, query: str) -> str:
@@ -442,7 +465,8 @@ class AutoNoteApp(tk.Tk):
             style.theme_use("clam")
         except tk.TclError:
             pass
-        font = "Segoe UI"
+        font = UI_FONT
+        self.option_add("*Font", f"{{{font}}} 10")
         bg = UI_COLORS["bg"]
         surface = UI_COLORS["surface"]
         surface_alt = UI_COLORS["surface_alt"]
@@ -450,6 +474,7 @@ class AutoNoteApp(tk.Tk):
         primary = UI_COLORS["ink"]
         muted = UI_COLORS["muted"]
         line = UI_COLORS["line"]
+        line_strong = UI_COLORS["line_strong"]
         chrome = UI_COLORS["chrome"]
         chrome_alt = UI_COLORS["chrome_alt"]
         chrome_muted = UI_COLORS["chrome_muted"]
@@ -503,6 +528,13 @@ class AutoNoteApp(tk.Tk):
         style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
         style.configure("ChromeMuted.TLabel", background=chrome, foreground=chrome_muted, font=(font, 9))
         style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, 10, "bold"))
+        style.configure(
+            "ChromeChip.TLabel",
+            background=UI_COLORS["chrome_chip"],
+            foreground="#ffffff",
+            font=(font, 8, "bold"),
+            padding=(8, 4),
+        )
         style.configure("Title.TLabel", background=surface, foreground=primary, font=(font, 16, "bold"))
         style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, 8, "bold"))
         style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 20, "bold"))
@@ -511,7 +543,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "TNotebook.Tab",
             padding=(18, 10),
-            font=(font, 10, "bold"),
+            font=(font, 10),
             background=surface_alt,
             foreground=muted,
             borderwidth=0,
@@ -521,6 +553,43 @@ class AutoNoteApp(tk.Tk):
             background=[("selected", surface), ("active", selected)],
             foreground=[("selected", primary), ("active", primary)],
         )
+        style.configure(
+            "TEntry",
+            padding=(9, 7),
+            fieldbackground=UI_COLORS["text_bg"],
+            foreground=primary,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+            borderwidth=1,
+            relief="flat",
+        )
+        style.map(
+            "TEntry",
+            fieldbackground=[("disabled", surface_alt), ("focus", "#ffffff")],
+            bordercolor=[("focus", accent), ("active", line_strong)],
+        )
+        style.configure(
+            "TCombobox",
+            padding=(9, 7),
+            fieldbackground=UI_COLORS["text_bg"],
+            background=surface,
+            foreground=primary,
+            arrowcolor=muted,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+            borderwidth=1,
+            relief="flat",
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", UI_COLORS["text_bg"]), ("focus", "#ffffff")],
+            bordercolor=[("focus", accent), ("active", line_strong)],
+            arrowcolor=[("active", accent), ("pressed", accent)],
+        )
+        style.configure("TCheckbutton", background=surface, foreground=primary, font=(font, 10), padding=(2, 4))
+        style.map("TCheckbutton", background=[("active", surface), ("pressed", surface)], foreground=[("active", primary)])
         style.configure(
             "Treeview",
             background=surface,
@@ -540,8 +609,27 @@ class AutoNoteApp(tk.Tk):
         )
         style.map("Treeview", background=[("selected", selected)], foreground=[("selected", primary)])
         style.configure(
+            "Vertical.TScrollbar",
+            background=surface_alt,
+            troughcolor=bg,
+            arrowcolor=muted,
+            bordercolor=bg,
+            lightcolor=bg,
+            darkcolor=bg,
+        )
+        style.configure(
+            "Horizontal.TScrollbar",
+            background=surface_alt,
+            troughcolor=bg,
+            arrowcolor=muted,
+            bordercolor=bg,
+            lightcolor=bg,
+            darkcolor=bg,
+        )
+        style.configure("TProgressbar", background=accent, troughcolor=surface_alt, borderwidth=0)
+        style.configure(
             "TButton",
-            padding=(11, 7),
+            padding=(13, 8),
             font=(font, 10),
             background=surface_alt,
             foreground=primary,
@@ -552,7 +640,7 @@ class AutoNoteApp(tk.Tk):
         style.map("TButton", background=[("active", selected), ("pressed", "#d9ece8")])
         style.configure(
             "Secondary.TButton",
-            padding=(11, 7),
+            padding=(13, 8),
             font=(font, 10),
             background=surface,
             foreground=primary,
@@ -566,7 +654,7 @@ class AutoNoteApp(tk.Tk):
         )
         style.configure(
             "Primary.TButton",
-            padding=(14, 8),
+            padding=(16, 9),
             font=(font, 10, "bold"),
             background=accent,
             foreground="#ffffff",
@@ -581,7 +669,7 @@ class AutoNoteApp(tk.Tk):
             ],
             foreground=[("disabled", "#ecfdf5")],
         )
-        style.configure("Quiet.TButton", padding=(10, 7), background=chrome_alt, foreground="#ffffff")
+        style.configure("Quiet.TButton", padding=(13, 8), font=(font, 10), background=chrome_alt, foreground="#ffffff")
         style.map("Quiet.TButton", background=[("active", "#2b394c"), ("pressed", "#34445a")])
         style.configure("Danger.TButton", padding=(11, 7), background=UI_COLORS["danger_soft"], foreground="#991b1b")
         style.map("Danger.TButton", background=[("active", "#fecaca"), ("pressed", "#fca5a5")])
@@ -590,23 +678,28 @@ class AutoNoteApp(tk.Tk):
 
     def _build_ui(self) -> None:
         self.configure(bg=UI_COLORS["bg"])
-        shell = ttk.Frame(self, padding=(14, 14, 14, 12))
+        shell = ttk.Frame(self, padding=(16, 16, 16, 12))
         shell.pack(fill=tk.BOTH, expand=True)
 
-        header = ttk.Frame(shell, style="Chrome.TFrame", padding=(16, 12))
+        header = ttk.Frame(shell, style="Chrome.TFrame", padding=(18, 13))
         header.pack(fill=tk.X, pady=(0, 12))
         brand = ttk.Frame(header, style="Chrome.TFrame")
         brand.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Label(brand, text="auto-note", style="AppTitle.TLabel").pack(anchor=tk.W)
+        meta = ttk.Frame(brand, style="Chrome.TFrame")
+        meta.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(meta, text="LOCAL WORKSPACE", style="ChromeChip.TLabel").pack(side=tk.LEFT)
+        ttk.Label(meta, text=f"v{__version__}", style="ChromeChip.TLabel").pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Label(meta, text=self.project_dir.name, style="ChromeMuted.TLabel").pack(side=tk.LEFT, padx=(8, 0))
         ttk.Label(
             brand,
-            text=f"Note operations workspace / v{__version__} / {self.project_dir}",
+            text=str(self.project_dir),
             style="ChromeMuted.TLabel",
-        ).pack(anchor=tk.W, pady=(2, 0))
+        ).pack(anchor=tk.W, pady=(3, 0))
 
         ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
         ttk.Button(header, text="更新", style="Quiet.TButton", command=self.refresh_all).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(header, text="Ctrl+K コマンド検索", style="Quiet.TButton", command=self.show_command_palette).pack(
+        ttk.Button(header, text="コマンド検索", style="Quiet.TButton", command=self.show_command_palette).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -673,7 +766,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg=UI_COLORS["warn"],
             fg="#ffffff",
-            font=("Segoe UI", 8, "bold"),
+            font=(UI_FONT, 8, "bold"),
             padx=9,
             pady=3,
             width=12,
@@ -729,7 +822,7 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg=UI_COLORS["warn"],
                 fg="#ffffff",
-                font=("Segoe UI", 8, "bold"),
+                font=(UI_FONT, 8, "bold"),
                 padx=7,
                 pady=2,
                 width=8,
@@ -814,7 +907,7 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg="#8a4f00",
                 fg="#ffffff",
-                font=("Segoe UI", 8, "bold"),
+                font=(UI_FONT, 8, "bold"),
                 padx=8,
                 pady=3,
                 width=8,
@@ -848,7 +941,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=("Segoe UI", 9, "bold"),
+            font=(UI_FONT, 9, "bold"),
             padx=10,
             pady=4,
             width=12,
@@ -913,7 +1006,7 @@ class AutoNoteApp(tk.Tk):
             text="OK",
             bg="#047857",
             fg="#ffffff",
-            font=("Segoe UI", 9, "bold"),
+            font=(UI_FONT, 9, "bold"),
             padx=10,
             pady=4,
             width=12,
@@ -968,7 +1061,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=("Segoe UI", 9, "bold"),
+            font=(UI_FONT, 9, "bold"),
             padx=10,
             pady=4,
             width=12,
@@ -1004,7 +1097,7 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg="#8a4f00",
                 fg="#ffffff",
-                font=("Segoe UI", 8, "bold"),
+                font=(UI_FONT, 8, "bold"),
                 padx=8,
                 pady=3,
                 width=8,
@@ -1027,7 +1120,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=("Segoe UI", 8, "bold"),
+            font=(UI_FONT, 8, "bold"),
             padx=8,
             pady=3,
             width=8,
@@ -1227,6 +1320,7 @@ class AutoNoteApp(tk.Tk):
         )
 
         self.home_text = ScrolledText(self.home_tab, wrap=tk.WORD, height=8, borderwidth=0)
+        _style_text_widget(self.home_text, code=True)
         self.home_text.pack(fill=tk.BOTH, expand=True)
         self.home_text.configure(state=tk.DISABLED)
 
@@ -1313,7 +1407,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=("Segoe UI", 9, "bold"),
+            font=(UI_FONT, 9, "bold"),
             padx=12,
             pady=5,
             width=10,
@@ -1370,7 +1464,7 @@ class AutoNoteApp(tk.Tk):
         self.first_run_detail_text_var = tk.StringVar(value="")
         self.first_run_detail_gui_var = tk.StringVar(value="")
         self.first_run_detail_cli_var = tk.StringVar(value="")
-        ttk.Label(detail_panel, textvariable=self.first_run_detail_name_var, style="Surface.TLabel", font=("", 12, "bold")).pack(
+        ttk.Label(detail_panel, textvariable=self.first_run_detail_name_var, style="Surface.TLabel", font=(UI_FONT, 12, "bold")).pack(
             anchor=tk.W,
             pady=(10, 0),
         )
@@ -1496,6 +1590,7 @@ class AutoNoteApp(tk.Tk):
         content_tabs.add(editor_tab, text="編集")
 
         self.preview = ScrolledText(preview_tab, wrap=tk.WORD, height=18, borderwidth=0)
+        _style_text_widget(self.preview)
         self.preview.pack(fill=tk.BOTH, expand=True)
         self.preview.configure(state=tk.DISABLED)
 
@@ -1513,6 +1608,7 @@ class AutoNoteApp(tk.Tk):
         ttk.Button(editor_toolbar, text="自動退避", command=self.show_autosave_dialog).pack(side=tk.LEFT, padx=6)
         ttk.Button(editor_toolbar, text="外部で開く", command=self.open_selected_file).pack(side=tk.LEFT, padx=6)
         self.editor = ScrolledText(editor_tab, wrap=tk.WORD, height=18, borderwidth=0, undo=True)
+        _style_text_widget(self.editor)
         self.editor.pack(fill=tk.BOTH, expand=True)
         self.editor.bind("<<Modified>>", self.on_editor_modified)
 
@@ -1533,7 +1629,7 @@ class AutoNoteApp(tk.Tk):
             text="未選択",
             bg="#344054",
             fg="#ffffff",
-            font=("Segoe UI", 8, "bold"),
+            font=(UI_FONT, 8, "bold"),
             padx=9,
             pady=3,
             width=9,
@@ -1688,7 +1784,7 @@ class AutoNoteApp(tk.Tk):
     def _build_ideas_tab(self) -> None:
         top = ttk.Frame(self.ideas_tab)
         top.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(top, text="アイデア箱", font=("", 16, "bold")).pack(side=tk.LEFT)
+        ttk.Label(top, text="アイデア箱", font=(UI_FONT, 16, "bold")).pack(side=tk.LEFT)
         ttk.Button(top, text="追加", style="Primary.TButton", command=self.add_idea_dialog).pack(
             side=tk.RIGHT, padx=(6, 0)
         )
@@ -1717,20 +1813,21 @@ class AutoNoteApp(tk.Tk):
     def _build_schedule_tab(self) -> None:
         top = ttk.Frame(self.schedule_tab)
         top.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(top, text="工程と公開予定", font=("", 16, "bold")).pack(side=tk.LEFT)
+        ttk.Label(top, text="工程と公開予定", font=(UI_FONT, 16, "bold")).pack(side=tk.LEFT)
         ttk.Button(top, text="更新", command=self.refresh_schedule).pack(side=tk.RIGHT)
         ttk.Button(top, text="ICS出力", command=self.export_calendar_action).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="選択記事を予定にする", command=self.save_schedule).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="選択記事を公開済みにする", command=self.mark_published).pack(side=tk.RIGHT, padx=6)
 
         self.schedule_text = ScrolledText(self.schedule_tab, wrap=tk.WORD, borderwidth=0)
+        _style_text_widget(self.schedule_text, code=True)
         self.schedule_text.pack(fill=tk.BOTH, expand=True)
         self.schedule_text.configure(state=tk.DISABLED)
 
     def _build_check_tab(self) -> None:
         top = ttk.Frame(self.check_tab)
         top.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(top, text="公開前チェック", font=("", 16, "bold")).pack(side=tk.LEFT)
+        ttk.Label(top, text="公開前チェック", font=(UI_FONT, 16, "bold")).pack(side=tk.LEFT)
 
         actions = ttk.Frame(self.check_tab)
         actions.pack(fill=tk.X, pady=(0, 8))
@@ -1761,6 +1858,7 @@ class AutoNoteApp(tk.Tk):
         self._build_review_panel(review_panel)
 
         self.check_text = ScrolledText(text_panel, wrap=tk.WORD, borderwidth=0, height=8)
+        _style_text_widget(self.check_text, code=True)
         self.check_text.pack(fill=tk.BOTH, expand=True)
         self.check_text.configure(state=tk.DISABLED)
 
@@ -1809,7 +1907,7 @@ class AutoNoteApp(tk.Tk):
 
         self.review_detail_title_var = tk.StringVar(value="記事を選択してください")
         self.review_detail_status_var = tk.StringVar(value="")
-        ttk.Label(detail_panel, textvariable=self.review_detail_title_var, style="Surface.TLabel", font=("", 12, "bold")).pack(
+        ttk.Label(detail_panel, textvariable=self.review_detail_title_var, style="Surface.TLabel", font=(UI_FONT, 12, "bold")).pack(
             anchor=tk.W,
             pady=(0, 2),
         )
@@ -1976,6 +2074,7 @@ class AutoNoteApp(tk.Tk):
         self._refresh_commercial_setup_progress()
 
         help_box = ScrolledText(self.settings_tab, wrap=tk.WORD, height=10, borderwidth=0)
+        _style_text_widget(help_box)
         help_box.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
         help_box.insert(
             tk.END,
@@ -2199,6 +2298,7 @@ class AutoNoteApp(tk.Tk):
         )
 
         self.diagnostics_text = ScrolledText(self.diagnostics_tab, wrap=tk.WORD, borderwidth=0)
+        _style_text_widget(self.diagnostics_text, code=True)
         self.diagnostics_text.pack(fill=tk.BOTH, expand=True)
         self.diagnostics_text.configure(state=tk.DISABLED)
 
@@ -2259,7 +2359,7 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=("Segoe UI", 8, "bold"),
+                    font=(UI_FONT, 8, "bold"),
                     padx=6,
                     pady=1,
                     width=8,
@@ -2285,7 +2385,7 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=("Segoe UI", 8, "bold"),
+                    font=(UI_FONT, 8, "bold"),
                     padx=6,
                     pady=1,
                     width=8,
@@ -2311,7 +2411,7 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=("Segoe UI", 8, "bold"),
+                    font=(UI_FONT, 8, "bold"),
                     padx=8,
                     pady=3,
                     width=8,
@@ -2451,6 +2551,7 @@ class AutoNoteApp(tk.Tk):
         )
 
         self.help_text = ScrolledText(self.help_tab, wrap=tk.WORD, borderwidth=0)
+        _style_text_widget(self.help_text)
         self.help_text.pack(fill=tk.BOTH, expand=True)
         self.help_text.configure(state=tk.DISABLED)
 
@@ -2461,9 +2562,12 @@ class AutoNoteApp(tk.Tk):
             anchor=tk.W,
             bg=UI_COLORS["surface_selected"],
             fg=UI_COLORS["ink"],
-            font=("Segoe UI", 9, "bold"),
+            font=(UI_FONT, 9, "bold"),
             padx=12,
             pady=7,
+            relief=tk.FLAT,
+            highlightthickness=1,
+            highlightbackground=UI_COLORS["line"],
         )
         self.notification.pack(fill=tk.X, pady=(8, 0))
 
@@ -3353,6 +3457,7 @@ class AutoNoteApp(tk.Tk):
             "復元しても、保存ボタンを押すまで元の記事ファイルは変更されません。",
         ]
         text = ScrolledText(frame, wrap=tk.WORD, height=8, borderwidth=0)
+        _style_text_widget(text)
         text.pack(fill=tk.BOTH, expand=True)
         self._set_text(text, "\n".join(lines))
 
@@ -3715,6 +3820,7 @@ class AutoNoteApp(tk.Tk):
             listbox.insert(tk.END, f"{revision.created_at} | {revision.path.name}")
 
         preview = ScrolledText(right, wrap=tk.WORD, borderwidth=0)
+        _style_text_widget(preview)
         preview.pack(fill=tk.BOTH, expand=True)
         preview.configure(state=tk.DISABLED)
 
@@ -4998,7 +5104,7 @@ class AutoNoteApp(tk.Tk):
 
         frame = ttk.Frame(win, padding=16)
         frame.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(frame, text="auto-note セットアップ", font=("", 18, "bold")).pack(anchor=tk.W)
+        ttk.Label(frame, text="auto-note セットアップ", font=(UI_FONT, 18, "bold")).pack(anchor=tk.W)
 
         notebook = ttk.Notebook(frame)
         notebook.pack(fill=tk.BOTH, expand=True, pady=(12, 8))
@@ -5011,6 +5117,7 @@ class AutoNoteApp(tk.Tk):
         notebook.add(next_tab, text="次の操作")
 
         setup_text = ScrolledText(check_tab, wrap=tk.WORD, borderwidth=0)
+        _style_text_widget(setup_text)
         setup_text.pack(fill=tk.BOTH, expand=True)
         self._set_text(setup_text, format_setup_report(run_setup_check(self.project_dir, create=True)))
 
@@ -5057,6 +5164,7 @@ class AutoNoteApp(tk.Tk):
         form.columnconfigure(1, weight=1)
 
         next_text = ScrolledText(next_tab, wrap=tk.WORD, borderwidth=0)
+        _style_text_widget(next_text)
         next_text.pack(fill=tk.BOTH, expand=True)
         self._set_text(
             next_text,
@@ -5136,9 +5244,10 @@ class AutoNoteApp(tk.Tk):
         win.title("コマンド")
         win.geometry("620x430")
         win.minsize(520, 360)
+        win.configure(bg=UI_COLORS["bg"])
         win.transient(self)
 
-        frame = ttk.Frame(win, padding=12)
+        frame = ttk.Frame(win, style="Surface.TFrame", padding=14)
         frame.pack(fill=tk.BOTH, expand=True)
         query_var = tk.StringVar()
         entry = ttk.Entry(frame, textvariable=query_var)
@@ -5150,7 +5259,21 @@ class AutoNoteApp(tk.Tk):
             fill=tk.X, pady=(0, 6)
         )
 
-        listbox = tk.Listbox(frame, height=14)
+        listbox = tk.Listbox(
+            frame,
+            height=14,
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=1,
+            highlightbackground=UI_COLORS["line"],
+            highlightcolor=UI_COLORS["focus"],
+            background=UI_COLORS["text_bg"],
+            foreground=UI_COLORS["ink"],
+            selectbackground=UI_COLORS["accent"],
+            selectforeground="#ffffff",
+            activestyle="none",
+            font=(UI_FONT, 10),
+        )
         listbox.pack(fill=tk.BOTH, expand=True)
 
         visible: list[tuple[str, str, object]] = []
@@ -7181,6 +7304,7 @@ class AutoNoteApp(tk.Tk):
             self._set_text(self.check_text, text)
 
     def _set_text(self, widget: ScrolledText, text: str) -> None:
+        _style_text_widget(widget)
         widget.configure(state=tk.NORMAL)
         widget.delete("1.0", tk.END)
         widget.insert(tk.END, text)
@@ -7230,6 +7354,7 @@ def _show_text_window(parent: tk.Misc, title: str, text: str) -> None:
     frame = ttk.Frame(win, padding=10)
     frame.pack(fill=tk.BOTH, expand=True)
     box = ScrolledText(frame, wrap=tk.WORD)
+    _style_text_widget(box)
     box.pack(fill=tk.BOTH, expand=True)
     box.insert(tk.END, text)
     box.configure(state=tk.DISABLED)

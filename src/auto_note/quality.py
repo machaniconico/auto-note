@@ -1997,6 +1997,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern text area styling",
+            "_style_text_widget",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable Japanese font",
+            'UI_FONT = "Yu Gothic UI"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern input styling",
+            '"TEntry"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern workspace chips",
+            "ChromeChip.TLabel",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI modern command palette surface",
+            "selectbackground=UI_COLORS[\"accent\"]",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern quiet header action",
             "Quiet.TButton",
         )
@@ -2005,7 +2040,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern command search header",
-            "Ctrl+K コマンド検索",
+            "コマンド検索",
         )
     )
     checks.append(
