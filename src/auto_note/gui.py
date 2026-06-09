@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
+import hashlib
 from pathlib import Path
 import os
 import sys
@@ -4121,15 +4122,21 @@ class AutoNoteApp(tk.Tk):
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
             f"サポート {support_text}"
         )
+        buyer_message_matches_package = _home_buyer_send_message_matches_package(
+            buyer_packages[0] if buyer_packages else None,
+            buyer_messages[0] if buyer_messages else None,
+        )
         buyer_state, buyer_summary, buyer_next = _home_buyer_send_summary(
             buyer_packages[0] if buyer_packages else None,
             buyer_messages[0] if buyer_messages else None,
             seller_receipts[0] if seller_receipts else None,
+            message_matches_package=buyer_message_matches_package,
         )
         buyer_action = _home_buyer_send_action(
             buyer_packages[0] if buyer_packages else None,
             buyer_messages[0] if buyer_messages else None,
             seller_receipts[0] if seller_receipts else None,
+            message_matches_package=buyer_message_matches_package,
         )
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
@@ -6880,6 +6887,8 @@ def _home_buyer_send_summary(
     package_path: Path | None,
     message_path: Path | None,
     receipt_path: Path | None,
+    *,
+    message_matches_package: bool | None = None,
 ) -> tuple[str, str, str]:
     package_ok = bool(package_path and package_path.exists())
     message_ok = bool(message_path and message_path.exists())
@@ -6898,6 +6907,12 @@ def _home_buyer_send_summary(
             f"購入者送付: ZIPあり / 送付文なし / 記録 {'あり' if receipt_ok else 'なし'}",
             "次: 販売一括作成で送付文を作成",
         )
+    if message_matches_package is False:
+        return (
+            "warn",
+            f"購入者送付: {package_detail} / 送付文不一致 / 記録 {'あり' if receipt_ok else 'なし'}",
+            "次: 送付文作成で最新ZIP名とSHA-256に合わせる",
+        )
     if not receipt_ok:
         return (
             "info",
@@ -6915,14 +6930,29 @@ def _home_buyer_send_action(
     package_path: Path | None,
     message_path: Path | None,
     receipt_path: Path | None,
+    *,
+    message_matches_package: bool | None = None,
 ) -> str:
     if not (package_path and package_path.exists()):
         return "購入者ZIP作成"
     if not (message_path and message_path.exists()):
         return "送付文作成"
+    if message_matches_package is False:
+        return "送付文作成"
     if not (receipt_path and receipt_path.exists()):
         return "送付記録"
     return "送付文コピー"
+
+
+def _home_buyer_send_message_matches_package(package_path: Path | None, message_path: Path | None) -> bool | None:
+    if not (package_path and package_path.exists() and message_path and message_path.exists()):
+        return None
+    try:
+        message_text = message_path.read_text(encoding="utf-8", errors="replace")
+        package_sha = hashlib.sha256(package_path.read_bytes()).hexdigest()
+    except OSError:
+        return False
+    return package_path.name in message_text and package_sha in message_text
 
 
 def _article_selection_rank(article: Article) -> int:

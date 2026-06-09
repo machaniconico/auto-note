@@ -2417,6 +2417,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package match helper",
+            "_home_buyer_send_message_matches_package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home buyer send next runner",
             "run_home_buyer_send_next_action",
         )
@@ -2650,6 +2657,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home buyer send next button guidance",
             "状態に応じた購入者送付ボタン",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home buyer send ZIP/message match guidance",
+            "送付文と最新ZIP名/SHA-256の照合",
         )
     )
     checks.append(
