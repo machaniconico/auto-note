@@ -43,6 +43,7 @@ from .commercial_setup import (
     commercial_setup_completion,
     commercial_setup_missing_fields,
     commercial_setup_next_field,
+    commercial_setup_next_focus,
     commercial_setup_warnings,
     create_commercial_setup_template,
     format_commercial_setup_apply_result,
@@ -845,11 +846,15 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "commercial_setup_action_var")
             else 0
         )
+        home_commercial_focus_chars = (
+            len(app.home_commercial_focus_var.get()) if hasattr(app, "home_commercial_focus_var") else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
                 + app.home_sales_detail_var.get()
                 + app.home_sales_next_var.get()
+                + app.home_commercial_focus_var.get()
                 + app.home_buyer_send_var.get()
                 + app.home_buyer_send_next_var.get()
             )
@@ -984,6 +989,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"article_focus_chars={article_focus_chars}, "
             f"commercial_setup_items={commercial_setup_items}, "
             f"commercial_setup_chars={commercial_setup_chars}, "
+            f"home_commercial_focus_chars={home_commercial_focus_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_sales_timeline_items={home_sales_timeline_items}, "
@@ -1950,6 +1956,7 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_status_var = tk.StringVar(value="販売準備を確認中です。")
         self.home_sales_detail_var = tk.StringVar(value="")
         self.home_sales_next_var = tk.StringVar(value="")
+        self.home_commercial_focus_var = tk.StringVar(value="販売者次項目を確認中です。")
         self.home_buyer_send_var = tk.StringVar(value="購入者送付を確認中です。")
         self.home_buyer_send_next_var = tk.StringVar(value="")
         self.home_buyer_send_action_var = tk.StringVar(value="購入者ZIP作成")
@@ -2053,6 +2060,16 @@ class AutoNoteApp(tk.Tk):
             anchor=tk.W,
             fill=tk.X,
             pady=(8, 0),
+        )
+        ttk.Label(
+            sales_text,
+            textvariable=self.home_commercial_focus_var,
+            style="Surface.TLabel",
+            wraplength=820,
+        ).pack(
+            anchor=tk.W,
+            fill=tk.X,
+            pady=(4, 0),
         )
         ttk.Label(sales_text, textvariable=self.home_sales_next_var, style="Muted.TLabel", wraplength=820).pack(
             anchor=tk.W,
@@ -5916,14 +5933,17 @@ class AutoNoteApp(tk.Tk):
             message_matches_package=buyer_message_matches_package,
             receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
+        focus = commercial_setup_next_focus(settings)
+        if hasattr(self, "home_commercial_focus_var"):
+            self.home_commercial_focus_var.set(_home_commercial_focus_text(settings))
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
         self.home_buyer_send_next_var.set(buyer_next)
         self._set_home_sales_status_pill("ok" if status == "READY TO VERIFY" else "warn")
         self._set_home_sales_stage(
             "seller",
-            "ok" if seller_remaining == 0 else "warn",
-            f"{complete}/{total}" if seller_remaining == 0 else f"残件 {seller_remaining}",
+            _home_commercial_focus_state(focus.status),
+            f"{complete}/{total}" if focus.status == "ready" else f"{focus.label}",
         )
         self._set_home_sales_stage("release", "ok" if releases else "warn", "あり" if releases else "未作成")
         buyer_package_ready = bool(buyer_packages and not buyer_package_errors)
@@ -9984,6 +10004,29 @@ def _home_first_run_summary(report: FirstRunReport) -> tuple[str, str]:
                 action = item.action or item.gui or item.command or item.detail
                 return summary, f"次: {item.name} - {action}"
     return summary, "次: 受入保存または販売ナビへ進めます。"
+
+
+def _home_commercial_focus_state(status: str) -> str:
+    return {
+        "ready": "ok",
+        "missing": "warn",
+        "warn": "warn",
+        "check": "info",
+    }.get(status, "info")
+
+
+def _home_commercial_focus_text(settings: AppSettings) -> str:
+    focus = commercial_setup_next_focus(settings)
+    label = {
+        "ready": "OK",
+        "missing": "未入力",
+        "warn": "確認",
+        "check": "確認",
+    }.get(focus.status, focus.status.upper())
+    detail = _home_snapshot_brief(focus.detail, 54)
+    if focus.status == "ready":
+        return f"販売者次項目: {focus.label} / {label} - {detail}"
+    return f"販売者次項目: {focus.label} / {label} - {detail} / {focus.gui}"
 
 
 def _home_buyer_send_summary(
