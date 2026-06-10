@@ -452,15 +452,15 @@ class ArticleTests(unittest.TestCase):
 
     def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
         self.assertEqual(UI_FONT_CANDIDATES[:4], ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP"))
-        self.assertGreaterEqual(UI_TEXT_SIZE, 15)
-        self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 14)
-        self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 14)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 16)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 15)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 15)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 24)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 17)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 19)
+        self.assertGreaterEqual(UI_TEXT_SIZE, 16)
+        self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 15)
+        self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 15)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 17)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 16)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 16)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 26)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 18)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 20)
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
         self.assertFalse(_is_crush_prone_font_family("Noto Sans JP"))
@@ -3601,17 +3601,17 @@ tags:
                 + 'UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
-                + "UI_TEXT_SIZE = 15\n"
-                + "UI_BADGE_FONT_SIZE = 14\n"
+                + "UI_TEXT_SIZE = 16\n"
+                + "UI_BADGE_FONT_SIZE = 15\n"
                 + "UI_TREE_ROW_HEIGHT = 76\n"
                 + "UI_NOTEBOOK_TAB_PADDING = (26, 22)\n"
                 + "UI_BUTTON_PADDING = (25, 21)\n"
                 + "UI_ACTION_BUTTON_MIN_WIDTH = 208\n"
                 + "UI_ACTION_BUTTON_MAX_COLUMNS = 4\n"
                 + "UI_TEXT_SPACING_BOTTOM = 8\n"
-                + '"standard": {\n        "text_size": 16,\n'
-                + '"small_text_size": 15,\n        "badge_font_size": 15,\n'
-                + '"large": {\n        "text_size": 19,\n'
+                + '"standard": {\n        "text_size": 17,\n'
+                + '"small_text_size": 16,\n        "badge_font_size": 16,\n'
+                + '"large": {\n        "text_size": 20,\n'
                 + "_font_linespace\n"
                 + "_horizontal_padding\n"
                 + "_button_label_fit_status\n"

@@ -2961,14 +2961,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
-            "UI_TEXT_SIZE = 15",
+            "UI_TEXT_SIZE = 16",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable badge font size",
-            "UI_BADGE_FONT_SIZE = 14",
+            "UI_BADGE_FONT_SIZE = 15",
         )
     )
     checks.append(
@@ -3024,21 +3024,21 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable text",
-            '"standard": {\n        "text_size": 16,',
+            '"standard": {\n        "text_size": 17,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable small text",
-            '"small_text_size": 15,\n        "badge_font_size": 15,',
+            '"small_text_size": 16,\n        "badge_font_size": 16,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI large density safe-display text",
-            '"large": {\n        "text_size": 19,',
+            '"large": {\n        "text_size": 20,',
         )
     )
     checks.append(

@@ -222,9 +222,9 @@ UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic"
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
 UI_MIN_FONT_LINESPACE_RATIO = 1.85
-UI_TEXT_SIZE = 15
-UI_SMALL_TEXT_SIZE = 14
-UI_BADGE_FONT_SIZE = 14
+UI_TEXT_SIZE = 16
+UI_SMALL_TEXT_SIZE = 15
+UI_BADGE_FONT_SIZE = 15
 UI_HEADING_FONT_WEIGHT = "normal"
 UI_BADGE_FONT_WEIGHT = "normal"
 UI_TREE_ROW_HEIGHT = 76
@@ -253,22 +253,10 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 16,
-        "small_text_size": 15,
-        "badge_font_size": 15,
-        "tree_row_height": 84,
-        "notebook_tab_padding": (28, 24),
-        "button_padding": (28, 24),
-        "primary_button_padding": (30, 24),
-        "danger_button_padding": (26, 23),
-        "text_spacing_top": 8,
-        "text_spacing_bottom": 10,
-    },
-    "comfortable": {
         "text_size": 17,
         "small_text_size": 16,
         "badge_font_size": 16,
-        "tree_row_height": 92,
+        "tree_row_height": 94,
         "notebook_tab_padding": (30, 26),
         "button_padding": (30, 26),
         "primary_button_padding": (32, 26),
@@ -276,17 +264,29 @@ UI_DENSITY_VALUES = {
         "text_spacing_top": 9,
         "text_spacing_bottom": 11,
     },
-    "large": {
-        "text_size": 19,
+    "comfortable": {
+        "text_size": 18,
         "small_text_size": 17,
         "badge_font_size": 17,
         "tree_row_height": 104,
-        "notebook_tab_padding": (32, 29),
-        "button_padding": (33, 29),
-        "primary_button_padding": (35, 29),
-        "danger_button_padding": (31, 28),
+        "notebook_tab_padding": (32, 28),
+        "button_padding": (33, 28),
+        "primary_button_padding": (35, 28),
+        "danger_button_padding": (31, 27),
         "text_spacing_top": 10,
-        "text_spacing_bottom": 13,
+        "text_spacing_bottom": 12,
+    },
+    "large": {
+        "text_size": 20,
+        "small_text_size": 18,
+        "badge_font_size": 18,
+        "tree_row_height": 118,
+        "notebook_tab_padding": (36, 32),
+        "button_padding": (37, 32),
+        "primary_button_padding": (39, 32),
+        "danger_button_padding": (35, 31),
+        "text_spacing_top": 11,
+        "text_spacing_bottom": 14,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -1260,6 +1260,7 @@ class AutoNoteApp(tk.Tk):
             padding=(9, 7),
             fieldbackground=UI_COLORS["text_bg"],
             foreground=primary,
+            font=(font, UI_TEXT_SIZE),
             bordercolor=line,
             lightcolor=line,
             darkcolor=line,
