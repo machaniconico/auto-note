@@ -801,6 +801,15 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "home_sales_stage_vars")
             else 0
         )
+        home_sales_timeline_items = (
+            len(app.home_sales_timeline_vars) if hasattr(app, "home_sales_timeline_vars") else 0
+        )
+        home_sales_timeline_chars = (
+            len(app.home_sales_timeline_summary_var.get())
+            + sum(len(value.get()) for value in app.home_sales_timeline_vars.values())
+            if hasattr(app, "home_sales_timeline_vars")
+            else 0
+        )
         home_report_items = len(app.home_reports_tree.get_children()) if hasattr(app, "home_reports_tree") else 0
         home_snapshot_items = len(app.home_snapshot_vars) if hasattr(app, "home_snapshot_vars") else 0
         home_snapshot_chars = (
@@ -917,6 +926,8 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"commercial_setup_chars={commercial_setup_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
+            f"home_sales_timeline_items={home_sales_timeline_items}, "
+            f"home_sales_timeline_chars={home_sales_timeline_chars}, "
             f"home_report_items={home_report_items}, "
             f"home_snapshot_items={home_snapshot_items}, "
             f"home_snapshot_chars={home_snapshot_chars}, "
@@ -1430,6 +1441,7 @@ class AutoNoteApp(tk.Tk):
             "home_snapshot_pills",
             "home_progress_pills",
             "home_sales_stage_pills",
+            "home_sales_timeline_pills",
         ):
             collection = getattr(self, name, {})
             if isinstance(collection, dict):
@@ -1879,6 +1891,7 @@ class AutoNoteApp(tk.Tk):
         self.home_support_next_button_var = tk.StringVar(
             value=_home_support_next_button_label("問い合わせ一式を作成")
         )
+        self.home_sales_timeline_summary_var = tk.StringVar(value="販売準備タイムラインを確認中です。")
         sales_status_row = ttk.Frame(sales_text, style="Surface.TFrame")
         sales_status_row.pack(fill=tk.X)
         self.home_sales_status_pill = tk.Label(
@@ -1978,6 +1991,73 @@ class AutoNoteApp(tk.Tk):
             fill=tk.X,
             pady=(3, 0),
         )
+        sales_timeline = ttk.Frame(sales_text, style="Surface.TFrame")
+        sales_timeline.pack(fill=tk.X, pady=(10, 0))
+        timeline_header = ttk.Frame(sales_timeline, style="Surface.TFrame")
+        timeline_header.pack(fill=tk.X, pady=(0, 6))
+        ttk.Label(timeline_header, text="販売準備タイムライン", style="Title.TLabel").pack(side=tk.LEFT)
+        ttk.Label(
+            timeline_header,
+            textvariable=self.home_sales_timeline_summary_var,
+            style="Muted.TLabel",
+            wraplength=560,
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 0))
+        self.home_sales_timeline_vars: dict[str, tk.StringVar] = {}
+        self.home_sales_timeline_pills: dict[str, tk.Label] = {}
+        self.home_sales_timeline_buttons: dict[str, ttk.Button] = {}
+        timeline_grid = ttk.Frame(sales_timeline, style="Surface.TFrame")
+        timeline_grid.pack(fill=tk.X)
+        timeline_items = (
+            ("seller", "販売者情報", self.focus_next_commercial_missing_field),
+            ("release", "配布ZIP", self.run_preflight_create_release_to_tab),
+            ("materials", "販売素材", self.create_sales_materials_action),
+            ("handoff", "販売一式", self.create_sales_handoff_action),
+            ("buyer", "購入者ZIP/送付文", self.run_home_buyer_send_next_action),
+            ("send", "送付前照合", self.run_buyer_send_readiness_to_tab),
+            ("launch", "販売直前", self.run_sales_launch_to_tab),
+            ("full", "一括チェック", self.run_release_check_full_action),
+        )
+        for index, (key, title, command) in enumerate(timeline_items):
+            row_index, column_index = divmod(index, 2)
+            timeline_grid.columnconfigure(column_index, weight=1, uniform="sales_timeline")
+            item = ttk.Frame(timeline_grid, style="Surface.TFrame")
+            item.grid(
+                row=row_index,
+                column=column_index,
+                sticky="ew",
+                padx=(0 if column_index == 0 else 10, 0),
+                pady=(0 if row_index == 0 else 6, 0),
+            )
+            pill = tk.Label(
+                item,
+                text="CHECK",
+                bg="#8a4f00",
+                fg="#ffffff",
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
+                padx=8,
+                pady=4,
+                width=8,
+            )
+            pill.grid(row=0, column=0, rowspan=2, sticky="nsw")
+            ttk.Label(item, text=title, style="Surface.TLabel").grid(
+                row=0,
+                column=1,
+                sticky="w",
+                padx=(8, 0),
+            )
+            value = tk.StringVar(value="確認中")
+            self.home_sales_timeline_vars[key] = value
+            self.home_sales_timeline_pills[key] = pill
+            ttk.Label(item, textvariable=value, style="Muted.TLabel", wraplength=330).grid(
+                row=1,
+                column=1,
+                sticky="ew",
+                padx=(8, 0),
+            )
+            button = ttk.Button(item, text="開く", command=command)
+            self.home_sales_timeline_buttons[key] = button
+            button.grid(row=0, column=2, rowspan=2, sticky="e", padx=(8, 0))
+            item.columnconfigure(1, weight=1)
         sales_actions = ttk.Frame(sales_box, style="Surface.TFrame")
         sales_actions.pack(side=tk.RIGHT, fill=tk.Y, padx=(12, 0))
         sales_action_items = (
@@ -5748,6 +5828,22 @@ class AutoNoteApp(tk.Tk):
             "記録あり" if send_ready else ("照合待ち" if buyer_ready else "未準備"),
         )
         self._set_home_sales_stage("support", support_state, support_text)
+        self._refresh_home_sales_timeline(
+            complete=complete,
+            total=total,
+            seller_remaining=seller_remaining,
+            releases=releases,
+            handoffs=handoffs,
+            buyer_packages=buyer_packages,
+            buyer_messages=buyer_messages,
+            materials=materials,
+            latest_buyer_package=latest_buyer_package,
+            latest_buyer_message=latest_buyer_message,
+            latest_seller_receipt=latest_seller_receipt,
+            buyer_package_errors=buyer_package_errors,
+            buyer_message_matches_package=buyer_message_matches_package,
+            buyer_receipt_matches_delivery=buyer_receipt_matches_delivery,
+        )
         if self._home_sales_next_step is None:
             self.home_sales_next_var.set("次: 販売ナビで詳細検証します。")
             return
@@ -5788,6 +5884,144 @@ class AutoNoteApp(tk.Tk):
         if pill is not None:
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
+
+    def _set_home_sales_timeline_step(
+        self,
+        key: str,
+        state: str,
+        text: str,
+        *,
+        enabled: bool = True,
+    ) -> None:
+        value = getattr(self, "home_sales_timeline_vars", {}).get(key)
+        pill = getattr(self, "home_sales_timeline_pills", {}).get(key)
+        button = getattr(self, "home_sales_timeline_buttons", {}).get(key)
+        if value is not None:
+            value.set(text)
+        if pill is not None:
+            pill_text, bg, fg = _home_sales_indicator_style(state)
+            pill.configure(text=pill_text, bg=bg, fg=fg)
+        if button is not None:
+            button.configure(state=tk.NORMAL if enabled else tk.DISABLED)
+
+    def _refresh_home_sales_timeline(
+        self,
+        *,
+        complete: int,
+        total: int,
+        seller_remaining: int,
+        releases: list[Path],
+        handoffs: list[Path],
+        buyer_packages: list[Path],
+        buyer_messages: list[Path],
+        materials: list[Path],
+        latest_buyer_package: Path | None,
+        latest_buyer_message: Path | None,
+        latest_seller_receipt: Path | None,
+        buyer_package_errors: list[str],
+        buyer_message_matches_package: bool | None,
+        buyer_receipt_matches_delivery: bool | None,
+    ) -> None:
+        if not hasattr(self, "home_sales_timeline_vars"):
+            return
+
+        timeline: list[tuple[str, str, str, str]] = []
+
+        def put(key: str, title: str, state: str, detail: str) -> None:
+            self._set_home_sales_timeline_step(key, state, detail)
+            timeline.append((key, title, state, detail))
+
+        put(
+            "seller",
+            "販売者情報",
+            "ok" if seller_remaining == 0 else "warn",
+            f"完了 {complete}/{total}" if seller_remaining == 0 else f"残件 {seller_remaining} / {complete}/{total}",
+        )
+        put(
+            "release",
+            "配布ZIP",
+            "ok" if releases else "warn",
+            f"最新 {_format_mtime(releases[0])}" if releases else "未作成",
+        )
+        put(
+            "materials",
+            "販売素材",
+            "ok" if materials else "warn",
+            f"最新 {_format_mtime(materials[0])}" if materials else "未作成",
+        )
+        put(
+            "handoff",
+            "販売一式",
+            "ok" if handoffs else "warn",
+            f"最新 {_format_mtime(handoffs[0])}" if handoffs else "未作成",
+        )
+
+        buyer_package_ready = bool(latest_buyer_package and latest_buyer_package.exists() and not buyer_package_errors)
+        buyer_message_ready = bool(latest_buyer_message and latest_buyer_message.exists())
+        if buyer_package_errors:
+            buyer_state = "fail"
+            buyer_detail = f"ZIP検証NG {len(buyer_package_errors)}件"
+        elif buyer_package_ready and buyer_message_ready and buyer_message_matches_package is False:
+            buyer_state = "fail"
+            buyer_detail = "送付文のZIP/SHA不一致"
+        elif buyer_package_ready and buyer_message_ready:
+            buyer_state = "ok"
+            buyer_detail = "ZIP+送付文OK"
+        elif buyer_package_ready:
+            buyer_state = "info"
+            buyer_detail = "送付文待ち"
+        else:
+            buyer_state = "warn"
+            buyer_detail = "購入者ZIP待ち"
+        put("buyer", "購入者ZIP/送付文", buyer_state, buyer_detail)
+
+        if buyer_message_matches_package is False:
+            send_state = "fail"
+            send_detail = "送付文のZIP/SHA不一致"
+        elif buyer_receipt_matches_delivery is False:
+            send_state = "fail"
+            send_detail = "送付記録のZIP/SHA不一致"
+        elif buyer_receipt_matches_delivery is True:
+            send_state = "ok"
+            send_detail = "送付記録OK"
+        elif buyer_package_ready and buyer_message_ready:
+            send_state = "info"
+            send_detail = "送付前照合待ち"
+        else:
+            send_state = "warn"
+            send_detail = "購入者ZIP/送付文待ち"
+        put("send", "送付前照合", send_state, send_detail)
+
+        launch_checks = list_sales_launch_checklists(self.project_dir)
+        if launch_checks:
+            launch_status = _home_report_status("販売直前", launch_checks[0])
+            launch_state = _home_report_status_state(launch_status)
+            launch_detail = f"{launch_status} / {_format_mtime(launch_checks[0])}"
+        else:
+            launch_state = "warn"
+            launch_detail = "未保存"
+        put("launch", "販売直前", launch_state, launch_detail)
+
+        release_checks = _list_release_check_reports(self.project_dir)
+        if release_checks:
+            full_status = _home_report_status("一括チェック", release_checks[0])
+            full_state = _home_report_status_state(full_status)
+            full_detail = f"{full_status} / {_format_mtime(release_checks[0])}"
+        else:
+            full_state = "warn"
+            full_detail = "未実行"
+        put("full", "一括チェック", full_state, full_detail)
+
+        done = sum(1 for _key, _title, state, _detail in timeline if state == "ok")
+        blocked = sum(1 for _key, _title, state, _detail in timeline if state == "fail")
+        next_title = next((title for _key, title, state, _detail in timeline if state != "ok"), "販売ナビ")
+        if blocked:
+            summary = f"{done}/{len(timeline)} 完了 / NG {blocked} / 次: {next_title}"
+        elif done == len(timeline):
+            summary = f"{done}/{len(timeline)} 完了 / 販売ナビで最終確認"
+        else:
+            summary = f"{done}/{len(timeline)} 完了 / 次: {next_title}"
+        self.home_sales_timeline_summary_var.set(summary)
 
     def _set_home_buyer_send_status(self, state: str, text: str) -> None:
         if not hasattr(self, "home_buyer_send_var"):
@@ -9717,6 +9951,16 @@ def _home_report_status_tag(status: str) -> str:
     if status == "なし":
         return "missing"
     return "check"
+
+
+def _home_report_status_state(status: str) -> str:
+    if status == "OK":
+        return "ok"
+    if status == "NG":
+        return "fail"
+    if status == "なし":
+        return "warn"
+    return "info"
 
 
 def _home_report_summary(prefix: str, label: str, path: Path, status: str) -> str:

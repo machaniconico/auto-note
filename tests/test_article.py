@@ -3170,6 +3170,8 @@ tags: note
         self.assertIn("publish_ready_items=", text)
         self.assertIn("home_sales_chars=", text)
         self.assertIn("home_sales_stage_chars=", text)
+        self.assertIn("home_sales_timeline_items=", text)
+        self.assertIn("home_sales_timeline_chars=", text)
         self.assertIn("home_status_badge_chars=", text)
         self.assertIn("home_updated_chars=", text)
         self.assertIn("home_primary_button_chars=", text)
@@ -3532,7 +3534,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
-                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n問い合わせ票\nopen_latest_buyer_support_request_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\n_buyer_support_request_for\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nrun_release_check_full_action\nthreading.Thread\nrelease-check-\n販売前一括チェック\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
+                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\nhome_sales_timeline_vars\nhome_sales_timeline_summary_var\n販売準備タイムライン\n_set_home_sales_timeline_step\n_refresh_home_sales_timeline\nhome_sales_timeline_items=\nhome_sales_timeline_chars=\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n問い合わせ票\nopen_latest_buyer_support_request_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\n_buyer_support_request_for\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nrun_release_check_full_action\nthreading.Thread\nrelease-check-\n販売前一括チェック\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
                 encoding="utf-8",
             )
             gui_fixture = project / "src" / "auto_note" / "gui.py"
@@ -3883,7 +3885,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nNoto Sans JP` / `メイリオ\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nNoto Sans JP` / `メイリオ\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3914,12 +3916,13 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n販売準備タイムライン\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
                 "check-release.ps1 -Full\n"
                 "販売前一括チェック\n"
+                "販売準備タイムライン\n"
                 "sales-finalize --project-dir . --strict --gui-smoke\n"
                 "sales-launch --project-dir . --report\n"
                 "止める条件\n",
@@ -4009,6 +4012,7 @@ tags:
         self.assertIn("release candidate handoff:fail", product_details)
         self.assertIn("RC handoff release check:fail", product_details)
         self.assertIn("RC handoff GUI full release check:fail", product_details)
+        self.assertIn("RC handoff home sales timeline guidance:fail", product_details)
         self.assertIn("RC handoff sales evidence:fail", product_details)
         self.assertIn("RC handoff sales launch evidence:fail", product_details)
         self.assertIn("RC handoff stop conditions:fail", product_details)
@@ -4186,6 +4190,10 @@ tags:
         self.assertIn("GUI home sales summary panel:fail", product_details)
         self.assertIn("GUI home sales status pill:fail", product_details)
         self.assertIn("GUI home sales stage indicators:fail", product_details)
+        self.assertIn("GUI home sales timeline panel:fail", product_details)
+        self.assertIn("GUI home sales timeline summary:fail", product_details)
+        self.assertIn("GUI home sales timeline updater:fail", product_details)
+        self.assertIn("GUI home sales timeline refresh:fail", product_details)
         self.assertIn("GUI home support send stage:fail", product_details)
         self.assertIn("GUI home support send readiness helper:fail", product_details)
         self.assertIn("GUI home support send detail:fail", product_details)
@@ -4504,6 +4512,8 @@ tags:
         self.assertIn("GUI first-run actionable filter renderer:fail", product_details)
         self.assertIn("GUI first-run actionable empty state:fail", product_details)
         self.assertIn("GUI smoke home sales includes buyer send:fail", product_details)
+        self.assertIn("GUI smoke home sales timeline count:fail", product_details)
+        self.assertIn("GUI smoke home sales timeline chars:fail", product_details)
         self.assertIn("GUI home sales next action:fail", product_details)
         self.assertIn("GUI home sales lightweight summary:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
@@ -4592,6 +4602,7 @@ tags:
         self.assertIn("README release check report guidance:fail", product_details)
         self.assertIn("README sales evidence manifest guidance:fail", product_details)
         self.assertIn("README RC handoff guidance:fail", product_details)
+        self.assertIn("README home sales timeline guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
         self.assertIn("README note login safety guide guidance:fail", product_details)
         self.assertIn("README note login default browser guidance:fail", product_details)
@@ -4627,6 +4638,7 @@ tags:
         self.assertIn("product readiness commercial policy review command:fail", product_details)
         self.assertIn("product readiness commercial setup command:fail", product_details)
         self.assertIn("product readiness home sales summary guidance:fail", product_details)
+        self.assertIn("product readiness home sales timeline guidance:fail", product_details)
         self.assertIn("product readiness home sales lightweight guidance:fail", product_details)
         self.assertIn("product readiness commercial setup template command:fail", product_details)
         self.assertIn("product readiness recovery report guidance:fail", product_details)
@@ -4702,6 +4714,7 @@ tags:
         self.assertIn("release candidate handoff:pass", launcher_details)
         self.assertIn("RC handoff release check:pass", launcher_details)
         self.assertIn("RC handoff GUI full release check:pass", launcher_details)
+        self.assertIn("RC handoff home sales timeline guidance:pass", launcher_details)
         self.assertIn("RC handoff sales evidence:pass", launcher_details)
         self.assertIn("RC handoff sales launch evidence:pass", launcher_details)
         self.assertIn("RC handoff stop conditions:pass", launcher_details)
@@ -4866,6 +4879,10 @@ tags:
         self.assertIn("GUI home sales summary panel:pass", launcher_details)
         self.assertIn("GUI home sales status pill:pass", launcher_details)
         self.assertIn("GUI home sales stage indicators:pass", launcher_details)
+        self.assertIn("GUI home sales timeline panel:pass", launcher_details)
+        self.assertIn("GUI home sales timeline summary:pass", launcher_details)
+        self.assertIn("GUI home sales timeline updater:pass", launcher_details)
+        self.assertIn("GUI home sales timeline refresh:pass", launcher_details)
         self.assertIn("GUI home support send stage:pass", launcher_details)
         self.assertIn("GUI home support send readiness helper:pass", launcher_details)
         self.assertIn("GUI home support send detail:pass", launcher_details)
@@ -5184,6 +5201,8 @@ tags:
         self.assertIn("GUI first-run actionable filter renderer:pass", launcher_details)
         self.assertIn("GUI first-run actionable empty state:pass", launcher_details)
         self.assertIn("GUI smoke home sales includes buyer send:pass", launcher_details)
+        self.assertIn("GUI smoke home sales timeline count:pass", launcher_details)
+        self.assertIn("GUI smoke home sales timeline chars:pass", launcher_details)
         self.assertIn("GUI home sales next action:pass", launcher_details)
         self.assertIn("GUI home sales lightweight summary:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
@@ -5273,6 +5292,7 @@ tags:
         self.assertIn("README release check report guidance:pass", launcher_details)
         self.assertIn("README sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("README RC handoff guidance:pass", launcher_details)
+        self.assertIn("README home sales timeline guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
         self.assertIn("README note login safety guide guidance:pass", launcher_details)
         self.assertIn("README note login default browser guidance:pass", launcher_details)
@@ -5308,6 +5328,7 @@ tags:
         self.assertIn("product readiness commercial policy review command:pass", launcher_details)
         self.assertIn("product readiness commercial setup command:pass", launcher_details)
         self.assertIn("product readiness home sales summary guidance:pass", launcher_details)
+        self.assertIn("product readiness home sales timeline guidance:pass", launcher_details)
         self.assertIn("product readiness home sales lightweight guidance:pass", launcher_details)
         self.assertIn("product readiness recovery report guidance:pass", launcher_details)
         self.assertIn("product readiness home recent reports guidance:pass", launcher_details)

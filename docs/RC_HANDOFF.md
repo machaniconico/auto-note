@@ -22,7 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release.ps1 
 確認すること:
 
 - `auto-note.lnk` または `auto-note-gui.bat` でGUIが起動する
-- ホームの販売準備で `販売者情報`, `配布ZIP`, `購入者ZIP`, `送付準備` の4工程が読める
+- ホームの `販売準備タイムライン` で `販売者情報`, `配布ZIP`, `販売素材`, `販売一式`, `購入者ZIP/送付文`, `送付前照合`, `販売直前`, `一括チェック` の8工程が読める
 - GUIの `販売前一括チェック` から `check-release.ps1 -Full` 相当をバックグラウンド実行でき、`.auto-note\reports\release-check-*.txt` がホームの `直近レポート` に残る
 - `noteログイン` が普段使う既定ブラウザで開く
 - `診断` タブの `トラブル診断`, `出荷前チェック`, `出荷ZIP作成` が実行できる
@@ -83,6 +83,5 @@ auto-note sales-launch --project-dir . --report
 
 RC中は新機能を増やしすぎないようにします。以下は `v0.2` 候補です。
 
-- ホームの販売準備をさらに詳細なタイムラインにする
 - 販売ページ向けスクリーンショット生成を自動化する
 - 購入者向け初回ウィザードを別画面として磨く

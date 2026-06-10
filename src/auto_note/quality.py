@@ -82,6 +82,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff home sales timeline guidance",
+            "販売準備タイムライン",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
             "RC handoff sales evidence",
             "sales-finalize --project-dir . --strict --gui-smoke",
         )
@@ -2379,8 +2386,50 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales timeline panel",
+            "home_sales_timeline_vars",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales timeline summary",
+            "home_sales_timeline_summary_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales timeline updater",
+            "_set_home_sales_timeline_step",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales timeline refresh",
+            "_refresh_home_sales_timeline",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke home sales includes buyer send",
             "home_buyer_send_var.get()",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home sales timeline count",
+            "home_sales_timeline_items=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home sales timeline chars",
+            "home_sales_timeline_chars=",
         )
     )
     checks.append(
@@ -5004,6 +5053,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README home sales timeline guidance",
+            "販売準備タイムライン",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README support send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
         )
@@ -5188,6 +5244,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home sales summary guidance",
             "販売準備サマリー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home sales timeline guidance",
+            "販売準備タイムライン",
         )
     )
     checks.append(
