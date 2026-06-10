@@ -82,6 +82,7 @@ from auto_note.gui import (
     _home_buyer_send_button_label,
     _home_buyer_send_message_matches_package,
     _home_buyer_send_receipt_matches_delivery,
+    _home_commercial_focus_button_label,
     _home_commercial_focus_state,
     _home_commercial_focus_text,
     _home_first_run_summary,
@@ -410,6 +411,7 @@ class ArticleTests(unittest.TestCase):
     def test_home_commercial_focus_text_surfaces_next_seller_step(self) -> None:
         missing_text = _home_commercial_focus_text(DEFAULT_SETTINGS)
         self.assertEqual(_home_commercial_focus_state("missing"), "warn")
+        self.assertEqual(_home_commercial_focus_button_label("missing"), "販売者次へ")
         self.assertIn("販売者次項目: 販売者/屋号", missing_text)
         self.assertIn("未入力", missing_text)
         self.assertIn("設定 > 販売者/屋号", missing_text)
@@ -431,6 +433,7 @@ class ArticleTests(unittest.TestCase):
         ready = replace(warned, sales_channel_url="https://example.com/sales")
         ready_text = _home_commercial_focus_text(ready)
         self.assertEqual(_home_commercial_focus_state("ready"), "ok")
+        self.assertEqual(_home_commercial_focus_button_label("ready"), "販売素材へ")
         self.assertIn("販売者次項目: 販売素材へ反映", ready_text)
         self.assertIn("OK", ready_text)
 
@@ -3582,6 +3585,7 @@ tags: note
         self.assertIn("publish_ready_items=", text)
         self.assertIn("home_sales_chars=", text)
         self.assertIn("home_commercial_focus_chars=", text)
+        self.assertIn("home_commercial_focus_button_chars=", text)
         self.assertIn("home_sales_stage_chars=", text)
         self.assertIn("home_sales_timeline_items=", text)
         self.assertIn("home_sales_timeline_chars=", text)
@@ -4250,7 +4254,11 @@ tags:
                 gui_fixture.read_text(encoding="utf-8")
                 + "home_buyer_send_var.get()\n"
                 + "home_commercial_focus_chars=\n"
+                + "home_commercial_focus_button_chars=\n"
                 + "home_commercial_focus_var\n"
+                + "home_commercial_focus_button_var\n"
+                + "_home_commercial_focus_button_label\n"
+                + "run_home_commercial_focus_action\n"
                 + "_home_commercial_focus_text\n"
                 + "home_buyer_send_var\n"
                 + "_home_buyer_send_summary\n"
@@ -5050,11 +5058,14 @@ tags:
         self.assertIn("GUI first-run actionable empty state:fail", product_details)
         self.assertIn("GUI smoke home sales includes buyer send:fail", product_details)
         self.assertIn("GUI smoke home commercial focus:fail", product_details)
+        self.assertIn("GUI smoke home commercial focus button:fail", product_details)
         self.assertIn("GUI smoke home sales timeline count:fail", product_details)
         self.assertIn("GUI smoke home sales timeline chars:fail", product_details)
         self.assertIn("GUI home sales next action:fail", product_details)
         self.assertIn("GUI home sales lightweight summary:fail", product_details)
         self.assertIn("GUI home commercial setup focus summary:fail", product_details)
+        self.assertIn("GUI home commercial setup dynamic action:fail", product_details)
+        self.assertIn("GUI home commercial setup dynamic button:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
         self.assertIn("GUI sales handoff buyer extract action:fail", product_details)
         self.assertIn("GUI sales handoff buyer verify action:fail", product_details)
@@ -5803,11 +5814,14 @@ tags:
         self.assertIn("GUI first-run actionable empty state:pass", launcher_details)
         self.assertIn("GUI smoke home sales includes buyer send:pass", launcher_details)
         self.assertIn("GUI smoke home commercial focus:pass", launcher_details)
+        self.assertIn("GUI smoke home commercial focus button:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline count:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline chars:pass", launcher_details)
         self.assertIn("GUI home sales next action:pass", launcher_details)
         self.assertIn("GUI home sales lightweight summary:pass", launcher_details)
         self.assertIn("GUI home commercial setup focus summary:pass", launcher_details)
+        self.assertIn("GUI home commercial setup dynamic action:pass", launcher_details)
+        self.assertIn("GUI home commercial setup dynamic button:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
         self.assertIn("GUI sales handoff buyer extract action:pass", launcher_details)
         self.assertIn("GUI sales handoff buyer verify action:pass", launcher_details)

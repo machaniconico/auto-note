@@ -2911,6 +2911,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home commercial focus button",
+            "home_commercial_focus_button_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke home sales timeline count",
             "home_sales_timeline_items=",
         )
@@ -4929,6 +4936,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home commercial setup focus summary",
             "_home_commercial_focus_text",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home commercial setup dynamic action",
+            "run_home_commercial_focus_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home commercial setup dynamic button",
+            "home_commercial_focus_button_var",
         )
     )
     checks.append(

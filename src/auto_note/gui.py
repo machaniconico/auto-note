@@ -849,6 +849,11 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         home_commercial_focus_chars = (
             len(app.home_commercial_focus_var.get()) if hasattr(app, "home_commercial_focus_var") else 0
         )
+        home_commercial_focus_button_chars = (
+            len(app.home_commercial_focus_button_var.get())
+            if hasattr(app, "home_commercial_focus_button_var")
+            else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
@@ -990,6 +995,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"commercial_setup_items={commercial_setup_items}, "
             f"commercial_setup_chars={commercial_setup_chars}, "
             f"home_commercial_focus_chars={home_commercial_focus_chars}, "
+            f"home_commercial_focus_button_chars={home_commercial_focus_button_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_sales_timeline_items={home_sales_timeline_items}, "
@@ -1957,6 +1963,7 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_detail_var = tk.StringVar(value="")
         self.home_sales_next_var = tk.StringVar(value="")
         self.home_commercial_focus_var = tk.StringVar(value="販売者次項目を確認中です。")
+        self.home_commercial_focus_button_var = tk.StringVar(value="販売者次へ")
         self.home_buyer_send_var = tk.StringVar(value="購入者送付を確認中です。")
         self.home_buyer_send_next_var = tk.StringVar(value="")
         self.home_buyer_send_action_var = tk.StringVar(value="購入者ZIP作成")
@@ -2148,7 +2155,7 @@ class AutoNoteApp(tk.Tk):
         sales_actions.pack(side=tk.RIGHT, fill=tk.Y, padx=(12, 0))
         sales_action_items = (
             ("次を実行", self.run_home_sales_next_action, "Primary.TButton"),
-            ("販売者情報へ", self.focus_next_commercial_missing_field, None),
+            (self.home_commercial_focus_button_var, self.run_home_commercial_focus_action, None),
             ("販売ナビ", self.run_sales_plan_to_tab, None),
             ("販売素材", self.create_sales_materials_action, None),
             ("掲載画像", self.create_sales_screenshots_action, None),
@@ -5936,6 +5943,8 @@ class AutoNoteApp(tk.Tk):
         focus = commercial_setup_next_focus(settings)
         if hasattr(self, "home_commercial_focus_var"):
             self.home_commercial_focus_var.set(_home_commercial_focus_text(settings))
+        if hasattr(self, "home_commercial_focus_button_var"):
+            self.home_commercial_focus_button_var.set(_home_commercial_focus_button_label(focus.status))
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
         self.home_buyer_send_next_var.set(buyer_next)
@@ -6332,6 +6341,14 @@ class AutoNoteApp(tk.Tk):
             self.verify_latest_buyer_delivery_action()
         else:
             self.run_sales_plan_to_tab()
+
+    def run_home_commercial_focus_action(self) -> None:
+        settings = self._settings_preview_from_controls() if hasattr(self, "seller_name_var") else self.settings
+        focus = commercial_setup_next_focus(settings)
+        if focus.status == "ready":
+            self.create_sales_materials_action()
+            return
+        self.focus_next_commercial_missing_field()
 
     def run_home_buyer_send_next_action(self) -> None:
         self._refresh_home_sales_summary()
@@ -10027,6 +10044,12 @@ def _home_commercial_focus_text(settings: AppSettings) -> str:
     if focus.status == "ready":
         return f"販売者次項目: {focus.label} / {label} - {detail}"
     return f"販売者次項目: {focus.label} / {label} - {detail} / {focus.gui}"
+
+
+def _home_commercial_focus_button_label(status: str) -> str:
+    if status == "ready":
+        return "販売素材へ"
+    return "販売者次へ"
 
 
 def _home_buyer_send_summary(
