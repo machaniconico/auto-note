@@ -2664,6 +2664,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         )
     )
     checks.append(
+        _text_not_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI no fixed 9pt status labels",
+            "font=(UI_FONT, 9",
+        )
+    )
+    checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tree row height",
@@ -5007,6 +5014,18 @@ def _text_contains_check(path: Path, name: str, needle: str) -> QualityCheck:
     if needle not in text:
         return QualityCheck(name, "fail", f"missing text: {needle}")
     return QualityCheck(name, "pass", "present")
+
+
+def _text_not_contains_check(path: Path, name: str, needle: str) -> QualityCheck:
+    if not path.exists():
+        return QualityCheck(name, "fail", f"file not found: {path}")
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return QualityCheck(name, "fail", str(exc))
+    if needle in text:
+        return QualityCheck(name, "fail", f"unexpected text: {needle}")
+    return QualityCheck(name, "pass", "absent")
 
 
 def _version_consistency_check(pyproject: Path, init_file: Path) -> QualityCheck:
