@@ -3611,7 +3611,7 @@ class AutoNoteApp(tk.Tk):
             "レビュー保存": self.create_sales_review_report_action,
             "販売直前": self.run_sales_launch_to_tab,
             "直前保存": self.create_sales_launch_checklist_action,
-            "noteログイン": self.open_note_login_action,
+            "noteログイン": self.show_note_login_safety_action,
             "次の一手": self.run_home_primary_action,
         }
         action = actions.get(item.name)
@@ -7583,7 +7583,7 @@ class AutoNoteApp(tk.Tk):
         elif title == "配布ZIPを作成/検証する":
             self.run_preflight_create_release_to_tab()
         elif title == "noteログインを確認する":
-            self.open_note_login_action()
+            self.show_note_login_safety_action()
         elif title == "投稿ヘルパーでnoteへ貼り付ける":
             self.open_helper()
         elif title == "公開後URLを保存する":

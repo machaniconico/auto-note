@@ -285,8 +285,10 @@ def _note_login_item(quickstart: QuickstartReport) -> FirstRunItem:
         "noteログイン",
         "info",
         item.detail if item else "login state is checked in the normal browser",
-        item.action if item else "普段使うブラウザで note.com にログインしてください。",
-        "ヘッダー > noteログイン",
+        item.action
+        if item
+        else "GUIのログイン安全ガイドを確認し、普段使うブラウザで note.com にログインしてください。",
+        "ホーム > ログイン安全ガイド / ヘッダー > noteログイン",
         "auto-note login --default-browser",
     )
 

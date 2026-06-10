@@ -274,7 +274,7 @@ def _note_login_item() -> QuickstartItem:
         "note login",
         "info",
         "login state is checked in the normal browser",
-        "GUIのnoteログイン、または普段使うブラウザで note.com にログインしてください。",
+        "GUIのログイン安全ガイドを確認し、noteログイン、または普段使うブラウザで note.com にログインしてください。",
     )
 
 

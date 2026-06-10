@@ -1370,6 +1370,7 @@ tags: note
         self.assertIn("Quickstart report", text)
         self.assertIn("posting helper", text)
         self.assertIn("Generated helper", text)
+        self.assertIn("ログイン安全ガイド", text)
         self.assertIn(article.name, text)
         self.assertNotIn(article.name, public_text)
         self.assertIn("article-001.md", public_text)
@@ -1401,6 +1402,11 @@ tags: note
         self.assertIn("最初の記事", item_names)
         self.assertIn("投稿ヘルパー", item_names)
         self.assertIn("問い合わせ一式", item_names)
+        note_item = next(item for item in report.items if item.name == "noteログイン")
+        self.assertIn("ログイン安全ガイド", note_item.action)
+        self.assertIn("ログイン安全ガイド", note_item.gui)
+        self.assertIn("auto-note login --default-browser", note_item.command)
+        self.assertIn("ログイン安全ガイド", text)
         self.assertIn("auto-note self-test --project-dir . --report", text)
         self.assertNotIn(str(project), text)
         self.assertIn("First-run checklist", cli_output.getvalue())
@@ -3439,7 +3445,11 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "first_run.py").write_text(
-                "is_support_bundle_stale\n",
+                "is_support_bundle_stale\nホーム > ログイン安全ガイド\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "quickstart.py").write_text(
+                "ログイン安全ガイド\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "acceptance.py").write_text(
@@ -3548,6 +3558,8 @@ tags:
                 + "open_note_login_action\n"
                 + "show_note_login_safety_action\n"
                 + "ログイン安全ガイド\n"
+                + '"noteログイン": self.show_note_login_safety_action\n'
+                + 'elif title == "noteログインを確認する":\n            self.show_note_login_safety_action()\n'
                 + "auto-note login --default-browser\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
@@ -3813,7 +3825,7 @@ tags:
             )
             (project / "src" / "auto_note" / "release.py").write_text(
                 "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\n"
-                "auto-note safe display\nauto-note-gui.bat --safe-display\n"
+                "ログイン安全ガイド\nauto-note safe display\nauto-note-gui.bat --safe-display\n"
                 "starter-pack\nauto-note repair\nauto-note troubleshoot\n"
                 "auto-note acceptance\nauto-note acceptance --project-dir . --full\n",
                 encoding="utf-8",
@@ -3899,6 +3911,8 @@ tags:
         self.assertIn("diagnostic support bundle age summary:fail", product_details)
         self.assertIn("diagnostic support bundle freshness summary:fail", product_details)
         self.assertIn("first-run support bundle freshness warning:fail", product_details)
+        self.assertIn("quickstart note login safety guide:fail", product_details)
+        self.assertIn("first-run note login safety guide:fail", product_details)
         self.assertIn("acceptance support bundle freshness warning:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
@@ -3957,6 +3971,7 @@ tags:
         self.assertIn("CI GUI smoke:fail", product_details)
         self.assertIn("CI GUI safe display smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
+        self.assertIn("release first-run note login safety guidance:fail", product_details)
         self.assertIn("release safe display shortcut guidance:fail", product_details)
         self.assertIn("release safe display CLI guidance:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
@@ -4173,6 +4188,8 @@ tags:
         self.assertIn("GUI note login safety guide text:fail", product_details)
         self.assertIn("GUI note login default browser action:fail", product_details)
         self.assertIn("GUI note login safety guide action:fail", product_details)
+        self.assertIn("GUI first-run note login safety action:fail", product_details)
+        self.assertIn("GUI action-plan note login safety action:fail", product_details)
         self.assertIn("GUI command palette note login action:fail", product_details)
         self.assertIn("GUI command palette login safety action:fail", product_details)
         self.assertIn("GUI command palette UI density large action:fail", product_details)
@@ -4618,6 +4635,7 @@ tags:
         self.assertIn("RC handoff stop conditions:pass", launcher_details)
         self.assertIn("release checklist safe display smoke guidance:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
+        self.assertIn("release first-run note login safety guidance:pass", launcher_details)
         self.assertIn("release safe display shortcut guidance:pass", launcher_details)
         self.assertIn("release safe display CLI guidance:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)
@@ -4834,6 +4852,8 @@ tags:
         self.assertIn("GUI note login safety guide text:pass", launcher_details)
         self.assertIn("GUI note login default browser action:pass", launcher_details)
         self.assertIn("GUI note login safety guide action:pass", launcher_details)
+        self.assertIn("GUI first-run note login safety action:pass", launcher_details)
+        self.assertIn("GUI action-plan note login safety action:pass", launcher_details)
         self.assertIn("GUI command palette note login action:pass", launcher_details)
         self.assertIn("GUI command palette login safety action:pass", launcher_details)
         self.assertIn("GUI command palette UI density large action:pass", launcher_details)
@@ -5261,6 +5281,8 @@ tags:
         self.assertIn("diagnostic support bundle age summary:pass", launcher_details)
         self.assertIn("diagnostic support bundle freshness summary:pass", launcher_details)
         self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
+        self.assertIn("quickstart note login safety guide:pass", launcher_details)
+        self.assertIn("first-run note login safety guide:pass", launcher_details)
         self.assertIn("acceptance support bundle freshness warning:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
         self.assertIn("recovery kit support bundle fallback:pass", launcher_details)
@@ -6305,8 +6327,10 @@ publish: false
             self.assertIn("auto-note troubleshoot --project-dir .", first_run)
             self.assertIn("auto-note gui --project-dir . --safe-display", first_run)
             self.assertIn("auto-note-gui.bat --safe-display", first_run)
+            self.assertIn("ログイン安全ガイド", first_run)
             self.assertIn("auto-note acceptance --project-dir . --full", buyer_acceptance)
             self.assertIn("受入チェック", buyer_acceptance)
+            self.assertIn("ログイン安全ガイド", buyer_acceptance)
             self.assertIn("初回チェック", first_run)
             self.assertIn("セルフテスト保存", first_run)
             self.assertIn("auto-note action-plan --project-dir .", first_run)

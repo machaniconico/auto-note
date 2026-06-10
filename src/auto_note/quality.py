@@ -374,6 +374,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "quickstart.py",
+            "quickstart note login safety guide",
+            "ログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run note login safety guide",
+            "ホーム > ログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "acceptance.py",
             "acceptance support bundle freshness warning",
             "is_support_bundle_stale",
@@ -1023,6 +1037,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "release.py",
             "release first-run checklist",
             "FIRST_RUN_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release first-run note login safety guidance",
+            "ログイン安全ガイド",
         )
     )
     checks.append(
@@ -2612,6 +2633,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI note login safety guide action",
             "show_note_login_safety_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI first-run note login safety action",
+            '"noteログイン": self.show_note_login_safety_action',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI action-plan note login safety action",
+            'elif title == "noteログインを確認する":\n            self.show_note_login_safety_action()',
         )
     )
     checks.append(
