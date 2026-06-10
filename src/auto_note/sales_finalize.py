@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import hashlib
 import json
 import zipfile
@@ -56,6 +56,7 @@ from .sales_screenshots import (
     verify_sales_screenshot_pack,
 )
 from .sales_plan import write_sales_plan_report
+from .release import list_releases
 from .settings import AppSettings, load_settings
 
 
@@ -646,12 +647,38 @@ def find_buyer_delivery_package_for_message(message_text: str, packages: list[Pa
     return packages[0] if packages else None
 
 
+def _buyer_delivery_package_release_name(path: Path | None) -> str:
+    if path is None:
+        return ""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            names = archive.namelist()
+            if "BUYER_DELIVERY_MANIFEST.json" in names:
+                raw = json.loads(archive.read("BUYER_DELIVERY_MANIFEST.json").decode("utf-8"))
+                if isinstance(raw, dict) and isinstance(raw.get("release_package"), str):
+                    return raw["release_package"]
+            release_entries = [
+                name
+                for name in names
+                if PurePosixPath(name).parent == PurePosixPath(".")
+                and PurePosixPath(name).name.startswith("auto-note-release-")
+                and PurePosixPath(name).suffix.casefold() == ".zip"
+            ]
+    except (OSError, zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+    if len(release_entries) != 1:
+        return ""
+    return PurePosixPath(release_entries[0]).name
+
+
 def run_buyer_send_readiness(project_dir: Path) -> BuyerSendReadinessReport:
     checks: list[BuyerSendCheck] = []
     messages = list_buyer_delivery_messages(project_dir)
     packages = list_buyer_delivery_packages(project_dir)
     checklists = list_seller_send_checklists(project_dir)
     manifests = list_sales_evidence_manifests(project_dir)
+    releases = list_releases(project_dir)
+    latest_release = releases[0] if releases else None
 
     message_path = messages[0] if messages else None
     message_text = ""
@@ -746,6 +773,42 @@ def run_buyer_send_readiness(project_dir: Path) -> BuyerSendReadinessReport:
             )
         else:
             checks.append(BuyerSendCheck("buyer delivery zip", "pass", f"{package_path.name} verified"))
+            package_release_name = _buyer_delivery_package_release_name(package_path)
+            if latest_release and package_release_name == latest_release.name:
+                checks.append(
+                    BuyerSendCheck(
+                        "buyer delivery zip freshness",
+                        "pass",
+                        f"{package_release_name} matches latest release",
+                    )
+                )
+            elif latest_release and package_release_name:
+                checks.append(
+                    BuyerSendCheck(
+                        "buyer delivery zip freshness",
+                        "fail",
+                        f"{package_path.name} contains {package_release_name}, latest release is {latest_release.name}",
+                        "販売一括作成で最新配布ZIPの購入者ZIPと送付文を作り直してください。",
+                    )
+                )
+            elif latest_release:
+                checks.append(
+                    BuyerSendCheck(
+                        "buyer delivery zip freshness",
+                        "warn",
+                        f"{package_path.name}: release package name could not be confirmed",
+                        "購入者ZIP検証を確認し、必要なら販売一括作成で作り直してください。",
+                    )
+                )
+            else:
+                checks.append(
+                    BuyerSendCheck(
+                        "buyer delivery zip freshness",
+                        "warn",
+                        "latest release package not found",
+                        "配布ZIPを作成してから販売一括作成を再実行してください。",
+                    )
+                )
         try:
             package_sha = hashlib.sha256(package_path.read_bytes()).hexdigest()
         except OSError as exc:

@@ -1924,6 +1924,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness package freshness",
+            "_buyer_delivery_package_release_name",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness latest release blocker",
+            "buyer delivery zip freshness",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
             "buyer send readiness formatter",
             "format_buyer_send_readiness_report",
         )
