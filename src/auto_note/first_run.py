@@ -164,12 +164,16 @@ def _setup_item(self_test: SelfTestReport) -> FirstRunItem:
 
 def _self_test_item(self_test: SelfTestReport) -> FirstRunItem:
     status = "pass" if self_test.status == "pass" else self_test.status
-    detail = f"{self_test.score}/100"
     if self_test.status == "fail":
-        action = "NG項目を確認し、基本動作の失敗を先に解消してください。"
+        issue = _first_report_issue(self_test.items, "fail")
+        detail = _score_issue_detail(self_test.score, issue, "NG")
+        action = _issue_action(issue, "NG項目を確認し、基本動作の失敗を先に解消してください。")
     elif self_test.status == "warn":
-        action = "WARN項目を確認し、投稿前に不足を潰してください。"
+        issue = _first_report_issue(self_test.items, "warn")
+        detail = _score_issue_detail(self_test.score, issue, "WARN")
+        action = _issue_action(issue, "WARN項目を確認し、投稿前に不足を潰してください。")
     else:
+        detail = f"{self_test.score}/100"
         action = ""
     return FirstRunItem(
         "セルフテスト",
@@ -359,6 +363,28 @@ def _is_content_polish_action(step) -> bool:
 
 def _is_commercial_setup_action(step) -> bool:
     return step.source == "commercial_setup"
+
+
+def _first_report_issue(items, status: str):
+    for item in items:
+        if item.status == status:
+            return item
+    return None
+
+
+def _score_issue_detail(score: int, issue, label: str) -> str:
+    detail = f"{score}/100"
+    if issue is None:
+        return detail
+    if f"first {label}:" in issue.detail:
+        return f"{detail}; {issue.name}: {issue.detail}"
+    return f"{detail}; first {label}: {issue.name}: {issue.detail}"
+
+
+def _issue_action(issue, fallback: str) -> str:
+    if issue is not None and issue.action:
+        return issue.action
+    return fallback
 
 
 def _self_test_item_by_name(report: SelfTestReport, name: str):

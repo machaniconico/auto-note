@@ -163,20 +163,22 @@ def has_acceptance_blockers(report: AcceptanceReport, *, strict: bool = False) -
 
 def _first_run_item(report) -> AcceptanceItem:
     if report.status == "fail":
+        issue = _first_report_issue(report.items, "fail")
         return AcceptanceItem(
             "初回チェック",
             "fail",
-            f"{report.score}/100",
-            "初回チェックのNG項目を先に解消してください。",
+            _score_issue_detail(report.score, issue, "NG"),
+            _issue_action(issue, "初回チェックのNG項目を先に解消してください。"),
             "初回 > 初回チェック",
             "auto-note first-run --project-dir . --create --gui-smoke --smoke-helper",
         )
     if report.status == "warn":
+        issue = _first_report_issue(report.items, "warn")
         return AcceptanceItem(
             "初回チェック",
             "warn",
-            f"{report.score}/100",
-            "WARN項目を確認し、必要なものだけ先に片付けてください。",
+            _score_issue_detail(report.score, issue, "WARN"),
+            _issue_action(issue, "WARN項目を確認し、必要なものだけ先に片付けてください。"),
             "初回 > 初回チェック",
             "auto-note first-run --project-dir . --create --gui-smoke --smoke-helper",
         )
@@ -185,20 +187,22 @@ def _first_run_item(report) -> AcceptanceItem:
 
 def _self_test_item(report) -> AcceptanceItem:
     if report.status == "fail":
+        issue = _first_report_issue(report.items, "fail")
         return AcceptanceItem(
             "セルフテスト",
             "fail",
-            f"{report.score}/100",
-            "セルフテストのNG項目を確認してください。",
+            _score_issue_detail(report.score, issue, "NG"),
+            _issue_action(issue, "セルフテストのNG項目を確認してください。"),
             "診断 > セルフテスト",
             "auto-note self-test --project-dir . --create --gui-smoke --report",
         )
     if report.status == "warn":
+        issue = _first_report_issue(report.items, "warn")
         return AcceptanceItem(
             "セルフテスト",
             "warn",
-            f"{report.score}/100",
-            "WARN項目を確認してください。",
+            _score_issue_detail(report.score, issue, "WARN"),
+            _issue_action(issue, "WARN項目を確認してください。"),
             "診断 > セルフテスト",
             "auto-note self-test --project-dir . --create --gui-smoke --report",
         )
@@ -374,6 +378,28 @@ def _item_by_name(items, name: str):
         if item.name == name:
             return item
     return None
+
+
+def _first_report_issue(items, status: str):
+    for item in items:
+        if item.status == status:
+            return item
+    return None
+
+
+def _score_issue_detail(score: int, issue, label: str) -> str:
+    detail = f"{score}/100"
+    if issue is None:
+        return detail
+    if f"first {label}:" in issue.detail:
+        return f"{detail}; {issue.name}: {issue.detail}"
+    return f"{detail}; first {label}: {issue.name}: {issue.detail}"
+
+
+def _issue_action(issue, fallback: str) -> str:
+    if issue is not None and issue.action:
+        return issue.action
+    return fallback
 
 
 def _gui_smoke_metric(detail: str, name: str) -> str:

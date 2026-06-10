@@ -458,6 +458,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run nested NG detail",
+            "_score_issue_detail",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "quickstart.py",
             "quickstart note login safety guide",
             "ログイン安全ガイド",
@@ -489,6 +496,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "acceptance.py",
             "acceptance display safe display action",
             "auto-note gui --project-dir . --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "acceptance.py",
+            "acceptance nested NG detail",
+            "_score_issue_detail",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test privacy first NG detail",
+            "first NG:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test privacy specific action",
+            "_privacy_failure_action",
         )
     )
     checks.append(

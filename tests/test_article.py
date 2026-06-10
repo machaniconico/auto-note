@@ -1686,6 +1686,38 @@ tags: note
         self.assertFalse(has_privacy_audit_blockers(privacy))
         self.assertIn("acceptance report privacy", privacy_text)
 
+    def test_acceptance_surfaces_nested_privacy_action(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "auto-note-gui.bat").write_text("@echo off\n", encoding="utf-8")
+            run_setup_check(project, create=True)
+            create_practice_article(articles_dir=project / "articles")
+            sales_dir = project / ".auto-note" / "sales"
+            sales_dir.mkdir(parents=True)
+            package = sales_dir / "auto-note-sales-handoff-20990101-010000.zip"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("README.md", "incomplete")
+
+            self_test = run_self_test(project)
+            first_run = run_first_run_checklist(project)
+            report = run_acceptance_check(project)
+            text = format_acceptance_report(report)
+
+        self_test_privacy = next(item for item in self_test.items if item.name == "privacy audit")
+        first_run_self_test = next(item for item in first_run.items if item.name == "セルフテスト")
+        acceptance_first_run = next(item for item in report.items if item.name == "初回チェック")
+        acceptance_self_test = next(item for item in report.items if item.name == "セルフテスト")
+        self.assertIn("first NG: sales handoff privacy", self_test_privacy.detail)
+        self.assertIn("auto-note sales-handoff --project-dir .", self_test_privacy.action)
+        self.assertIn("first NG: sales handoff privacy", first_run_self_test.detail)
+        self.assertIn("auto-note sales-handoff --project-dir .", first_run_self_test.action)
+        self.assertIn("first NG: sales handoff privacy", acceptance_first_run.detail)
+        self.assertIn("auto-note sales-handoff --project-dir .", acceptance_first_run.action)
+        self.assertIn("first NG: sales handoff privacy", acceptance_self_test.detail)
+        self.assertIn("auto-note sales-handoff --project-dir .", acceptance_self_test.action)
+        self.assertIn("first NG: sales handoff privacy", text)
+        self.assertIn("auto-note sales-handoff --project-dir .", text)
+
     def test_commercial_readiness_summarizes_sale_handoff_and_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -3758,7 +3790,9 @@ tags:
                 "_launcher_health_item\n"
                 "_launcher_health_item(project_dir)\n"
                 "_hidden_launcher_syntax_warning\n"
-                "auto-note-gui.bat を直接\n",
+                "auto-note-gui.bat を直接\n"
+                "first NG:\n"
+                "_privacy_failure_action\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "commercial.py").write_text(
@@ -3818,7 +3852,8 @@ tags:
             )
             (project / "src" / "auto_note" / "first_run.py").write_text(
                 "is_support_bundle_stale\nホーム > ログイン安全ガイド\n"
-                "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n",
+                "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n"
+                "_score_issue_detail\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "quickstart.py").write_text(
@@ -3827,7 +3862,8 @@ tags:
             )
             (project / "src" / "auto_note" / "acceptance.py").write_text(
                 "is_support_bundle_stale\n"
-                "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n",
+                "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n"
+                "_score_issue_detail\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -4340,11 +4376,15 @@ tags:
         self.assertIn("first-run support bundle freshness warning:fail", product_details)
         self.assertIn("first-run display readability item:fail", product_details)
         self.assertIn("first-run display safe display action:fail", product_details)
+        self.assertIn("first-run nested NG detail:fail", product_details)
         self.assertIn("quickstart note login safety guide:fail", product_details)
         self.assertIn("first-run note login safety guide:fail", product_details)
         self.assertIn("acceptance support bundle freshness warning:fail", product_details)
         self.assertIn("acceptance display readability item:fail", product_details)
         self.assertIn("acceptance display safe display action:fail", product_details)
+        self.assertIn("acceptance nested NG detail:fail", product_details)
+        self.assertIn("self-test privacy first NG detail:fail", product_details)
+        self.assertIn("self-test privacy specific action:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
         self.assertIn("recovery kit report writer:fail", product_details)
@@ -5880,11 +5920,15 @@ tags:
         self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
         self.assertIn("first-run display readability item:pass", launcher_details)
         self.assertIn("first-run display safe display action:pass", launcher_details)
+        self.assertIn("first-run nested NG detail:pass", launcher_details)
         self.assertIn("quickstart note login safety guide:pass", launcher_details)
         self.assertIn("first-run note login safety guide:pass", launcher_details)
         self.assertIn("acceptance support bundle freshness warning:pass", launcher_details)
         self.assertIn("acceptance display readability item:pass", launcher_details)
         self.assertIn("acceptance display safe display action:pass", launcher_details)
+        self.assertIn("acceptance nested NG detail:pass", launcher_details)
+        self.assertIn("self-test privacy first NG detail:pass", launcher_details)
+        self.assertIn("self-test privacy specific action:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
         self.assertIn("recovery kit support bundle fallback:pass", launcher_details)
         self.assertIn("recovery kit report writer:pass", launcher_details)

@@ -307,11 +307,15 @@ def _privacy_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> 
     warnings = sum(1 for item in report.items if item.status == "warn")
     passes = sum(1 for item in report.items if item.status == "pass")
     if failures:
+        failure = _first_report_issue(report.items, "fail")
+        detail = f"{failures} failure(s), {passes} artifact(s) OK"
+        if failure is not None:
+            detail = f"{detail}; first NG: {failure.name}: {_sanitize_detail(failure.detail, project_dir)}"
         return SelfTestItem(
             "privacy audit",
             "fail",
-            f"{failures} failure(s), {passes} artifact(s) OK",
-            "`auto-note privacy-audit --project-dir .` のNG項目を確認してください。",
+            detail,
+            _privacy_failure_action(failure),
         )
     if warnings:
         return SelfTestItem(
@@ -321,6 +325,24 @@ def _privacy_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> 
             "`auto-note privacy-audit --project-dir .` の警告を確認してください。",
         )
     return SelfTestItem("privacy audit", "pass", f"{passes} artifact(s) OK")
+
+
+def _first_report_issue(items, status: str):
+    for item in items:
+        if item.status == status:
+            return item
+    return None
+
+
+def _privacy_failure_action(item) -> str:
+    if item is not None and item.action:
+        return item.action
+    return "`auto-note privacy-audit --project-dir .` のNG項目を確認してください。"
+
+
+def _sanitize_detail(detail: str, project_dir: Path) -> str:
+    resolved = project_dir.resolve()
+    return detail.replace(str(resolved), ".").replace(resolved.as_posix(), ".")
 
 
 def _release_item(project_dir: Path) -> SelfTestItem:
