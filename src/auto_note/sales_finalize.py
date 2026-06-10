@@ -1001,6 +1001,7 @@ def format_seller_delivery_receipt(
         "- Sent by / 送付者: (fill)",
         "",
         "Sent package / 送付したもの",
+        f"- Latest release package at check: {_name_or_none(report.latest_release_path)}",
         f"- Buyer delivery ZIP: {_file_evidence(report.buyer_delivery_package_path) or _name_or_none(report.buyer_delivery_package_path)}",
         f"- Buyer delivery message: {_name_or_none(report.buyer_delivery_message_path)}",
         f"- Buyer send readiness report: {_name_or_none(report.report_path)}",

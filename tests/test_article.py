@@ -2829,6 +2829,8 @@ tags: note
         self.assertIn("buyer send readiness report:", buyer_send_report_text)
         self.assertIn("auto-note seller delivery receipt", seller_delivery_receipt_text)
         self.assertIn("Order ID", seller_delivery_receipt_text)
+        self.assertIn("Latest release package at check:", seller_delivery_receipt_text)
+        self.assertIn(release_path.name, seller_delivery_receipt_text)
         self.assertIn("Buyer delivery ZIP:", seller_delivery_receipt_text)
         self.assertIn(report.buyer_delivery_package_path.name, seller_delivery_receipt_text)
         self.assertIn("SHA-256", seller_delivery_receipt_text)
@@ -4131,7 +4133,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_finalize.py").write_text(
-                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\ncreate_sales_listing_kit\nverify_sales_listing_kit\nformat_sales_listing_verification\nrun_buyer_send_readiness\n_buyer_delivery_package_release_name\nbuyer delivery zip freshness\nlatest release package\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nsales_listing_package_path\nSales screenshot pack\nSales listing kit ZIP\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n\"sales_listing_package\"\n",
+                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\ncreate_sales_listing_kit\nverify_sales_listing_kit\nformat_sales_listing_verification\nrun_buyer_send_readiness\n_buyer_delivery_package_release_name\nbuyer delivery zip freshness\nlatest release package\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nLatest release package at check\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nsales_listing_package_path\nSales screenshot pack\nSales listing kit ZIP\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n\"sales_listing_package\"\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "privacy.py").write_text(
@@ -5378,6 +5380,7 @@ tags:
         self.assertIn("buyer send readiness package freshness:fail", product_details)
         self.assertIn("buyer send readiness latest release blocker:fail", product_details)
         self.assertIn("buyer send readiness latest release artifact:fail", product_details)
+        self.assertIn("seller delivery receipt latest release artifact:fail", product_details)
         self.assertIn("GUI home buyer send package freshness:fail", product_details)
         self.assertIn("GUI home buyer send package freshness action:fail", product_details)
         self.assertIn("GUI home buyer send next action:fail", product_details)
