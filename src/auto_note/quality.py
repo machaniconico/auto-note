@@ -2897,6 +2897,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales timeline screenshots",
+            '"screenshots", "掲載画像"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke home sales includes buyer send",
             "home_buyer_send_var.get()",
         )
@@ -4992,6 +4999,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home release check freshness warning",
             "RELEASE_CHECK_FRESHNESS_WARNING_HOURS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home release check stale rerun action",
+            "_home_release_check_should_run",
         )
     )
     checks.append(

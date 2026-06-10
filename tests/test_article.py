@@ -99,6 +99,7 @@ from auto_note.gui import (
     _home_report_status_tag,
     _home_report_summary,
     _home_release_check_button_label,
+    _home_release_check_should_run,
     _home_release_check_summary,
     _home_release_check_timeline_detail,
     _home_snapshot_brief,
@@ -539,6 +540,7 @@ class ArticleTests(unittest.TestCase):
             self.assertEqual(summary_state, "warn")
             self.assertIn("販売前一括: 未実行", summary_text)
             self.assertEqual(_home_release_check_button_label([]), "一括実行")
+            self.assertTrue(_home_release_check_should_run([]))
             write_text_atomic(first, "status: OK\n")
             second = _release_check_report_path(project)
             self.assertNotEqual(first, second)
@@ -549,6 +551,7 @@ class ArticleTests(unittest.TestCase):
             self.assertIn("販売前一括: OK", summary_text)
             self.assertIn("販売直前の証跡", summary_text)
             self.assertEqual(_home_release_check_button_label([first]), "結果表示")
+            self.assertFalse(_home_release_check_should_run([first]))
             timeline_state, timeline_text = _home_release_check_timeline_detail([first])
             self.assertEqual(timeline_state, "ok")
             self.assertIn("OK", timeline_text)
@@ -558,6 +561,8 @@ class ArticleTests(unittest.TestCase):
             self.assertEqual(summary_state, "warn")
             self.assertIn("24h超", summary_text)
             self.assertIn("再実行推奨", summary_text)
+            self.assertEqual(_home_release_check_button_label([first]), "再実行")
+            self.assertTrue(_home_release_check_should_run([first]))
             timeline_state, timeline_text = _home_release_check_timeline_detail([first])
             self.assertEqual(timeline_state, "warn")
             self.assertIn("24h超", timeline_text)
@@ -567,6 +572,8 @@ class ArticleTests(unittest.TestCase):
             self.assertEqual(summary_state, "fail")
             self.assertIn("販売前一括: NG", summary_text)
             self.assertIn("失敗箇所", summary_text)
+            self.assertEqual(_home_release_check_button_label([first]), "結果表示")
+            self.assertFalse(_home_release_check_should_run([first]))
             write_text_atomic(first, "status: RUNNING\n")
             self.assertEqual(_home_report_status("一括チェック", first), "確認")
             summary_state, summary_text = _home_release_check_summary([first])
@@ -3622,6 +3629,7 @@ tags: note
         self.assertIn("home_release_check_button_chars=", text)
         self.assertIn("home_sales_stage_chars=", text)
         self.assertIn("home_sales_timeline_items=", text)
+        self.assertIn("home_sales_timeline_items=10", text)
         self.assertIn("home_sales_timeline_chars=", text)
         self.assertIn("home_status_badge_chars=", text)
         self.assertIn("home_updated_chars=", text)
@@ -4018,6 +4026,12 @@ tags:
             gui_fixture = project / "src" / "auto_note" / "gui.py"
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + '"screenshots", "掲載画像"\n'
+                + "screenshot_packs\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
                 + "掲載キット作成\n"
                 + "掲載キット検証\n"
@@ -4299,6 +4313,7 @@ tags:
                 + "home_release_check_status_pill\n"
                 + "_home_commercial_focus_button_label\n"
                 + "_home_release_check_button_label\n"
+                + "_home_release_check_should_run\n"
                 + "_home_release_check_summary\n"
                 + "_home_release_check_timeline_detail\n"
                 + "RELEASE_CHECK_FRESHNESS_WARNING_HOURS\n"
@@ -4785,6 +4800,7 @@ tags:
         self.assertIn("GUI home sales timeline summary:fail", product_details)
         self.assertIn("GUI home sales timeline updater:fail", product_details)
         self.assertIn("GUI home sales timeline refresh:fail", product_details)
+        self.assertIn("GUI home sales timeline screenshots:fail", product_details)
         self.assertIn("GUI home support send stage:fail", product_details)
         self.assertIn("GUI home support send readiness helper:fail", product_details)
         self.assertIn("GUI home support send detail:fail", product_details)
@@ -5119,6 +5135,7 @@ tags:
         self.assertIn("GUI home release check dynamic action:fail", product_details)
         self.assertIn("GUI home release check latest result action:fail", product_details)
         self.assertIn("GUI home release check freshness warning:fail", product_details)
+        self.assertIn("GUI home release check stale rerun action:fail", product_details)
         self.assertIn("GUI home release check timeline freshness:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic action:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic button:fail", product_details)
@@ -5550,6 +5567,7 @@ tags:
         self.assertIn("GUI home sales timeline summary:pass", launcher_details)
         self.assertIn("GUI home sales timeline updater:pass", launcher_details)
         self.assertIn("GUI home sales timeline refresh:pass", launcher_details)
+        self.assertIn("GUI home sales timeline screenshots:pass", launcher_details)
         self.assertIn("GUI home support send stage:pass", launcher_details)
         self.assertIn("GUI home support send readiness helper:pass", launcher_details)
         self.assertIn("GUI home support send detail:pass", launcher_details)
@@ -5884,6 +5902,7 @@ tags:
         self.assertIn("GUI home release check dynamic action:pass", launcher_details)
         self.assertIn("GUI home release check latest result action:pass", launcher_details)
         self.assertIn("GUI home release check freshness warning:pass", launcher_details)
+        self.assertIn("GUI home release check stale rerun action:pass", launcher_details)
         self.assertIn("GUI home release check timeline freshness:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic action:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic button:pass", launcher_details)

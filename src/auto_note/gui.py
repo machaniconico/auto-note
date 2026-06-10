@@ -2153,6 +2153,7 @@ class AutoNoteApp(tk.Tk):
             ("seller", "販売者情報", self.focus_next_commercial_missing_field),
             ("release", "配布ZIP", self.run_preflight_create_release_to_tab),
             ("materials", "販売素材", self.create_sales_materials_action),
+            ("screenshots", "掲載画像", self.create_sales_screenshots_action),
             ("listing", "掲載キット", self.create_sales_listing_kit_action),
             ("handoff", "販売一式", self.create_sales_handoff_action),
             ("buyer", "購入者ZIP/送付文", self.run_home_buyer_send_next_action),
@@ -5930,6 +5931,7 @@ class AutoNoteApp(tk.Tk):
         buyer_messages = list_buyer_delivery_messages(self.project_dir)
         seller_receipts = list_seller_delivery_receipts(self.project_dir)
         materials = list_sales_materials(self.project_dir)
+        screenshot_packs = list_sales_screenshot_packs(self.project_dir)
         listing_kits = list_sales_listing_kits(self.project_dir)
         listing_packages = list_sales_listing_packages(self.project_dir)
         release_checks = _list_release_check_reports(self.project_dir)
@@ -5939,7 +5941,15 @@ class AutoNoteApp(tk.Tk):
         support_state, support_text = self._home_support_send_readiness()
         artifact_remaining = sum(
             1
-            for paths in (releases, materials, listing_packages, handoffs, buyer_packages, buyer_messages)
+            for paths in (
+                releases,
+                materials,
+                screenshot_packs,
+                listing_packages,
+                handoffs,
+                buyer_packages,
+                buyer_messages,
+            )
             if not paths
         )
         seller_remaining = len(missing) + len(warnings)
@@ -5953,6 +5963,7 @@ class AutoNoteApp(tk.Tk):
             buyer_packages=buyer_packages,
             buyer_messages=buyer_messages,
             materials=materials,
+            screenshot_packs=screenshot_packs,
             listing_packages=listing_packages,
         )
         buyer_package_errors = (
@@ -6034,6 +6045,7 @@ class AutoNoteApp(tk.Tk):
             buyer_packages=buyer_packages,
             buyer_messages=buyer_messages,
             materials=materials,
+            screenshot_packs=screenshot_packs,
             listing_kits=listing_kits,
             listing_packages=listing_packages,
             release_checks=release_checks,
@@ -6115,6 +6127,7 @@ class AutoNoteApp(tk.Tk):
         buyer_packages: list[Path],
         buyer_messages: list[Path],
         materials: list[Path],
+        screenshot_packs: list[Path],
         listing_kits: list[Path],
         listing_packages: list[Path],
         release_checks: list[Path],
@@ -6151,6 +6164,15 @@ class AutoNoteApp(tk.Tk):
             "販売素材",
             "ok" if materials else "warn",
             f"最新 {_format_mtime(materials[0])}" if materials else "未作成",
+        )
+        screenshot_errors = verify_sales_screenshot_pack(screenshot_packs[0]) if screenshot_packs else []
+        put(
+            "screenshots",
+            "掲載画像",
+            "fail" if screenshot_errors else ("ok" if screenshot_packs else "warn"),
+            f"NG {len(screenshot_errors)}件"
+            if screenshot_errors
+            else (f"最新 {_format_mtime(screenshot_packs[0])}" if screenshot_packs else "未作成"),
         )
         latest_listing = listing_packages[0] if listing_packages else (listing_kits[0] if listing_kits else None)
         listing_errors = verify_sales_listing_kit(latest_listing) if latest_listing else []
@@ -6244,7 +6266,8 @@ class AutoNoteApp(tk.Tk):
         self.home_release_check_var.set(text)
 
     def run_home_release_check_action(self) -> None:
-        if _list_release_check_reports(self.project_dir):
+        reports = _list_release_check_reports(self.project_dir)
+        if not _home_release_check_should_run(reports):
             self.show_latest_release_check_report_action()
             return
         self.run_release_check_full_action()
@@ -6317,6 +6340,7 @@ class AutoNoteApp(tk.Tk):
         buyer_packages: list[Path],
         buyer_messages: list[Path],
         materials: list[Path],
+        screenshot_packs: list[Path],
         listing_packages: list[Path],
     ) -> SalesPlanStep:
         if missing or warnings:
@@ -6345,6 +6369,15 @@ class AutoNoteApp(tk.Tk):
                 detail="sales materials not found",
                 action="販売ページ文案、納品文、FAQを作成します。",
                 gui="診断 > 販売素材作成",
+                category="tool",
+            )
+        if not screenshot_packs:
+            return SalesPlanStep(
+                title="販売ページ掲載画像を作成する",
+                status="warning",
+                detail="sales screenshot pack not found",
+                action="販売ページに載せる画像、キャプション、HTMLプレビューを作成します。",
+                gui="診断 > 掲載画像作成",
                 category="tool",
             )
         if not listing_packages:
@@ -6410,6 +6443,8 @@ class AutoNoteApp(tk.Tk):
             self.verify_latest_sales_materials_action()
         elif "販売素材" in title:
             self.create_sales_materials_action()
+        elif "掲載画像" in title:
+            self.create_sales_screenshots_action()
         elif "掲載キット" in title:
             self.create_sales_listing_kit_action()
         elif "販売用一式" in title:
@@ -10167,7 +10202,11 @@ def _home_release_check_summary(reports: list[Path]) -> tuple[str, str]:
 
 
 def _home_release_check_button_label(reports: list[Path]) -> str:
-    return "結果表示" if reports else "一括実行"
+    if not reports:
+        return "一括実行"
+    if _home_release_check_should_run(reports):
+        return "再実行"
+    return "結果表示"
 
 
 def _home_release_check_timeline_detail(reports: list[Path]) -> tuple[str, str]:
@@ -10181,6 +10220,14 @@ def _home_release_check_timeline_detail(reports: list[Path]) -> tuple[str, str]:
     if freshness:
         detail += f" / {freshness}"
     return state, detail
+
+
+def _home_release_check_should_run(reports: list[Path]) -> bool:
+    if not reports:
+        return True
+    latest = reports[0]
+    status = _home_report_status("一括チェック", latest)
+    return status != "NG" and bool(_home_release_check_freshness_label(latest))
 
 
 def _home_release_check_state(status: str, path: Path) -> str:
