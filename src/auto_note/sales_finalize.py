@@ -45,6 +45,11 @@ from .sales_materials import (
     format_sales_materials_verification,
     verify_sales_materials,
 )
+from .sales_listing import (
+    create_sales_listing_kit,
+    format_sales_listing_verification,
+    verify_sales_listing_kit,
+)
 from .sales_screenshots import (
     create_sales_screenshot_pack,
     format_sales_screenshot_verification,
@@ -71,6 +76,8 @@ class SalesFinalizeReport:
     commercial_template_path: Path | None = None
     sales_materials_path: Path | None = None
     sales_screenshot_pack_path: Path | None = None
+    sales_listing_kit_path: Path | None = None
+    sales_listing_package_path: Path | None = None
     sales_handoff_path: Path | None = None
     buyer_delivery_dir: Path | None = None
     buyer_delivery_package_path: Path | None = None
@@ -135,6 +142,8 @@ def create_sales_finalize(
     commercial_template_path: Path | None = None
     sales_materials_path: Path | None = None
     sales_screenshot_pack_path: Path | None = None
+    sales_listing_kit_path: Path | None = None
+    sales_listing_package_path: Path | None = None
     sales_handoff_path: Path | None = None
     buyer_delivery_dir: Path | None = None
     buyer_delivery_package_path: Path | None = None
@@ -154,6 +163,8 @@ def create_sales_finalize(
             commercial_template_path=commercial_template_path,
             sales_materials_path=sales_materials_path,
             sales_screenshot_pack_path=sales_screenshot_pack_path,
+            sales_listing_kit_path=sales_listing_kit_path,
+            sales_listing_package_path=sales_listing_package_path,
             sales_handoff_path=sales_handoff_path,
             buyer_delivery_dir=buyer_delivery_dir,
             buyer_delivery_package_path=buyer_delivery_package_path,
@@ -334,6 +345,42 @@ def create_sales_finalize(
         return finish()
 
     try:
+        listing_kit = create_sales_listing_kit(project_dir, strict=True)
+    except OSError as exc:
+        steps.append(
+            SalesFinalizeStep(
+                "sales listing kit",
+                "fail",
+                str(exc),
+                "販売ページ掲載キットの保存先を確認してください。",
+            )
+        )
+        return finish()
+    sales_listing_kit_path = listing_kit.directory
+    sales_listing_package_path = listing_kit.package_path
+    listing_errors = verify_sales_listing_kit(listing_kit.directory, strict=True, project_dir=project_dir)
+    listing_package_errors = verify_sales_listing_kit(listing_kit.package_path, strict=True, project_dir=project_dir)
+    listing_status = "pass"
+    listing_action = ""
+    if listing_errors or listing_package_errors:
+        listing_status = "fail" if strict else "warn"
+        listing_action = (
+            "`auto-note sales-listing --project-dir . --verify <folder-or-zip> --strict` で確認し、"
+            "販売者情報、掲載画像、checksum、購入者向け混入を直してください。"
+        )
+    steps.append(
+        SalesFinalizeStep(
+            "sales listing kit",
+            listing_status,
+            f"{listing_kit.directory.name}, package {listing_kit.package_path.name}, "
+            f"folder issues {len(listing_errors)}, zip issues {len(listing_package_errors)}",
+            listing_action,
+        )
+    )
+    if listing_status == "fail":
+        return finish()
+
+    try:
         handoff = create_sales_handoff(project_dir, strict=strict)
     except (OSError, ValueError) as exc:
         steps.append(
@@ -510,6 +557,8 @@ def create_sales_finalize(
             sales_handoff_path=sales_handoff_path,
             release_path=release_path,
             sales_screenshot_pack_path=sales_screenshot_pack_path,
+            sales_listing_kit_path=sales_listing_kit_path,
+            sales_listing_package_path=sales_listing_package_path,
             acceptance_report_path=acceptance_report_path,
             sales_plan_report_path=sales_plan_report_path,
             sales_evidence_manifest_path=planned_sales_evidence_manifest_path,
@@ -751,6 +800,8 @@ def run_buyer_send_readiness(project_dir: Path) -> BuyerSendReadinessReport:
                 missing_checklist_parts.append(message_path.name)
             if "Do not attach auto-note-sales-handoff-*.zip" not in checklist_text:
                 missing_checklist_parts.append("Do not attach auto-note-sales-handoff-*.zip")
+            if "Do not attach auto-note-sales-listing-kit-*.zip" not in checklist_text:
+                missing_checklist_parts.append("Do not attach auto-note-sales-listing-kit-*.zip")
             if missing_checklist_parts:
                 checks.append(
                     BuyerSendCheck(
@@ -950,6 +1001,8 @@ def format_sales_finalize_report(report: SalesFinalizeReport) -> str:
         f"- commercial setup template: {_name_or_none(report.commercial_template_path)}",
         f"- sales materials: {_name_or_none(report.sales_materials_path)}",
         f"- sales screenshot pack: {_name_or_none(report.sales_screenshot_pack_path)}",
+        f"- sales listing kit: {_name_or_none(report.sales_listing_kit_path)}",
+        f"- sales listing package: {_name_or_none(report.sales_listing_package_path)}",
         f"- sales handoff: {_name_or_none(report.sales_handoff_path)}",
         f"- buyer delivery: {_name_or_none(report.buyer_delivery_dir)}",
         f"- buyer delivery zip: {_name_or_none(report.buyer_delivery_package_path)}",
@@ -995,6 +1048,10 @@ def format_sales_finalize_report(report: SalesFinalizeReport) -> str:
                 if report.sales_screenshot_pack_path:
                     next_actions.append(
                         f"- listing images: {report.sales_screenshot_pack_path.name} の index.html と SCREENSHOT_CAPTIONS.md を掲載前に確認してください。"
+                    )
+                if report.sales_listing_package_path:
+                    next_actions.append(
+                        f"- listing kit: {report.sales_listing_package_path.name} は販売ページ作成用に保管し、購入者には送らないでください。"
                     )
                 if report.sales_plan_report_path:
                     next_actions.append(
@@ -1042,6 +1099,22 @@ def format_sales_finalize_details(report: SalesFinalizeReport) -> str:
                 parts.append((report.sales_screenshot_pack_path / filename).read_text(encoding="utf-8", errors="replace").strip())
             except OSError:
                 pass
+    if report.sales_listing_kit_path:
+        parts.append(
+            format_sales_listing_verification(
+                report.sales_listing_kit_path,
+                verify_sales_listing_kit(report.sales_listing_kit_path, strict=True, project_dir=report.project_dir),
+                strict=True,
+            )
+        )
+    if report.sales_listing_package_path:
+        parts.append(
+            format_sales_listing_verification(
+                report.sales_listing_package_path,
+                verify_sales_listing_kit(report.sales_listing_package_path, strict=True, project_dir=report.project_dir),
+                strict=True,
+            )
+        )
     if report.sales_handoff_path:
         parts.append(format_sales_handoff_verification(report.sales_handoff_path, verify_sales_handoff(report.sales_handoff_path)))
     if report.buyer_delivery_dir:
@@ -1254,6 +1327,7 @@ def _delivery_verification_lines(report: SalesFinalizeReport) -> list[str]:
         ("buyer delivery zip", report.buyer_delivery_package_path),
         ("sales handoff zip", report.sales_handoff_path),
         ("release package", report.release_path),
+        ("sales listing package", report.sales_listing_package_path),
     ]
     lines: list[str] = []
     for label, path in paths:
@@ -1263,6 +1337,9 @@ def _delivery_verification_lines(report: SalesFinalizeReport) -> list[str]:
     screenshot_evidence = _directory_evidence(report.sales_screenshot_pack_path)
     if screenshot_evidence:
         lines.append(f"- sales screenshot pack: {screenshot_evidence}")
+    listing_evidence = _directory_evidence(report.sales_listing_kit_path)
+    if listing_evidence:
+        lines.append(f"- sales listing kit: {listing_evidence}")
     return lines
 
 
@@ -1293,6 +1370,8 @@ def _write_seller_send_checklist(
     sales_handoff_path: Path | None,
     release_path: Path | None,
     sales_screenshot_pack_path: Path | None,
+    sales_listing_kit_path: Path | None,
+    sales_listing_package_path: Path | None,
     acceptance_report_path: Path | None,
     sales_plan_report_path: Path | None,
     sales_evidence_manifest_path: Path | None,
@@ -1310,6 +1389,8 @@ def _write_seller_send_checklist(
             sales_handoff_path=sales_handoff_path,
             release_path=release_path,
             sales_screenshot_pack_path=sales_screenshot_pack_path,
+            sales_listing_kit_path=sales_listing_kit_path,
+            sales_listing_package_path=sales_listing_package_path,
             acceptance_report_path=acceptance_report_path,
             sales_plan_report_path=sales_plan_report_path,
             sales_evidence_manifest_path=sales_evidence_manifest_path,
@@ -1358,6 +1439,8 @@ def _build_seller_send_checklist(
     sales_handoff_path: Path | None,
     release_path: Path | None,
     sales_screenshot_pack_path: Path | None,
+    sales_listing_kit_path: Path | None,
+    sales_listing_package_path: Path | None,
     acceptance_report_path: Path | None,
     sales_plan_report_path: Path | None,
     sales_evidence_manifest_path: Path | None,
@@ -1396,12 +1479,17 @@ def _build_seller_send_checklist(
         f"    {_file_evidence(release_path) or 'not available'}\n"
         f"[ ] Sales screenshot pack: {_name_or_none(sales_screenshot_pack_path)}\n"
         f"    {_directory_evidence(sales_screenshot_pack_path) or 'not available'}\n"
+        f"[ ] Sales listing kit folder: {_name_or_none(sales_listing_kit_path)}\n"
+        f"    {_directory_evidence(sales_listing_kit_path) or 'not available'}\n"
+        f"[ ] Sales listing kit ZIP: {_name_or_none(sales_listing_package_path)}\n"
+        f"    {_file_evidence(sales_listing_package_path) or 'not available'}\n"
         f"[ ] Acceptance evidence: {_name_or_none(acceptance_report_path)}\n"
         f"[ ] Sales plan evidence: {_name_or_none(sales_plan_report_path)}\n"
         f"[ ] Sales evidence manifest: {_name_or_none(sales_evidence_manifest_path)}\n"
         f"[ ] Diagnostic evidence: {_name_or_none(diagnostic_report_path)}\n\n"
         "Do not send in normal delivery / 通常納品では送らないもの\n"
         "[ ] Do not attach auto-note-sales-handoff-*.zip to the buyer.\n"
+        "[ ] Do not attach auto-note-sales-listing-kit-*.zip to the buyer.\n"
         "[ ] Do not attach diagnostic ZIPs unless support asks for them.\n"
         "[ ] Do not attach the whole workspace, .auto-note folder, .venv folder, login data, payment data, passwords, login codes, or full unpublished drafts.\n\n"
         "Verification status / 検証状態\n"
@@ -1429,6 +1517,8 @@ def _write_sales_evidence_manifest(report: SalesFinalizeReport) -> Path:
             "release_package": _manifest_file(report.release_path),
             "sales_materials": _manifest_file(report.sales_materials_path),
             "sales_screenshot_pack": _manifest_directory(report.sales_screenshot_pack_path),
+            "sales_listing_kit": _manifest_directory(report.sales_listing_kit_path),
+            "sales_listing_package": _manifest_file(report.sales_listing_package_path),
             "sales_plan_report": _manifest_file(report.sales_plan_report_path),
             "seller_send_checklist": _manifest_file(report.seller_send_checklist_path),
             "acceptance_report": _manifest_file(report.acceptance_report_path),
@@ -1482,7 +1572,7 @@ def _manifest_directory(path: Path | None) -> dict[str, object] | None:
         item["status"] = "missing"
         return item
     try:
-        item["entries"] = sorted(child.name for child in path.iterdir() if child.is_file())
+        item["entries"] = sorted(child.relative_to(path).as_posix() for child in path.rglob("*") if child.is_file())
     except OSError:
         item["status"] = "unreadable"
     return item

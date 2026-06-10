@@ -6786,7 +6786,7 @@ class AutoNoteApp(tk.Tk):
             ("掲載キット作成", "販売ページへ貼る素材、画像、キャプション、チェック表をZIP化", self.create_sales_listing_kit_action),
             ("掲載キット検証", "最新の掲載キットフォルダとZIPを検証", self.verify_latest_sales_listing_kit_action),
             ("テンプレ取込一括", "最新販売者テンプレを取り込んでから販売一括作成", self.create_sales_finalize_with_template_action),
-            ("販売一括作成", "配布ZIP、販売素材、掲載画像、販売一式ZIP、購入者ZIP、診断、監査をまとめて作成", self.create_sales_finalize_action),
+            ("販売一括作成", "配布ZIP、販売素材、掲載画像、掲載キット、販売一式ZIP、購入者ZIP、診断、監査をまとめて作成", self.create_sales_finalize_action),
             ("販売準備", "配布ZIP、監査、受入、文書、連絡先を販売目線で確認", self.run_commercial_readiness_to_tab),
             ("販売準備保存", "販売前に残る確認事項をレポート保存", self.create_commercial_readiness_report_action),
             ("方針レビュー", "返金、ライセンス、サポート範囲の販売者向け最終確認を保存", self.create_commercial_policy_review_action),
@@ -7923,6 +7923,11 @@ class AutoNoteApp(tk.Tk):
             if report.sales_screenshot_pack_path:
                 screenshot_preview = report.sales_screenshot_pack_path / "index.html"
                 _open_path(screenshot_preview if screenshot_preview.exists() else report.sales_screenshot_pack_path)
+            if report.sales_listing_package_path:
+                _open_path(report.sales_listing_package_path)
+            if report.sales_listing_kit_path:
+                listing_preview = report.sales_listing_kit_path / "index.html"
+                _open_path(listing_preview if listing_preview.exists() else report.sales_listing_kit_path)
             self.notify(f"{label}が完了しました: {report.buyer_delivery_package_path.name}", level=level)
         elif report.buyer_delivery_dir:
             _open_path(report.buyer_delivery_dir)
