@@ -57,6 +57,7 @@ def run_sales_launch_check(project_dir: Path) -> SalesLaunchReport:
 
     checks.append(_review_gate_check(review))
     checks.append(_marketplace_url_check(settings.sales_channel_url))
+    checks.append(_listing_kit_launch_check(review))
     checks.append(_delivery_message_checkout_check(review))
     checks.append(_policy_alignment_check(review, settings))
     checks.append(_seller_evidence_check(project_dir))
@@ -103,6 +104,7 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
         "",
         "Artifacts / 販売直前に見るもの",
         f"- sales materials: {_name_or_none(review.sales_materials_path)}",
+        f"- sales listing kit: {_name_or_none(review.sales_listing_package_path)}",
         f"- buyer delivery message: {_name_or_none(review.buyer_delivery_message_path)}",
         f"- buyer delivery zip: {_name_or_none(review.buyer_delivery_package_path)}",
         f"- seller delivery receipt: {_name_or_none(review.seller_delivery_receipt_path)}",
@@ -130,6 +132,7 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
             "",
             "Marketplace launch confirmation / 販売ページ公開前の目視",
             "[ ] 販売ページの商品名、価格、更新日、対応OS、納品ZIP名が最新の販売素材と一致している",
+            "[ ] 掲載キットZIPは販売ページ作成用として保管し、購入者向け添付/納品ファイルに入れていない",
             "[ ] 決済後メッセージ欄へ buyer delivery message の本文を貼り付けた",
             "[ ] 上の buyer delivery zip / zip size / zip SHA-256 が販売ページまたは決済後メッセージの表示と一致している",
             "[ ] 決済後メッセージの貼り付け後、改行、リンク、SHA-256、ZIP名が崩れていない",
@@ -222,6 +225,37 @@ def _marketplace_url_check(value: str) -> SalesLaunchCheck:
             "実際の販売ページURLへ差し替えてから販売直前チェックを保存してください。",
         )
     return SalesLaunchCheck("marketplace listing URL", "pass", "public sales URL is saved")
+
+
+def _listing_kit_launch_check(report: SalesReviewReport) -> SalesLaunchCheck:
+    if report.sales_listing_package_path is None:
+        return SalesLaunchCheck(
+            "sales listing kit",
+            "warn",
+            "seller listing kit is missing",
+            "`auto-note sales-finalize --project-dir .` で掲載キットを含む販売一括作成を実行してください。",
+        )
+    failed = next((check for check in report.checks if check.name == "sales listing kit" and check.status == "fail"), None)
+    if failed is not None:
+        return SalesLaunchCheck(
+            "sales listing kit",
+            "fail",
+            failed.detail,
+            "`auto-note sales-listing --project-dir . --verify <zip> --strict` のNGを直してください。",
+        )
+    warning = next((check for check in report.checks if check.name == "sales listing kit" and check.status == "warn"), None)
+    if warning is not None:
+        return SalesLaunchCheck(
+            "sales listing kit",
+            "warn",
+            warning.detail,
+            warning.action,
+        )
+    return SalesLaunchCheck(
+        "sales listing kit",
+        "pass",
+        f"{report.sales_listing_package_path.name} verified for marketplace listing",
+    )
 
 
 def _marketplace_profile_for_url(value: str) -> MarketplaceLaunchProfile:

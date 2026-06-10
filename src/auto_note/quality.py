@@ -2162,6 +2162,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review listing kit lister",
+            "list_sales_listing_packages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review listing kit verifier",
+            "verify_sales_listing_kit",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
             "sales review listing copy limits",
             "note official API limitation",
         )
@@ -2185,6 +2199,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch depends on final review",
             "run_sales_review(project_dir)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch listing kit gate",
+            "_listing_kit_launch_check",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch listing kit buyer guard",
+            "掲載キットZIPは販売ページ作成用",
         )
     )
     checks.append(
@@ -3815,7 +3843,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "README.md",
             "README current readable Japanese font guidance",
-            "メイリオ` / `Noto Sans JP",
+            "メイリオ` / `Meiryo` / `Noto Sans JP",
         )
     )
     checks.append(

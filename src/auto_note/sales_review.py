@@ -13,6 +13,7 @@ from .sales_finalize import (
     list_seller_delivery_receipts,
     run_buyer_send_readiness,
 )
+from .sales_listing import list_sales_listing_packages, verify_sales_listing_kit
 from .sales_materials import list_sales_materials, verify_sales_materials
 from .settings import load_settings
 
@@ -33,6 +34,7 @@ class SalesReviewReport:
     generated_at: datetime
     checks: list[SalesReviewCheck]
     sales_materials_path: Path | None = None
+    sales_listing_package_path: Path | None = None
     buyer_delivery_message_path: Path | None = None
     buyer_delivery_package_path: Path | None = None
     seller_delivery_receipt_path: Path | None = None
@@ -102,6 +104,9 @@ def run_sales_review(project_dir: Path) -> SalesReviewReport:
         materials_text = _read_text(materials_path)
         checks.extend(_sales_page_copy_checks(materials_text, settings))
 
+    listing_package_path = _latest_or_none(list_sales_listing_packages(project_dir))
+    checks.append(_sales_listing_kit_check(listing_package_path, project_dir))
+
     buyer_send = run_buyer_send_readiness(project_dir)
     checks.append(_buyer_send_check(buyer_send))
     checks.extend(_delivery_message_checks(buyer_send.buyer_delivery_message_path))
@@ -127,6 +132,7 @@ def run_sales_review(project_dir: Path) -> SalesReviewReport:
         generated_at=datetime.now(),
         checks=checks,
         sales_materials_path=materials_path,
+        sales_listing_package_path=listing_package_path,
         buyer_delivery_message_path=buyer_send.buyer_delivery_message_path,
         buyer_delivery_package_path=buyer_send.buyer_delivery_package_path,
         seller_delivery_receipt_path=receipt_path,
@@ -154,6 +160,7 @@ def format_sales_review(report: SalesReviewReport) -> str:
         "",
         "Artifacts / 確認対象",
         f"- sales materials: {_name_or_none(report.sales_materials_path)}",
+        f"- sales listing kit: {_name_or_none(report.sales_listing_package_path)}",
         f"- buyer delivery message: {_name_or_none(report.buyer_delivery_message_path)}",
         f"- buyer delivery zip: {_name_or_none(report.buyer_delivery_package_path)}",
         f"- seller delivery receipt: {_name_or_none(report.seller_delivery_receipt_path)}",
@@ -177,6 +184,7 @@ def format_sales_review(report: SalesReviewReport) -> str:
             "",
             "Seller confirmation / 販売者の最終目視",
             "[ ] 販売ページの納品物名が購入者向けZIP名と一致している",
+            "[ ] 掲載キットZIPは販売ページ作成用で、購入者向け添付欄には入れていない",
             "[ ] 決済後メッセージへ貼る文面が buyer delivery message と一致している",
             "[ ] 返金条件、サポート範囲、ログイン制限の説明が販売ページと利用条件で矛盾していない",
             "[ ] 販売者用ZIP、診断ZIP、.auto-note、.venv、支払い情報、ログイン情報を購入者へ送らない",
@@ -270,6 +278,25 @@ def _sales_page_copy_checks(text: str, settings) -> list[SalesReviewCheck]:
     else:
         checks.append(SalesReviewCheck("listing privacy", "pass", "no raw email address found"))
     return checks
+
+
+def _sales_listing_kit_check(path: Path | None, project_dir: Path) -> SalesReviewCheck:
+    if path is None:
+        return SalesReviewCheck(
+            "sales listing kit",
+            "warn",
+            "not found",
+            "`auto-note sales-finalize --project-dir .` または `auto-note sales-listing --project-dir .` で掲載キットを作成してください。",
+        )
+    errors = verify_sales_listing_kit(path, strict=True, project_dir=project_dir)
+    if errors:
+        return SalesReviewCheck(
+            "sales listing kit",
+            "fail",
+            f"{path.name}: {len(errors)} issue(s): {'; '.join(errors[:3])}",
+            "`auto-note sales-listing --project-dir . --verify <zip> --strict` のNGを確認してください。",
+        )
+    return SalesReviewCheck("sales listing kit", "pass", f"{path.name} verified and seller-only")
 
 
 def _buyer_send_check(report: BuyerSendReadinessReport) -> SalesReviewCheck:
