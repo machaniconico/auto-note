@@ -2682,13 +2682,18 @@ tags: note
         self.assertIn("GUI_LOG_SUMMARY.txt: present", bundle_verification_text)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt: not included", bundle_verification_text)
         self.assertIn("manifest files: 5", bundle_verification_text)
+        self.assertIn("send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending", bundle_verification_text)
         self.assertIn("privacy-safe", bundle_readme)
+        self.assertIn("Send-ready flow", bundle_readme)
+        self.assertIn("Send only this ZIP", bundle_readme)
         self.assertIn("問い合わせ一式 送付前チェックリスト", send_checklist)
+        self.assertIn("Send-ready summary / 送付判断", send_checklist)
         self.assertIn("GUI_LOG_SUMMARY.txt", bundle_readme)
         self.assertIn("GUI_LOG_SUMMARY.txt", send_checklist)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt", bundle_readme)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt", send_checklist)
         self.assertIn("Send this ZIP only", send_checklist)
+        self.assertIn("Do not attach the whole `.auto-note` folder", send_checklist)
         self.assertIn("auto-note support --verify <this zip>", send_checklist)
         self.assertIn("auto-note privacy-audit --project-dir .", send_checklist)
         self.assertIn("GUIログ要約", gui_log_summary)
@@ -3345,7 +3350,10 @@ tags:
                 "SUPPORT_SEND_CHECKLIST.txt\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n"
                 "read_support_gui_log_summary\nread_support_display_diagnostics\n"
                 "mask_text(text, project_dir)\nGUI_LOG_SUMMARY.txt: present\n"
-                "DISPLAY_DIAGNOSTICS.txt: present\n_normalise_extra_entries\nSend this ZIP only\n",
+                "DISPLAY_DIAGNOSTICS.txt: present\n_normalise_extra_entries\nSend this ZIP only\n"
+                "Send-ready flow\nSend-ready summary / 送付判断\n"
+                "Do not attach the whole `.auto-note` folder\n"
+                "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -3772,6 +3780,10 @@ tags:
         self.assertIn("support bundle GUI log verification detail:fail", product_details)
         self.assertIn("support bundle GUI log summary reader:fail", product_details)
         self.assertIn("support bundle send-only guidance:fail", product_details)
+        self.assertIn("support bundle send-ready README flow:fail", product_details)
+        self.assertIn("support bundle send-ready checklist summary:fail", product_details)
+        self.assertIn("support bundle unsafe attachment warning:fail", product_details)
+        self.assertIn("support bundle verification checklist hint:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
         self.assertIn("recovery kit report writer:fail", product_details)

@@ -212,6 +212,11 @@ def _build_bundle_readme(*, include_private: bool = False) -> str:
         "- GUI_LOG_SUMMARY.txt: Quick view of the latest GUI startup or operation log.\n"
         "- DISPLAY_DIAGNOSTICS.txt: Display, font, scaling, and screen snapshot. Included when this bundle is created from the GUI.\n"
         "- diagnostic-report.zip: Attach this nested diagnostic report when support asks for details.\n\n"
+        "Send-ready flow:\n"
+        "1. Open SUPPORT_SEND_CHECKLIST.txt and complete the checks.\n"
+        "2. Fill support-request.md with the problem, reproduction steps, and recent changes.\n"
+        "3. Verify this ZIP, then run the privacy audit.\n"
+        "4. Send only this ZIP unless support explicitly asks for another file.\n\n"
         "Verification:\n"
         "- SUPPORT_BUNDLE_MANIFEST.json lists the bundle contents.\n"
         "- CHECKSUMS.txt contains SHA-256 checksums.\n\n"
@@ -233,6 +238,10 @@ def _build_support_send_checklist(*, bundle_name: str, diagnostic_name: str, inc
         f"Bundle / 送付するZIP: {bundle_name}\n"
         f"Diagnostic report inside / 同梱診断ZIP: {diagnostic_name}\n"
         f"Privacy / 匿名化状態: {privacy}\n\n"
+        "Send-ready summary / 送付判断:\n"
+        "- Complete this checklist before attaching anything.\n"
+        "- If verification is not `[OK]`, recreate the support bundle and do not send the failed ZIP.\n"
+        "- Send exactly this ZIP unless support explicitly asks for another file.\n\n"
         "Before sending / 送付前に確認:\n"
         "[ ] Open support-request.md and fill in Summary, Steps to reproduce, and Recent changes.\n"
         "[ ] Open GUI_LOG_SUMMARY.txt if the issue is GUI startup, login, or operation related.\n"
@@ -326,6 +335,7 @@ def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
     lines.append(f"- diagnostic-report.zip: {'present' if 'diagnostic-report.zip' in names else 'missing'}")
     if manifest_count is not None:
         lines.append(f"- manifest files: {manifest_count}")
+    lines.append("- send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending")
     return lines
 
 

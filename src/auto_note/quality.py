@@ -304,6 +304,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle send-ready README flow",
+            "Send-ready flow",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle send-ready checklist summary",
+            "Send-ready summary / 送付判断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle unsafe attachment warning",
+            "Do not attach the whole `.auto-note` folder",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle verification checklist hint",
+            "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "repair.py",
             "recovery kit workflow",
             "run_recovery_kit",

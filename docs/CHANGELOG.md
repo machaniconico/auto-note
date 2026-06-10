@@ -84,6 +84,7 @@
 - 問い合わせMarkdownと診断レポートZIPを1つにまとめる `auto-note support --bundle` とGUI問い合わせ一式
 - 問い合わせMarkdown/問い合わせ一式ZIPの作成直後に、送付前の検証とプライバシー監査を表示
 - 問い合わせ一式ZIPへのmanifest/checksum同梱と `auto-note support --verify`
+- 問い合わせ一式ZIPのREADME/送付前チェックリスト/検証結果に、検証NG時は作り直すこと、原則このZIPだけを送ること、`.auto-note` や購入者ZIPを添付しないことを明記
 - GUIの一式ZIP検証と、診断レポート保守一覧への問い合わせ一式ZIP検証結果表示
 - 最新の診断ZIP、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、販売素材、販売一式ZIP、購入者向け単体ZIP、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポート、問い合わせMarkdown、問い合わせ一式ZIP、配布ZIPを確認する `auto-note privacy-audit` とGUIプライバシー監査
 - 配布ZIPのmanifest/checksumだけでなく、ZIP内テキストの生パス/記事情報も `privacy-audit` で検出
