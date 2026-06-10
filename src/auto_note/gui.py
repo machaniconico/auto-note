@@ -4,8 +4,9 @@ import ctypes
 from dataclasses import replace
 from datetime import datetime
 import hashlib
+import json
 import math
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import os
 import subprocess
 import sys
@@ -5964,11 +5965,29 @@ class AutoNoteApp(tk.Tk):
             buyer_packages,
             buyer_package_errors=buyer_package_errors,
         )
+        artifact_stale_count = _home_sales_artifact_stale_count(
+            releases,
+            handoffs,
+            buyer_packages,
+            buyer_package_errors=buyer_package_errors,
+        )
         seller_remaining = len(missing) + len(warnings)
-        score = max(0, 100 - seller_remaining * 8 - artifact_remaining * 12 - artifact_ng_count * 16)
+        score = max(
+            0,
+            100
+            - seller_remaining * 8
+            - artifact_remaining * 12
+            - artifact_ng_count * 16
+            - artifact_stale_count * 10,
+        )
         status = (
             "READY TO VERIFY"
-            if seller_remaining == 0 and artifact_remaining == 0 and artifact_ng_count == 0
+            if (
+                seller_remaining == 0
+                and artifact_remaining == 0
+                and artifact_ng_count == 0
+                and artifact_stale_count == 0
+            )
             else "NEEDS ATTENTION"
         )
         self._home_sales_next_step = self._home_sales_lightweight_next_step(
@@ -5984,6 +6003,12 @@ class AutoNoteApp(tk.Tk):
             listing_packages=listing_packages,
         )
         buyer_package_text = "NG" if buyer_package_errors else ("あり" if buyer_packages else "なし")
+        freshness_text = _home_sales_freshness_text(
+            releases,
+            handoffs,
+            buyer_packages,
+            buyer_package_errors=buyer_package_errors,
+        )
         artifact_text = _home_sales_artifact_text(
             releases,
             materials,
@@ -5995,6 +6020,7 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_detail_var.set(
             f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
             f"生成物不足 {artifact_remaining} / 生成物NG {artifact_ng_count} / "
+            f"生成物更新 {freshness_text} / "
             f"{artifact_text} / 掲載画像 {screenshot_text} / "
             f"購入者ZIP {buyer_package_text} / "
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
@@ -6472,6 +6498,17 @@ class AutoNoteApp(tk.Tk):
                 gui="診断 > 販売一式作成",
                 category="tool",
             )
+        latest_release_name = releases[0].name if releases else ""
+        handoff_release_name = _home_sales_handoff_release_name(handoffs[0])
+        if latest_release_name and handoff_release_name and handoff_release_name != latest_release_name:
+            return SalesPlanStep(
+                title="販売用一式ZIPを最新配布ZIPで作り直す",
+                status="warning",
+                detail=f"handoff has {handoff_release_name}, latest release is {latest_release_name}",
+                action="配布ZIPを作り直した後は、販売用一式ZIPも作り直してください。",
+                gui="診断 > 販売一式作成",
+                category="tool",
+            )
         if not buyer_packages:
             return SalesPlanStep(
                 title="購入者向けZIPを作成する",
@@ -6487,6 +6524,16 @@ class AutoNoteApp(tk.Tk):
                 status="fail",
                 detail=f"buyer delivery zip NG {len(buyer_package_errors)}件",
                 action="購入者へそのまま添付できるZIPを作り直します。",
+                gui="診断 > 販売一括作成",
+                category="tool",
+            )
+        buyer_release_name = _home_buyer_delivery_package_release_name(buyer_packages[0])
+        if latest_release_name and buyer_release_name and buyer_release_name != latest_release_name:
+            return SalesPlanStep(
+                title="購入者向けZIPを最新配布ZIPで作り直す",
+                status="warning",
+                detail=f"buyer delivery has {buyer_release_name}, latest release is {latest_release_name}",
+                action="購入者に添付するZIPを最新配布ZIPで作り直してください。",
                 gui="診断 > 販売一括作成",
                 category="tool",
             )
@@ -10444,6 +10491,81 @@ def _home_sales_artifact_ng_count(
     if buyer_packages:
         statuses.append("NG" if buyer_package_errors else "あり")
     return sum(1 for status in statuses if status == "NG")
+
+
+def _home_sales_handoff_release_name(path: Path | None) -> str:
+    if path is None:
+        return ""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            raw = json.loads(archive.read("SALES_HANDOFF_MANIFEST.json").decode("utf-8"))
+    except (OSError, KeyError, zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+    if not isinstance(raw, dict):
+        return ""
+    release_package = raw.get("release_package")
+    return release_package if isinstance(release_package, str) else ""
+
+
+def _home_buyer_delivery_package_release_name(path: Path | None) -> str:
+    if path is None:
+        return ""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            if "BUYER_DELIVERY_MANIFEST.json" in archive.namelist():
+                raw = json.loads(archive.read("BUYER_DELIVERY_MANIFEST.json").decode("utf-8"))
+                if isinstance(raw, dict) and isinstance(raw.get("release_package"), str):
+                    return raw["release_package"]
+            release_entries = [
+                name
+                for name in archive.namelist()
+                if PurePosixPath(name).parent == PurePosixPath(".")
+                and PurePosixPath(name).name.startswith("auto-note-release-")
+                and PurePosixPath(name).suffix.casefold() == ".zip"
+            ]
+    except (OSError, zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+    if len(release_entries) != 1:
+        return ""
+    return PurePosixPath(release_entries[0]).name
+
+
+def _home_sales_artifact_stale_count(
+    releases: list[Path],
+    handoffs: list[Path],
+    buyer_packages: list[Path],
+    *,
+    buyer_package_errors: list[str] | None = None,
+) -> int:
+    if not releases:
+        return 0
+    latest_release_name = releases[0].name
+    stale_count = 0
+    handoff_release_name = _home_sales_handoff_release_name(handoffs[0] if handoffs else None)
+    if handoff_release_name and handoff_release_name != latest_release_name:
+        stale_count += 1
+    buyer_release_name = _home_buyer_delivery_package_release_name(
+        buyer_packages[0] if buyer_packages and not buyer_package_errors else None
+    )
+    if buyer_release_name and buyer_release_name != latest_release_name:
+        stale_count += 1
+    return stale_count
+
+
+def _home_sales_freshness_text(
+    releases: list[Path],
+    handoffs: list[Path],
+    buyer_packages: list[Path],
+    *,
+    buyer_package_errors: list[str] | None = None,
+) -> str:
+    stale_count = _home_sales_artifact_stale_count(
+        releases,
+        handoffs,
+        buyer_packages,
+        buyer_package_errors=buyer_package_errors,
+    )
+    return "OK" if stale_count == 0 else f"要更新 {stale_count}"
 
 
 def _home_buyer_send_action(
