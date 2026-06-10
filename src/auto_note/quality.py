@@ -430,6 +430,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle nested diagnostic verification",
+            "verify_diagnostic_report_bytes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "diagnostics.py",
             "diagnostic support fast report",
             "create_support_diagnostic_report",

@@ -10,7 +10,12 @@ import zipfile
 
 from . import __version__
 from .article import write_text_atomic
-from .diagnostics import create_support_diagnostic_report, mask_text, preview_diagnostic_report
+from .diagnostics import (
+    create_support_diagnostic_report,
+    mask_text,
+    preview_diagnostic_report,
+    verify_diagnostic_report_bytes,
+)
 from .paths import unique_path
 
 
@@ -104,6 +109,8 @@ def verify_support_bundle(bundle_path: Path) -> list[str]:
                 errors.extend(_verify_checksums(archive))
             if "SUPPORT_BUNDLE_MANIFEST.json" in names:
                 errors.extend(_verify_manifest(archive))
+            if "diagnostic-report.zip" in names:
+                errors.extend(_verify_nested_diagnostic_report(archive))
             return errors
     except zipfile.BadZipFile as exc:
         return [f"invalid zip file: {exc}"]
@@ -363,6 +370,7 @@ def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
         with zipfile.ZipFile(bundle_path) as archive:
             names = set(archive.namelist())
             manifest_count = _manifest_file_count(archive)
+            nested_errors = _verify_nested_diagnostic_report(archive) if "diagnostic-report.zip" in names else None
     except (OSError, zipfile.BadZipFile):
         return []
     lines = ["Details / 詳細:"]
@@ -374,7 +382,12 @@ def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
         lines.append("- DISPLAY_DIAGNOSTICS.txt: present")
     else:
         lines.append("- DISPLAY_DIAGNOSTICS.txt: not included (create the bundle from GUI to capture font and scaling details)")
-    lines.append(f"- diagnostic-report.zip: {'present' if 'diagnostic-report.zip' in names else 'missing'}")
+    if "diagnostic-report.zip" in names:
+        nested_summary = "verified" if not nested_errors else f"NG ({len(nested_errors)} issue(s))"
+        lines.append("- diagnostic-report.zip: present")
+        lines.append(f"- nested diagnostic: {nested_summary}")
+    else:
+        lines.append("- diagnostic-report.zip: missing")
     if manifest_count is not None:
         lines.append(f"- manifest files: {manifest_count}")
     lines.append(f"- freshness: {_format_support_bundle_freshness(bundle_path)}")
@@ -393,6 +406,17 @@ def _format_support_bundle_freshness(bundle_path: Path) -> str:
             f"warn after {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h)"
         )
     return f"fresh (age {age_hours:.1f}h, warn after {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h)"
+
+
+def _verify_nested_diagnostic_report(archive: zipfile.ZipFile) -> list[str]:
+    try:
+        data = archive.read("diagnostic-report.zip")
+    except KeyError:
+        return []
+    return [
+        f"diagnostic-report.zip: {error}"
+        for error in verify_diagnostic_report_bytes(data)
+    ]
 
 
 def _manifest_file_count(archive: zipfile.ZipFile) -> int | None:

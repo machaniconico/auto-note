@@ -44,6 +44,7 @@ from auto_note.commercial_setup import (
     update_commercial_settings,
 )
 from auto_note.diagnostics import (
+    REQUIRED_DIAGNOSTIC_REPORT_FILES,
     _truncate_preview_text,
     create_diagnostic_report,
     format_diagnostic_report_verification,
@@ -3127,6 +3128,7 @@ tags: note
         self.assertIn("[OK] support bundle verified", bundle_verification_text)
         self.assertIn("GUI_LOG_SUMMARY.txt: present", bundle_verification_text)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt: not included", bundle_verification_text)
+        self.assertIn("nested diagnostic: verified", bundle_verification_text)
         self.assertIn("manifest files: 5", bundle_verification_text)
         self.assertIn("freshness: fresh", bundle_verification_text)
         self.assertIn("send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending", bundle_verification_text)
@@ -3333,6 +3335,7 @@ tags: note
             errors = verify_support_bundle(bundle)
 
         self.assertIn("checksum mismatch: README.txt", errors)
+        self.assertTrue(any(error.startswith("diagnostic-report.zip: unreadable diagnostic report") for error in errors))
 
     def test_support_bundle_verification_accepts_legacy_without_gui_log_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3341,7 +3344,7 @@ tags: note
                 "README.txt": b"readme",
                 "SUPPORT_SEND_CHECKLIST.txt": b"checklist",
                 "support-request.md": b"request",
-                "diagnostic-report.zip": b"zip",
+                "diagnostic-report.zip": _minimal_diagnostic_report_bytes(),
             }
             manifest = json.dumps(
                 {
@@ -3367,6 +3370,7 @@ tags: note
 
         self.assertEqual(errors, [])
         self.assertIn("GUI_LOG_SUMMARY.txt: not included", verification_text)
+        self.assertIn("nested diagnostic: verified", verification_text)
         self.assertIn("legacy bundle", verification_text)
 
     def test_privacy_audit_detects_raw_private_markers(self) -> None:
@@ -3866,6 +3870,7 @@ tags:
                 "Do not attach the whole `.auto-note` folder\n"
                 "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n"
                 "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\nfreshness:\n"
+                "verify_diagnostic_report_bytes\n"
                 "Fast support diagnostic attached\n",
                 encoding="utf-8",
             )
@@ -4394,6 +4399,7 @@ tags:
         self.assertIn("support bundle stale helper:fail", product_details)
         self.assertIn("support bundle verification freshness detail:fail", product_details)
         self.assertIn("support bundle fast diagnostic preview:fail", product_details)
+        self.assertIn("support bundle nested diagnostic verification:fail", product_details)
         self.assertIn("diagnostic support fast report:fail", product_details)
         self.assertIn("diagnostic support fast omissions:fail", product_details)
         self.assertIn("diagnostic support bundle age summary:fail", product_details)
@@ -5944,6 +5950,7 @@ tags:
         self.assertIn("support bundle stale helper:pass", launcher_details)
         self.assertIn("support bundle verification freshness detail:pass", launcher_details)
         self.assertIn("support bundle fast diagnostic preview:pass", launcher_details)
+        self.assertIn("support bundle nested diagnostic verification:pass", launcher_details)
         self.assertIn("diagnostic support fast report:pass", launcher_details)
         self.assertIn("diagnostic support fast omissions:pass", launcher_details)
         self.assertIn("diagnostic support bundle age summary:pass", launcher_details)
@@ -7122,6 +7129,14 @@ def _write_and_load(text: str):
         path = Path(tmp) / "article.md"
         path.write_text(text, encoding="utf-8")
         return load_article(path)
+
+
+def _minimal_diagnostic_report_bytes() -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name in REQUIRED_DIAGNOSTIC_REPORT_FILES:
+            archive.writestr(name, f"{name}\n")
+    return buffer.getvalue()
 
 
 def _png_bytes(*, width: int, height: int) -> bytes:

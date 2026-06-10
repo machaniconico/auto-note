@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import io
 import json
 import os
 import platform
@@ -502,20 +503,32 @@ def list_diagnostic_reports(project_dir: Path) -> list[Path]:
 def verify_diagnostic_report(report_path: Path) -> list[str]:
     if not report_path.exists():
         return [f"diagnostic report not found: {report_path}"]
-    errors: list[str] = []
     try:
         with zipfile.ZipFile(report_path) as archive:
-            names = archive.namelist()
-            name_set = set(names)
-            errors.extend(_verify_diagnostic_archive_names(names))
-            bad_member = archive.testzip()
-            if bad_member:
-                errors.append(f"CRC check failed: {bad_member}")
-            for required in REQUIRED_DIAGNOSTIC_REPORT_FILES:
-                if required not in name_set:
-                    errors.append(f"missing required file: {required}")
+            return _verify_diagnostic_archive(archive)
     except (OSError, zipfile.BadZipFile) as exc:
         return [f"unreadable diagnostic report: {exc}"]
+
+
+def verify_diagnostic_report_bytes(data: bytes) -> list[str]:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            return _verify_diagnostic_archive(archive)
+    except (OSError, zipfile.BadZipFile) as exc:
+        return [f"unreadable diagnostic report: {exc}"]
+
+
+def _verify_diagnostic_archive(archive: zipfile.ZipFile) -> list[str]:
+    errors: list[str] = []
+    names = archive.namelist()
+    name_set = set(names)
+    errors.extend(_verify_diagnostic_archive_names(names))
+    bad_member = archive.testzip()
+    if bad_member:
+        errors.append(f"CRC check failed: {bad_member}")
+    for required in REQUIRED_DIAGNOSTIC_REPORT_FILES:
+        if required not in name_set:
+            errors.append(f"missing required file: {required}")
     return errors
 
 
