@@ -5970,11 +5970,17 @@ class AutoNoteApp(tk.Tk):
             verify_buyer_delivery_package(latest_buyer_package) if latest_buyer_package else []
         )
         buyer_package_text = "NG" if buyer_package_errors else ("あり" if buyer_packages else "なし")
+        artifact_text = _home_sales_artifact_text(
+            releases,
+            materials,
+            listing_packages,
+            handoffs,
+        )
         screenshot_text = _home_sales_screenshot_text(screenshot_packs)
         self.home_sales_status_var.set(f"販売準備: {status} / 軽量 {score}/100")
         self.home_sales_detail_var.set(
             f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
-            f"生成物不足 {artifact_remaining} / 掲載画像 {screenshot_text} / "
+            f"生成物不足 {artifact_remaining} / {artifact_text} / 掲載画像 {screenshot_text} / "
             f"購入者ZIP {buyer_package_text} / "
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
             f"サポート {support_text}"
@@ -10312,6 +10318,35 @@ def _home_sales_screenshot_text(screenshot_packs: list[Path]) -> str:
     if not screenshot_packs:
         return "なし"
     return "NG" if verify_sales_screenshot_pack(screenshot_packs[0]) else "あり"
+
+
+def _home_sales_artifact_status(paths: list[Path], kind: str) -> str:
+    if not paths:
+        return "なし"
+    latest = paths[0]
+    if kind == "release":
+        return "NG" if verify_release_package(latest) else "あり"
+    if kind == "materials":
+        return "NG" if verify_sales_materials(latest) else "あり"
+    if kind == "listing":
+        return "NG" if verify_sales_listing_kit(latest) else "あり"
+    if kind == "handoff":
+        return "NG" if verify_sales_handoff(latest) else "あり"
+    return "あり"
+
+
+def _home_sales_artifact_text(
+    releases: list[Path],
+    materials: list[Path],
+    listing_packages: list[Path],
+    handoffs: list[Path],
+) -> str:
+    return (
+        f"配布ZIP {_home_sales_artifact_status(releases, 'release')} / "
+        f"素材 {_home_sales_artifact_status(materials, 'materials')} / "
+        f"掲載キット {_home_sales_artifact_status(listing_packages, 'listing')} / "
+        f"販売一式 {_home_sales_artifact_status(handoffs, 'handoff')}"
+    )
 
 
 def _home_buyer_send_action(
