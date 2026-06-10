@@ -48,6 +48,15 @@ class SalesLaunchReport:
         return any(check.status == "warn" for check in self.checks)
 
 
+@dataclass(frozen=True)
+class SalesLaunchConfirmation:
+    project_dir: Path
+    generated_at: datetime
+    sales_launch: SalesLaunchReport
+    note: str = ""
+    report_path: Path | None = None
+
+
 def run_sales_launch_check(project_dir: Path) -> SalesLaunchReport:
     project_dir = project_dir.resolve()
     settings = load_settings(project_dir)
@@ -170,11 +179,93 @@ def write_sales_launch_checklist(
     return path
 
 
+def format_sales_launch_confirmation(confirmation: SalesLaunchConfirmation) -> str:
+    report = confirmation.sales_launch
+    review = report.sales_review
+    checklist_path = report.report_path or _latest_or_none(list_sales_launch_checklists(confirmation.project_dir))
+    lines = [
+        "Sales launch confirmation / 販売ページ確認記録",
+        f"Generated: {confirmation.generated_at:%Y-%m-%d %H:%M:%S}",
+        f"Marketplace: {report.marketplace.name}",
+        f"Sales URL: {load_settings(confirmation.project_dir).sales_channel_url.strip() or 'none'}",
+        f"Launch checklist: {_name_or_none(checklist_path)}",
+        "",
+        *_buyer_delivery_copy_sheet(review),
+        "",
+        "Confirmed in marketplace preview / 実画面で確認したこと",
+        "[x] 販売ページの商品名、価格、更新日、対応OS、納品ZIP名を確認した",
+        "[x] 決済後メッセージまたは購入後に見える本文へ、購入者向け送付文を貼り付けた",
+        "[x] ZIP名、サイズ、SHA-256が buyer delivery copy sheet と一致している",
+        "[x] 添付または送付対象が最新の buyer delivery zip だけになっている",
+        "[x] 掲載キットZIP、販売者用ZIP、診断ZIP、.auto-note、.venv、ログイン情報を購入者向け添付欄に入れていない",
+        "[x] 返金条件、ライセンス、サポート範囲の表示を販売素材と照合した",
+        "[x] プレビューまたはテスト購入相当の画面で、購入者が最初に開くファイルまで確認した",
+        "",
+        f"Platform-specific confirmation / 販売先別確認: {report.marketplace.name}",
+        *[f"[x] {item}" for item in report.marketplace.items],
+        "",
+        "Launch status at confirmation / 記録時点の自動チェック",
+        f"- status: {report.status}",
+        f"- score: {report.score}/100",
+        f"- warning count: {sum(1 for check in report.checks if check.status == 'warn')}",
+        f"- blocker count: {sum(1 for check in report.checks if check.status == 'fail')}",
+        "",
+        "Seller note / 販売者メモ",
+    ]
+    note = confirmation.note.strip()
+    lines.append(note if note else "- none")
+    lines.extend(
+        [
+            "",
+            "Safety / 取り扱い",
+            "- This confirmation is seller-only evidence. Do not attach it to buyer delivery or public support requests.",
+            "- Keep it with the marketplace order/listing record.",
+        ]
+    )
+    if confirmation.report_path is not None:
+        lines.extend(["", f"saved: {confirmation.report_path.name}"])
+    return "\n".join(lines)
+
+
+def write_sales_launch_confirmation(
+    project_dir: Path,
+    *,
+    report: SalesLaunchReport | None = None,
+    note: str = "",
+) -> Path:
+    project_dir = project_dir.resolve()
+    report = report or run_sales_launch_check(project_dir)
+    sales_dir = project_dir / ".auto-note" / "sales"
+    sales_dir.mkdir(parents=True, exist_ok=True)
+    path = unique_path(sales_dir / f"sales-launch-confirmation-{datetime.now():%Y%m%d-%H%M%S}.txt")
+    saved_report = replace(report, report_path=report.report_path or _latest_or_none(list_sales_launch_checklists(project_dir)))
+    confirmation = SalesLaunchConfirmation(
+        project_dir=project_dir,
+        generated_at=datetime.now(),
+        sales_launch=saved_report,
+        note=note,
+        report_path=path,
+    )
+    write_text_atomic(path, format_sales_launch_confirmation(confirmation) + "\n")
+    return path
+
+
 def list_sales_launch_checklists(project_dir: Path) -> list[Path]:
     sales_dir = project_dir / ".auto-note" / "sales"
     if not sales_dir.exists():
         return []
     return sorted(sales_dir.glob("sales-launch-checklist-*.txt"), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def list_sales_launch_confirmations(project_dir: Path) -> list[Path]:
+    sales_dir = project_dir / ".auto-note" / "sales"
+    if not sales_dir.exists():
+        return []
+    return sorted(
+        sales_dir.glob("sales-launch-confirmation-*.txt"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
 
 
 def has_sales_launch_blockers(report: SalesLaunchReport, *, strict: bool = False) -> bool:
@@ -464,3 +555,7 @@ def _sha256(path: Path) -> str:
 
 def _name_or_none(path: Path | None) -> str:
     return path.name if path else "none"
+
+
+def _latest_or_none(paths: list[Path]) -> Path | None:
+    return paths[0] if paths else None

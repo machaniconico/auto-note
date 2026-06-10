@@ -167,7 +167,9 @@ from .sales_launch import (
     format_sales_launch_checklist,
     has_sales_launch_blockers,
     list_sales_launch_checklists,
+    list_sales_launch_confirmations,
     run_sales_launch_check,
+    write_sales_launch_confirmation,
     write_sales_launch_checklist,
 )
 from .settings import AppSettings, DEFAULT_SETTINGS, UI_DENSITY_OPTIONS, load_settings, parse_tags, save_settings
@@ -222,15 +224,15 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer full Japanese UI faces first. Meiryo UI is narrower, but on some
-# Windows/Tk combinations it renders Japanese controls with cramped strokes.
+# Prefer lighter modern Japanese UI faces first. Meiryo stays as a fallback,
+# but its thicker strokes can look cramped inside dense ttk controls.
 UI_FONT_CANDIDATES = (
-    "メイリオ",
-    "Meiryo",
     "Noto Sans JP",
     "Yu Gothic UI",
-    "Meiryo UI",
     "Yu Gothic",
+    "メイリオ",
+    "Meiryo",
+    "Meiryo UI",
     "Noto Sans CJK JP",
     "BIZ UDPゴシック",
     "BIZ UDゴシック",
@@ -241,7 +243,7 @@ CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_CRUSH_PRONE_FONT_KEYWORDS = ("biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_MIN_FONT_LINESPACE_RATIO = 1.55
+UI_MIN_FONT_LINESPACE_RATIO = 1.25
 UI_TEXT_SIZE = 16
 UI_SMALL_TEXT_SIZE = 15
 UI_BADGE_FONT_SIZE = 15
@@ -282,10 +284,10 @@ UI_DENSITY_VALUES = {
         "small_text_size": 16,
         "badge_font_size": 16,
         "tree_row_height": 94,
-        "notebook_tab_padding": (30, 26),
-        "button_padding": (30, 26),
-        "primary_button_padding": (32, 26),
-        "danger_button_padding": (28, 25),
+        "notebook_tab_padding": (30, 30),
+        "button_padding": (30, 30),
+        "primary_button_padding": (32, 30),
+        "danger_button_padding": (28, 29),
         "text_spacing_top": 9,
         "text_spacing_bottom": 11,
     },
@@ -294,10 +296,10 @@ UI_DENSITY_VALUES = {
         "small_text_size": 17,
         "badge_font_size": 17,
         "tree_row_height": 104,
-        "notebook_tab_padding": (32, 28),
-        "button_padding": (33, 28),
-        "primary_button_padding": (35, 28),
-        "danger_button_padding": (31, 27),
+        "notebook_tab_padding": (32, 32),
+        "button_padding": (33, 32),
+        "primary_button_padding": (35, 32),
+        "danger_button_padding": (31, 31),
         "text_spacing_top": 10,
         "text_spacing_bottom": 12,
     },
@@ -306,10 +308,10 @@ UI_DENSITY_VALUES = {
         "small_text_size": 18,
         "badge_font_size": 18,
         "tree_row_height": 118,
-        "notebook_tab_padding": (36, 32),
-        "button_padding": (37, 32),
-        "primary_button_padding": (39, 32),
-        "danger_button_padding": (35, 31),
+        "notebook_tab_padding": (36, 36),
+        "button_padding": (37, 36),
+        "primary_button_padding": (39, 36),
+        "danger_button_padding": (35, 35),
         "text_spacing_top": 11,
         "text_spacing_bottom": 14,
     },
@@ -2136,6 +2138,7 @@ class AutoNoteApp(tk.Tk):
             ("レビュー保存", self.create_sales_review_report_action, None),
             ("販売直前", self.run_sales_launch_to_tab, None),
             ("直前保存", self.create_sales_launch_checklist_action, None),
+            ("確認記録", self.create_sales_launch_confirmation_action, None),
             ("一括チェック", self.run_release_check_full_action, None),
             (self.home_support_next_button_var, self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
@@ -2283,6 +2286,7 @@ class AutoNoteApp(tk.Tk):
             ("レビュー保存", self.create_sales_review_report_action),
             ("販売直前", self.run_sales_launch_to_tab),
             ("直前保存", self.create_sales_launch_checklist_action),
+            ("販売確認記録", self.create_sales_launch_confirmation_action),
             ("販売前一括チェック", self.run_release_check_full_action),
             ("アクションプラン", self.run_action_plan_to_tab),
             ("クイック確認", self.run_quickstart_to_tab),
@@ -3361,6 +3365,7 @@ class AutoNoteApp(tk.Tk):
                 ("レビュー保存", self.create_sales_review_report_action),
                 ("販売直前", self.run_sales_launch_to_tab),
                 ("直前保存", self.create_sales_launch_checklist_action),
+                ("販売確認記録", self.create_sales_launch_confirmation_action),
                 ("販売前一括チェック", self.run_release_check_full_action),
                 ("セルフテスト", self.run_self_test_to_tab),
                 ("セルフテスト保存", self.create_self_test_report_action),
@@ -3863,6 +3868,7 @@ class AutoNoteApp(tk.Tk):
             "レビュー保存": self.create_sales_review_report_action,
             "販売直前": self.run_sales_launch_to_tab,
             "直前保存": self.create_sales_launch_checklist_action,
+            "販売確認記録": self.create_sales_launch_confirmation_action,
             "noteログイン": self.show_note_login_safety_action,
             "次の一手": self.run_home_primary_action,
         }
@@ -5724,6 +5730,7 @@ class AutoNoteApp(tk.Tk):
             ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
             ("送付記録", list_seller_delivery_receipts(self.project_dir)),
             ("販売直前", list_sales_launch_checklists(self.project_dir)),
+            ("販売確認", list_sales_launch_confirmations(self.project_dir)),
             ("一括チェック", _list_release_check_reports(self.project_dir)),
             ("投稿キュー", list_publish_queue_reports(self.project_dir)),
             ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
@@ -6802,6 +6809,7 @@ class AutoNoteApp(tk.Tk):
             ("レビュー保存", "販売ページ・納品最終レビューを時刻付きレポートとして保存", self.create_sales_review_report_action),
             ("販売直前", "販売ページ公開前に決済後メッセージ、添付ZIP、返金/サポート表示を確認", self.run_sales_launch_to_tab),
             ("直前保存", "販売ページ公開前の最終目視チェックリストを保存", self.create_sales_launch_checklist_action),
+            ("販売確認記録", "販売ページのプレビュー確認後に販売者専用の証跡を保存", self.create_sales_launch_confirmation_action),
             (
                 "販売前一括チェック",
                 "check-release.ps1 -Full をバックグラウンドで実行し、証跡レポートを保存",
@@ -7394,7 +7402,7 @@ class AutoNoteApp(tk.Tk):
         add(
             "Japanese font family",
             not _is_crush_prone_font_family(UI_FONT) and not _is_crush_prone_font_family(actual_font_family),
-            f"{UI_FONT} -> actual {actual_font_family} (preferred: Meiryo UI / メイリオ)",
+            f"{UI_FONT} -> actual {actual_font_family} (preferred: Noto Sans JP / Yu Gothic UI)",
             "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
@@ -8020,6 +8028,38 @@ class AutoNoteApp(tk.Tk):
         self._refresh_home_reports()
         _open_path(path)
         self.notify(f"販売直前チェックを保存しました: {path.name}", level=self._sales_launch_notify_level(report))
+
+    def create_sales_launch_confirmation_action(self) -> None:
+        report = run_sales_launch_check(self.project_dir)
+        if has_sales_launch_blockers(report):
+            self._set_text(self.diagnostics_text, format_sales_launch_checklist(report))
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("販売直前チェックにNGがあるため確認記録は保存していません", level="error")
+            messagebox.showwarning(
+                "販売確認記録",
+                "販売直前チェックにNGがあります。先にNGを解消してから、実画面確認後に記録してください。",
+            )
+            return
+        note = simpledialog.askstring(
+            "販売確認記録",
+            "販売ページのプレビュー/テスト購入相当で確認したメモを入力してください。空欄でも保存できます。",
+            parent=self,
+        )
+        if note is None:
+            self.notify("販売確認記録をキャンセルしました", level="info")
+            return
+        try:
+            path = write_sales_launch_confirmation(self.project_dir, report=report, note=note)
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            self.notify("販売確認記録の保存に失敗しました", level="error")
+            messagebox.showerror("販売確認記録エラー", str(exc))
+            return
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_reports()
+        _open_path(path)
+        self.notify(f"販売確認記録を保存しました: {path.name}", level=self._sales_launch_notify_level(report))
 
     def _sales_review_notify_level(self, report) -> str:
         if has_sales_review_blockers(report):
@@ -10144,6 +10184,16 @@ def _home_report_status(label: str, path: Path) -> str:
         if "Verdict: BLOCKED" in text:
             return "NG"
         if "Verdict: NEEDS REVIEW" in text:
+            return "確認"
+        return "OK"
+    if label == "販売確認":
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "NG"
+        if "blocker count: 0" not in text:
+            return "NG"
+        if "warning count: 0" not in text:
             return "確認"
         return "OK"
     if label == "一括チェック":

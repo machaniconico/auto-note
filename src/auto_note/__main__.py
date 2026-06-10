@@ -757,6 +757,7 @@ def main(argv: list[str] | None = None) -> int:
                 format_sales_launch_checklist,
                 has_sales_launch_blockers,
                 run_sales_launch_check,
+                write_sales_launch_confirmation,
                 write_sales_launch_checklist,
             )
 
@@ -766,6 +767,10 @@ def main(argv: list[str] | None = None) -> int:
                 path = write_sales_launch_checklist(args.project_dir.resolve(), report=report)
                 print()
                 print(f"sales launch checklist created: {path}")
+            if args.confirm_preview:
+                path = write_sales_launch_confirmation(args.project_dir.resolve(), report=report, note=args.note or "")
+                print()
+                print(f"sales launch confirmation created: {path}")
             return 1 if has_sales_launch_blockers(report, strict=args.strict) else 0
 
         if args.command == "self-test":
@@ -1560,6 +1565,12 @@ def build_parser() -> argparse.ArgumentParser:
     sales_launch.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
     sales_launch.add_argument("--strict", action="store_true", help="Exit with an error while warnings remain.")
     sales_launch.add_argument("--report", action="store_true", help="Save the sales launch checklist under .auto-note/sales.")
+    sales_launch.add_argument(
+        "--confirm-preview",
+        action="store_true",
+        help="Save seller-only evidence that the marketplace preview or test-purchase screen was checked.",
+    )
+    sales_launch.add_argument("--note", help="Optional seller note saved with --confirm-preview.")
 
     self_test = subparsers.add_parser("self-test", help="Run a user-facing local health check after install.")
     self_test.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")

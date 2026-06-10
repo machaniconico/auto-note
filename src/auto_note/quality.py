@@ -3115,14 +3115,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"メイリオ"',
+            '"Noto Sans JP"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI native Japanese preferred font",
-            '"メイリオ",\n    "Meiryo",\n    "Noto Sans JP"',
+            '"Noto Sans JP",\n    "Yu Gothic UI",\n    "Yu Gothic"',
         )
     )
     checks.append(
@@ -3843,7 +3843,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "README.md",
             "README current readable Japanese font guidance",
-            "メイリオ` / `Meiryo` / `Noto Sans JP",
+            "Noto Sans JP` / `Yu Gothic UI` / `Yu Gothic",
         )
     )
     checks.append(
@@ -3857,7 +3857,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "docs" / "CHANGELOG.md",
             "changelog current readable Japanese font guidance",
-            "メイリオ` / `Noto Sans JP",
+            "Noto Sans JP` / `Yu Gothic UI",
         )
     )
     checks.append(

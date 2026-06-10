@@ -213,7 +213,9 @@ from auto_note.sales_launch import (
     format_sales_launch_checklist,
     has_sales_launch_blockers,
     list_sales_launch_checklists,
+    list_sales_launch_confirmations,
     run_sales_launch_check,
+    write_sales_launch_confirmation,
     write_sales_launch_checklist,
 )
 from auto_note.sales_materials import (
@@ -466,15 +468,15 @@ class ArticleTests(unittest.TestCase):
         self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
     def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
-        self.assertEqual(UI_FONT_CANDIDATES[:4], ("メイリオ", "Meiryo", "Noto Sans JP", "Yu Gothic UI"))
+        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Noto Sans JP", "Yu Gothic UI", "Yu Gothic", "メイリオ"))
         self.assertGreaterEqual(UI_TEXT_SIZE, 16)
         self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 15)
         self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 15)
-        self.assertLessEqual(UI_MIN_FONT_LINESPACE_RATIO, 1.6)
+        self.assertLessEqual(UI_MIN_FONT_LINESPACE_RATIO, 1.3)
         self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 17)
         self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 16)
         self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 16)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 26)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 30)
         self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 18)
         self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 20)
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
@@ -2430,9 +2432,28 @@ tags: note
             sales_launch_report_path = write_sales_launch_checklist(project, report=sales_launch)
             sales_launch_report_text = sales_launch_report_path.read_text(encoding="utf-8")
             sales_launch_reports = list_sales_launch_checklists(project)
+            sales_launch_confirmation_path = write_sales_launch_confirmation(
+                project,
+                report=sales_launch,
+                note="checked note preview before publish",
+            )
+            sales_launch_confirmation_text = sales_launch_confirmation_path.read_text(encoding="utf-8")
+            sales_launch_confirmations = list_sales_launch_confirmations(project)
             sales_launch_cli_output = io.StringIO()
             with redirect_stdout(sales_launch_cli_output):
                 sales_launch_cli_code = cli_main(["sales-launch", "--project-dir", str(project), "--report"])
+            sales_launch_confirm_cli_output = io.StringIO()
+            with redirect_stdout(sales_launch_confirm_cli_output):
+                sales_launch_confirm_cli_code = cli_main(
+                    [
+                        "sales-launch",
+                        "--project-dir",
+                        str(project),
+                        "--confirm-preview",
+                        "--note",
+                        "marketplace preview checked",
+                    ]
+                )
             privacy_after_sales_review = run_privacy_audit(project)
             privacy_after_sales_review_text = format_privacy_audit_report(privacy_after_sales_review)
             privacy_after_sales_launch = run_privacy_audit(project)
@@ -2516,9 +2537,21 @@ tags: note
         self.assertEqual(sales_launch_reports[0], sales_launch_report_path)
         self.assertIn("Sales launch checklist", sales_launch_report_text)
         self.assertNotIn(str(project), sales_launch_report_text)
+        self.assertGreaterEqual(len(sales_launch_confirmations), 1)
+        self.assertEqual(sales_launch_confirmations[0], sales_launch_confirmation_path)
+        self.assertIn("Sales launch confirmation", sales_launch_confirmation_text)
+        self.assertIn(sales_launch_report_path.name, sales_launch_confirmation_text)
+        self.assertIn(report.buyer_delivery_package_path.name, sales_launch_confirmation_text)
+        self.assertIn(buyer_package_sha, sales_launch_confirmation_text)
+        self.assertIn("checked note preview before publish", sales_launch_confirmation_text)
+        self.assertIn("blocker count: 0", sales_launch_confirmation_text)
+        self.assertIn("seller-only evidence", sales_launch_confirmation_text)
+        self.assertNotIn(str(project), sales_launch_confirmation_text)
         self.assertEqual(sales_launch_cli_code, 0)
         self.assertIn("sales launch checklist created:", sales_launch_cli_output.getvalue())
         self.assertIn("Sales launch checklist", sales_launch_cli_output.getvalue())
+        self.assertEqual(sales_launch_confirm_cli_code, 0)
+        self.assertIn("sales launch confirmation created:", sales_launch_confirm_cli_output.getvalue())
         self.assertIsNotNone(report.seller_send_checklist_path)
         self.assertTrue(seller_send_checklist_exists)
         self.assertIsNotNone(report.sales_plan_report_path)
@@ -3815,7 +3848,7 @@ tags:
                 + "掲載キット検証\n"
                 + "list_sales_listing_packages\n"
                 + '"Noto Sans JP"\n'
-                + '"メイリオ",\n    "Meiryo",\n    "Noto Sans JP"\n'
+                + '"Noto Sans JP",\n    "Yu Gothic UI",\n    "Yu Gothic"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
                 + 'UI_CONTROL_FONT_WEIGHT = "normal"\n'
@@ -4159,7 +4192,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nメイリオ` / `Meiryo` / `Noto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nNoto Sans JP` / `Yu Gothic UI` / `Yu Gothic\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             readme_fixture = project / "README.md"
@@ -4171,7 +4204,7 @@ tags:
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "CHANGELOG.md").write_text(
-                "メイリオ` / `Noto Sans JP\n",
+                "Noto Sans JP` / `Yu Gothic UI\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RELEASE_CHECKLIST.md").write_text(
