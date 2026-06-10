@@ -1398,6 +1398,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff creates sales screenshots",
+            "_build_sales_screenshot_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff includes sales screenshots",
+            "sales_screenshots/",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff verifies sales screenshots",
+            "_verify_sales_screenshot_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff checksums sales screenshots",
+            "_expected_sales_screenshot_entry_names",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "__main__.py",
             "CLI sales handoff buyer extract command",
             "--extract-buyer",

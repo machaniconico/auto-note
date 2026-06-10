@@ -88,6 +88,7 @@ def create_sales_handoff(project_dir: Path, *, strict: bool = False) -> SalesHan
         "RELEASE_VERIFICATION.txt": (format_release_verification(Path(release_path.name), release_errors) + "\n").encode("utf-8"),
         f"release/{release_path.name}": release_bytes,
     }
+    entries.update(_build_sales_screenshot_entries(project_dir))
     records = [_record(name, data) for name, data in entries.items()]
     manifest = _build_manifest(created_at=created_at, release_name=release_path.name, readiness_status=readiness.status, records=records)
     manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
@@ -173,6 +174,7 @@ def verify_sales_handoff(handoff_path: Path) -> list[str]:
                 errors.extend(_verify_manifest(archive))
             if "SALES_MATERIALS.md" in names:
                 errors.extend(_verify_sales_materials_entry(archive))
+            errors.extend(_verify_sales_screenshot_entries(archive))
             if "SELLER_DELIVERY_RECEIPT.txt" in names:
                 release_name = PurePosixPath(release_entries[0]).name if release_entries else ""
                 errors.extend(_verify_seller_delivery_receipt(archive, release_name))
@@ -559,6 +561,7 @@ def _build_readme(release_name: str, readiness_status: str) -> str:
         "- SELLER_FINAL_CHECKLIST.txt: Final seller-side confirmation before delivery.\n"
         "- SUPPORT_RESPONSE_TEMPLATE.txt: First reply template for buyer support requests.\n"
         "- SALES_MATERIALS.md: Marketplace listing, delivery, FAQ, support, and refund copy drafts.\n"
+        "- sales_screenshots/: Marketplace listing image pack, captions, and HTML preview.\n"
         "- COMMERCIAL_READINESS.txt: Seller-facing readiness evidence.\n"
         "- PRIVACY_AUDIT.txt: Privacy-safe audit result for generated artifacts.\n"
         "- RELEASE_VERIFICATION.txt: Release manifest/checksum verification result.\n"
@@ -702,6 +705,7 @@ def _build_delivery_checklist(release_name: str, readiness) -> str:
         "- COMMERCIAL_READINESS.txt",
         "- PRIVACY_AUDIT.txt",
         "- RELEASE_VERIFICATION.txt",
+        "- sales_screenshots/ の掲載画像、キャプション、HTMLプレビュー",
         "- SALES_HANDOFF_MANIFEST.json and CHECKSUMS.txt",
         "",
         "Do not send by default / 通常は送らないもの",
@@ -738,6 +742,7 @@ def _build_seller_final_checklist(readiness) -> str:
         "",
         "Before listing or delivery",
         "- Confirm the sales page describes the exact included release zip.",
+        "- Confirm sales_screenshots/index.html and SCREENSHOT_CAPTIONS.md match the listing copy.",
         "- Confirm refund terms, support scope, and response hours are written on the sales page.",
         "- Confirm the buyer receives only release/auto-note-release-*.zip, not this seller evidence zip.",
         "- Keep this handoff zip for your own audit trail.",
@@ -821,6 +826,36 @@ def _build_sales_materials_entry(project_dir: Path) -> bytes:
             return text.encode("utf-8")
     text, _placeholders = build_sales_materials(project_dir)
     return text.encode("utf-8")
+
+
+def _build_sales_screenshot_entries(project_dir: Path) -> dict[str, bytes]:
+    from .sales_screenshots import create_sales_screenshot_pack, list_sales_screenshot_packs, verify_sales_screenshot_pack
+
+    pack_dir: Path | None = None
+    for candidate in list_sales_screenshot_packs(project_dir):
+        if not verify_sales_screenshot_pack(candidate):
+            pack_dir = candidate
+            break
+    if pack_dir is None:
+        pack_dir = create_sales_screenshot_pack(project_dir).directory
+    return {
+        f"sales_screenshots/{filename}": (pack_dir / filename).read_bytes()
+        for filename in _expected_sales_screenshot_filenames()
+    }
+
+
+def _expected_sales_screenshot_filenames() -> tuple[str, ...]:
+    from .sales_screenshots import SCREENSHOT_ASSETS
+
+    return tuple(str(spec["filename"]) for spec in SCREENSHOT_ASSETS) + (
+        "SCREENSHOT_CAPTIONS.md",
+        "index.html",
+        "README.txt",
+    )
+
+
+def _expected_sales_screenshot_entry_names() -> tuple[str, ...]:
+    return tuple(f"sales_screenshots/{filename}" for filename in _expected_sales_screenshot_filenames())
 
 
 def _build_manifest(
@@ -929,6 +964,7 @@ def _verify_checksums(archive: zipfile.ZipFile) -> list[str]:
         "PRIVACY_AUDIT.txt",
         "RELEASE_VERIFICATION.txt",
         "SALES_HANDOFF_MANIFEST.json",
+        *_expected_sales_screenshot_entry_names(),
     ):
         if required in names and required not in checked:
             errors.append(f"checksum missing: {required}")
@@ -1132,6 +1168,30 @@ def _verify_sales_materials_entry(archive: zipfile.ZipFile) -> list[str]:
     except KeyError as exc:
         return [f"sales materials missing: {exc}"]
     return [f"sales materials: {error}" for error in verify_sales_materials_text(text)]
+
+
+def _verify_sales_screenshot_entries(archive: zipfile.ZipFile) -> list[str]:
+    errors: list[str] = []
+    names = set(archive.namelist())
+    expected = set(_expected_sales_screenshot_entry_names())
+    missing = sorted(expected - names)
+    if missing:
+        errors.extend(f"missing required sales screenshot file: {name}" for name in missing)
+        return errors
+    extras = sorted(name for name in names if name.startswith("sales_screenshots/") and name not in expected)
+    if extras:
+        errors.append(f"unexpected sales screenshot file(s): {', '.join(extras)}")
+    for name in sorted(expected):
+        try:
+            text = archive.read(name).decode("utf-8", errors="replace")
+        except (KeyError, UnicodeDecodeError) as exc:
+            errors.append(f"sales screenshot file unreadable: {name}: {exc}")
+            continue
+        if not text.strip():
+            errors.append(f"empty sales screenshot file: {name}")
+        if name.lower().endswith(".svg") and ("<svg" not in text or "</svg>" not in text):
+            errors.append(f"invalid sales screenshot SVG: {name}")
+    return errors
 
 
 def _verify_seller_delivery_receipt(archive: zipfile.ZipFile, release_name: str) -> list[str]:
