@@ -5952,22 +5952,36 @@ class AutoNoteApp(tk.Tk):
             )
             if not paths
         )
+        buyer_package_errors = (
+            verify_buyer_delivery_package(latest_buyer_package) if latest_buyer_package else []
+        )
+        artifact_ng_count = _home_sales_artifact_ng_count(
+            releases,
+            materials,
+            screenshot_packs,
+            listing_packages,
+            handoffs,
+            buyer_packages,
+            buyer_package_errors=buyer_package_errors,
+        )
         seller_remaining = len(missing) + len(warnings)
-        score = max(0, 100 - seller_remaining * 8 - artifact_remaining * 12)
-        status = "READY TO VERIFY" if seller_remaining == 0 and artifact_remaining == 0 else "NEEDS ATTENTION"
+        score = max(0, 100 - seller_remaining * 8 - artifact_remaining * 12 - artifact_ng_count * 16)
+        status = (
+            "READY TO VERIFY"
+            if seller_remaining == 0 and artifact_remaining == 0 and artifact_ng_count == 0
+            else "NEEDS ATTENTION"
+        )
         self._home_sales_next_step = self._home_sales_lightweight_next_step(
             missing=missing,
             warnings=warnings,
             releases=releases,
             handoffs=handoffs,
             buyer_packages=buyer_packages,
+            buyer_package_errors=buyer_package_errors,
             buyer_messages=buyer_messages,
             materials=materials,
             screenshot_packs=screenshot_packs,
             listing_packages=listing_packages,
-        )
-        buyer_package_errors = (
-            verify_buyer_delivery_package(latest_buyer_package) if latest_buyer_package else []
         )
         buyer_package_text = "NG" if buyer_package_errors else ("あり" if buyer_packages else "なし")
         artifact_text = _home_sales_artifact_text(
@@ -5980,7 +5994,8 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_status_var.set(f"販売準備: {status} / 軽量 {score}/100")
         self.home_sales_detail_var.set(
             f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
-            f"生成物不足 {artifact_remaining} / {artifact_text} / 掲載画像 {screenshot_text} / "
+            f"生成物不足 {artifact_remaining} / 生成物NG {artifact_ng_count} / "
+            f"{artifact_text} / 掲載画像 {screenshot_text} / "
             f"購入者ZIP {buyer_package_text} / "
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
             f"サポート {support_text}"
@@ -6346,6 +6361,7 @@ class AutoNoteApp(tk.Tk):
         releases: list[Path],
         handoffs: list[Path],
         buyer_packages: list[Path],
+        buyer_package_errors: list[str],
         buyer_messages: list[Path],
         materials: list[Path],
         screenshot_packs: list[Path],
@@ -6370,12 +6386,32 @@ class AutoNoteApp(tk.Tk):
                 gui="診断 > 出荷ZIP作成",
                 category="tool",
             )
+        release_errors = verify_release_package(releases[0])
+        if release_errors:
+            return SalesPlanStep(
+                title="配布ZIPを作り直す",
+                status="fail",
+                detail=f"release package NG {len(release_errors)}件",
+                action="最新の配布ZIPが壊れているため、出荷ZIPを作り直します。",
+                gui="診断 > 出荷ZIP作成",
+                category="tool",
+            )
         if not materials:
             return SalesPlanStep(
                 title="販売素材Markdownを作成する",
                 status="warning",
                 detail="sales materials not found",
                 action="販売ページ文案、納品文、FAQを作成します。",
+                gui="診断 > 販売素材作成",
+                category="tool",
+            )
+        material_errors = verify_sales_materials(materials[0])
+        if material_errors:
+            return SalesPlanStep(
+                title="販売素材Markdownを作り直す",
+                status="fail",
+                detail=f"sales materials NG {len(material_errors)}件",
+                action="販売ページ文案、納品文、FAQの素材を再生成します。",
                 gui="診断 > 販売素材作成",
                 category="tool",
             )
@@ -6388,12 +6424,32 @@ class AutoNoteApp(tk.Tk):
                 gui="診断 > 掲載画像作成",
                 category="tool",
             )
+        screenshot_errors = verify_sales_screenshot_pack(screenshot_packs[0])
+        if screenshot_errors:
+            return SalesPlanStep(
+                title="販売ページ掲載画像を作り直す",
+                status="fail",
+                detail=f"sales screenshot pack NG {len(screenshot_errors)}件",
+                action="販売ページに載せる画像、キャプション、HTMLプレビューを再生成します。",
+                gui="診断 > 掲載画像作成",
+                category="tool",
+            )
         if not listing_packages:
             return SalesPlanStep(
                 title="販売ページ掲載キットを作成する",
                 status="warning",
                 detail="sales listing kit not found",
                 action="販売ページへ貼る文案、画像、キャプション、チェック表をZIP化します。",
+                gui="診断 > 掲載キット作成",
+                category="tool",
+            )
+        listing_errors = verify_sales_listing_kit(listing_packages[0])
+        if listing_errors:
+            return SalesPlanStep(
+                title="販売ページ掲載キットを作り直す",
+                status="fail",
+                detail=f"sales listing kit NG {len(listing_errors)}件",
+                action="販売ページへ貼る文案、画像、キャプション、チェック表をZIP化し直します。",
                 gui="診断 > 掲載キット作成",
                 category="tool",
             )
@@ -6406,12 +6462,31 @@ class AutoNoteApp(tk.Tk):
                 gui="診断 > 販売一式作成",
                 category="tool",
             )
+        handoff_errors = verify_sales_handoff(handoffs[0])
+        if handoff_errors:
+            return SalesPlanStep(
+                title="販売用一式ZIPを作り直す",
+                status="fail",
+                detail=f"sales handoff NG {len(handoff_errors)}件",
+                action="販売者が保管する証跡ZIPを作り直します。",
+                gui="診断 > 販売一式作成",
+                category="tool",
+            )
         if not buyer_packages:
             return SalesPlanStep(
                 title="購入者向けZIPを作成する",
                 status="warning",
                 detail="buyer delivery zip not found",
                 action="購入者へそのまま添付できるZIPを作成します。",
+                gui="診断 > 販売一括作成",
+                category="tool",
+            )
+        if buyer_package_errors:
+            return SalesPlanStep(
+                title="購入者向けZIPを作り直す",
+                status="fail",
+                detail=f"buyer delivery zip NG {len(buyer_package_errors)}件",
+                action="購入者へそのまま添付できるZIPを作り直します。",
                 gui="診断 > 販売一括作成",
                 category="tool",
             )
@@ -10347,6 +10422,28 @@ def _home_sales_artifact_text(
         f"掲載キット {_home_sales_artifact_status(listing_packages, 'listing')} / "
         f"販売一式 {_home_sales_artifact_status(handoffs, 'handoff')}"
     )
+
+
+def _home_sales_artifact_ng_count(
+    releases: list[Path],
+    materials: list[Path],
+    screenshot_packs: list[Path],
+    listing_packages: list[Path],
+    handoffs: list[Path],
+    buyer_packages: list[Path],
+    *,
+    buyer_package_errors: list[str] | None = None,
+) -> int:
+    statuses = [
+        _home_sales_artifact_status(releases, "release"),
+        _home_sales_artifact_status(materials, "materials"),
+        _home_sales_screenshot_text(screenshot_packs),
+        _home_sales_artifact_status(listing_packages, "listing"),
+        _home_sales_artifact_status(handoffs, "handoff"),
+    ]
+    if buyer_packages:
+        statuses.append("NG" if buyer_package_errors else "あり")
+    return sum(1 for status in statuses if status == "NG")
 
 
 def _home_buyer_send_action(
