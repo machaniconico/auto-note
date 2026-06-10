@@ -84,6 +84,8 @@ from auto_note.gui import (
     _home_progress_review_text,
     _home_progress_state_from_status,
     _home_progress_summary,
+    _home_quick_action_matches,
+    _home_quick_action_status,
     _home_report_status,
     _home_report_status_tag,
     _home_report_summary,
@@ -295,6 +297,14 @@ class ArticleTests(unittest.TestCase):
             "NG 1 / CHECK 1 / READY 1",
             _home_progress_summary({"setup": "ok", "article": "fail", "publish": "warn"}, "自動修復"),
         )
+
+    def test_home_quick_action_search_helpers_filter_actions(self) -> None:
+        self.assertTrue(_home_quick_action_matches("販売ナビ保存", "販売 保存"))
+        self.assertTrue(_home_quick_action_matches("購入者ZIP検証", "zip 検証"))
+        self.assertFalse(_home_quick_action_matches("投稿キュー", "販売 保存"))
+        self.assertIn("44件中 3件", _home_quick_action_status(3, 44, "販売"))
+        self.assertIn("一致する操作がありません", _home_quick_action_status(0, 44, "xyz"))
+        self.assertIn("全44件", _home_quick_action_status(44, 44, ""))
 
     def test_home_snapshot_helpers_keep_status_compact(self) -> None:
         values = _home_snapshot_values(
@@ -3469,6 +3479,9 @@ tags:
                 + "送付記録\n"
                 + "home_report_items=\n"
                 + "home_scroll_canvas\n"
+                + "home_quick_filter_var\n"
+                + "_render_home_quick_actions\n"
+                + "home_quick_action_items=\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
                 + '"送付文コピー": "サポート: 送付文"\n'
@@ -3618,7 +3631,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic UI` / `Meiryo UI\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic UI` / `Meiryo UI\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -4103,6 +4116,10 @@ tags:
         self.assertIn("GUI home recent reports seller receipt:fail", product_details)
         self.assertIn("GUI smoke recent reports count:fail", product_details)
         self.assertIn("GUI home scrollable workspace:fail", product_details)
+        self.assertIn("GUI home quick action search:fail", product_details)
+        self.assertIn("GUI home quick action renderer:fail", product_details)
+        self.assertIn("GUI smoke home quick action count:fail", product_details)
+        self.assertIn("README home quick action search guidance:fail", product_details)
         self.assertIn("README home progress lane guidance:fail", product_details)
         self.assertIn("README home compact snapshot guidance:fail", product_details)
         self.assertIn("README home progress direct open guidance:fail", product_details)
@@ -4712,6 +4729,10 @@ tags:
         self.assertIn("GUI home recent reports seller receipt:pass", launcher_details)
         self.assertIn("GUI smoke recent reports count:pass", launcher_details)
         self.assertIn("GUI home scrollable workspace:pass", launcher_details)
+        self.assertIn("GUI home quick action search:pass", launcher_details)
+        self.assertIn("GUI home quick action renderer:pass", launcher_details)
+        self.assertIn("GUI smoke home quick action count:pass", launcher_details)
+        self.assertIn("README home quick action search guidance:pass", launcher_details)
         self.assertIn("README home progress lane guidance:pass", launcher_details)
         self.assertIn("README home compact snapshot guidance:pass", launcher_details)
         self.assertIn("README home progress direct open guidance:pass", launcher_details)

@@ -535,6 +535,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home quick action search",
+            "home_quick_filter_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home quick action renderer",
+            "_render_home_quick_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home quick action count",
+            "home_quick_action_items=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home quick action search guidance",
+            "操作検索",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "README.md",
             "README recovery kit guidance",
             "復旧セット",

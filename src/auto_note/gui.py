@@ -536,6 +536,18 @@ def _command_palette_matches(label: str, hint: str, query: str) -> bool:
     return all(token in haystack for token in tokens)
 
 
+def _home_quick_action_matches(label: str, query: str) -> bool:
+    return _command_palette_matches(label, "", query)
+
+
+def _home_quick_action_status(match_count: int, total_count: int, query: str) -> str:
+    if match_count <= 0:
+        return "一致する操作がありません。別の言葉で検索してください。"
+    if query.strip():
+        return f"{total_count}件中 {match_count}件を表示しています。"
+    return f"全{total_count}件の操作を表示しています。必要な操作名で絞り込めます。"
+
+
 def _command_palette_selection_index(current: int | None, delta: int, count: int) -> int:
     if count <= 0:
         return -1
@@ -649,6 +661,13 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "home_scroll_canvas")
             else 0
         )
+        home_quick_action_items = len(app.home_quick_actions) if hasattr(app, "home_quick_actions") else 0
+        home_quick_filter_chars = (
+            len(app.home_quick_filter_var.get()) if hasattr(app, "home_quick_filter_var") else 0
+        )
+        home_quick_status_chars = (
+            len(app.home_quick_status_var.get()) if hasattr(app, "home_quick_status_var") else 0
+        )
         home_status_badge_chars = (
             len(str(app.home_status_badge.cget("text"))) if hasattr(app, "home_status_badge") else 0
         )
@@ -715,6 +734,9 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_progress_action_items={home_progress_action_items}, "
             f"home_scrollable={home_scrollable}, "
             f"home_scrollregion_chars={home_scrollregion_chars}, "
+            f"home_quick_action_items={home_quick_action_items}, "
+            f"home_quick_filter_chars={home_quick_filter_chars}, "
+            f"home_quick_status_chars={home_quick_status_chars}, "
             f"home_status_badge_chars={home_status_badge_chars}, "
             f"home_updated_chars={home_updated_chars}, "
             f"home_primary_button_chars={home_primary_button_chars}, "
@@ -1832,56 +1854,70 @@ class AutoNoteApp(tk.Tk):
 
         quick = ttk.LabelFrame(home, text="次の作業", padding=10)
         quick.pack(fill=tk.X, pady=(0, 10))
-        self._build_button_bar(
-            quick,
-            [
-                ("投稿ヘルパーを開く", self.open_helper, "Primary.TButton"),
-                ("投稿キュー", self.publish_queue_to_tab),
-                ("運用サマリー", self.run_overview_to_tab),
-                ("予定ICS出力", self.export_calendar_action),
-                ("初回チェック", self.run_first_run_to_tab),
-                ("受入チェック", self.run_acceptance_to_tab),
-                ("受入フル保存", self.create_full_acceptance_report_action),
-                ("販売ナビ", self.run_sales_plan_to_tab),
-                ("販売ナビ保存", self.create_sales_plan_report_action),
-                ("販売者情報確認", self.show_commercial_setup_status_action),
-                ("販売者テンプレ", self.create_commercial_setup_template_action),
-                ("テンプレ適用", self.apply_latest_commercial_setup_template_action),
-                ("販売素材作成", self.create_sales_materials_action),
-                ("販売素材検証", self.verify_latest_sales_materials_action),
-                ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
-                ("販売一括作成", self.create_sales_finalize_action),
-                ("販売準備", self.run_commercial_readiness_to_tab),
-                ("方針レビュー", self.create_commercial_policy_review_action),
-                ("販売一式作成", self.create_sales_handoff_action),
-                ("購入者ZIP抽出", self.extract_latest_buyer_delivery_action),
-                ("購入者ZIP検証", self.verify_latest_buyer_delivery_action),
-                ("送付前チェック", self.run_buyer_send_readiness_to_tab),
-                ("送付前保存", self.create_buyer_send_readiness_report_action),
-                ("送付記録", self.create_seller_delivery_receipt_action),
-                ("問い合わせ票", self.open_latest_buyer_support_request_action),
-                ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
-                ("最終レビュー", self.run_sales_review_to_tab),
-                ("レビュー保存", self.create_sales_review_report_action),
-                ("販売直前", self.run_sales_launch_to_tab),
-                ("直前保存", self.create_sales_launch_checklist_action),
-                ("アクションプラン", self.run_action_plan_to_tab),
-                ("クイック確認", self.run_quickstart_to_tab),
-                ("スターター一式", self.create_starter_pack_action),
-                ("スターター整理", self.cleanup_starter_pack_action),
-                ("練習記事作成", self.create_practice_article_action),
-                ("記事レビュー", self.review_all_to_tab),
-                ("準備度確認", self.run_readiness_to_tab),
-                ("復旧セット", self.run_recovery_kit_to_tab),
-                ("自動修復", self.run_repair_to_tab),
-                ("トラブル診断", self.run_troubleshoot_to_tab),
-                ("出荷前チェック", self.run_preflight_to_tab),
-                ("全体チェック", lambda: self.run_check_all(True)),
-                ("公開予定を見る", lambda: self.notebook.select(self.schedule_tab)),
-                ("バックアップ作成", self.create_backup_action),
-            ],
-            columns=5,
+        self.home_quick_actions = [
+            ("投稿ヘルパーを開く", self.open_helper, "Primary.TButton"),
+            ("投稿キュー", self.publish_queue_to_tab),
+            ("運用サマリー", self.run_overview_to_tab),
+            ("予定ICS出力", self.export_calendar_action),
+            ("初回チェック", self.run_first_run_to_tab),
+            ("受入チェック", self.run_acceptance_to_tab),
+            ("受入フル保存", self.create_full_acceptance_report_action),
+            ("販売ナビ", self.run_sales_plan_to_tab),
+            ("販売ナビ保存", self.create_sales_plan_report_action),
+            ("販売者情報確認", self.show_commercial_setup_status_action),
+            ("販売者テンプレ", self.create_commercial_setup_template_action),
+            ("テンプレ適用", self.apply_latest_commercial_setup_template_action),
+            ("販売素材作成", self.create_sales_materials_action),
+            ("販売素材検証", self.verify_latest_sales_materials_action),
+            ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
+            ("販売一括作成", self.create_sales_finalize_action),
+            ("販売準備", self.run_commercial_readiness_to_tab),
+            ("方針レビュー", self.create_commercial_policy_review_action),
+            ("販売一式作成", self.create_sales_handoff_action),
+            ("購入者ZIP抽出", self.extract_latest_buyer_delivery_action),
+            ("購入者ZIP検証", self.verify_latest_buyer_delivery_action),
+            ("送付前チェック", self.run_buyer_send_readiness_to_tab),
+            ("送付前保存", self.create_buyer_send_readiness_report_action),
+            ("送付記録", self.create_seller_delivery_receipt_action),
+            ("問い合わせ票", self.open_latest_buyer_support_request_action),
+            ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
+            ("最終レビュー", self.run_sales_review_to_tab),
+            ("レビュー保存", self.create_sales_review_report_action),
+            ("販売直前", self.run_sales_launch_to_tab),
+            ("直前保存", self.create_sales_launch_checklist_action),
+            ("アクションプラン", self.run_action_plan_to_tab),
+            ("クイック確認", self.run_quickstart_to_tab),
+            ("スターター一式", self.create_starter_pack_action),
+            ("スターター整理", self.cleanup_starter_pack_action),
+            ("練習記事作成", self.create_practice_article_action),
+            ("記事レビュー", self.review_all_to_tab),
+            ("準備度確認", self.run_readiness_to_tab),
+            ("復旧セット", self.run_recovery_kit_to_tab),
+            ("自動修復", self.run_repair_to_tab),
+            ("トラブル診断", self.run_troubleshoot_to_tab),
+            ("出荷前チェック", self.run_preflight_to_tab),
+            ("全体チェック", lambda: self.run_check_all(True)),
+            ("公開予定を見る", lambda: self.notebook.select(self.schedule_tab)),
+            ("バックアップ作成", self.create_backup_action),
+        ]
+        quick_filter = ttk.Frame(quick, style="Surface.TFrame")
+        quick_filter.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(quick_filter, text="操作検索", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.home_quick_filter_var = tk.StringVar()
+        self.home_quick_filter_entry = ttk.Entry(quick_filter, textvariable=self.home_quick_filter_var)
+        self.home_quick_filter_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 6))
+        ttk.Button(quick_filter, text="解除", command=self.clear_home_quick_filter).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(quick_filter, text="コマンド検索", command=self.show_command_palette).pack(side=tk.LEFT)
+        self.home_quick_status_var = tk.StringVar(value="")
+        ttk.Label(quick, textvariable=self.home_quick_status_var, style="Muted.TLabel").pack(
+            anchor=tk.W,
+            fill=tk.X,
+            pady=(0, 8),
         )
+        self.home_quick_buttons_frame = ttk.Frame(quick, style="Surface.TFrame")
+        self.home_quick_buttons_frame.pack(fill=tk.X)
+        self.home_quick_filter_var.trace_add("write", lambda *_args: self._render_home_quick_actions())
+        self._render_home_quick_actions()
 
         self.home_text = ScrolledText(home, wrap=tk.WORD, height=8, borderwidth=0)
         _style_text_widget(self.home_text, code=True)
@@ -2725,6 +2761,45 @@ class AutoNoteApp(tk.Tk):
     def _form_row(self, parent: ttk.Frame, row: int, label: str, widget: tk.Widget) -> None:
         ttk.Label(parent, text=label, style="Surface.TLabel").grid(row=row, column=0, sticky=tk.W, pady=8, padx=(0, 12))
         widget.grid(row=row, column=1, sticky=tk.EW, pady=8)
+
+    def _render_home_quick_actions(self) -> None:
+        if not hasattr(self, "home_quick_buttons_frame"):
+            return
+        for child in self.home_quick_buttons_frame.winfo_children():
+            child.destroy()
+        query = self.home_quick_filter_var.get() if hasattr(self, "home_quick_filter_var") else ""
+        actions = list(getattr(self, "home_quick_actions", []))
+        filtered = [
+            action
+            for action in actions
+            if _home_quick_action_matches(self._button_label_text(action[0]), query)
+        ]
+        if hasattr(self, "home_quick_status_var"):
+            self.home_quick_status_var.set(_home_quick_action_status(len(filtered), len(actions), query))
+        if not filtered:
+            ttk.Label(
+                self.home_quick_buttons_frame,
+                text="一致する操作はありません。検索語を短くするか、コマンド検索を開いてください。",
+                style="Muted.TLabel",
+                wraplength=760,
+            ).grid(row=0, column=0, sticky=tk.W, pady=(2, 4))
+            return
+        self._build_button_bar(self.home_quick_buttons_frame, filtered, columns=5)
+
+    def clear_home_quick_filter(self) -> None:
+        if not hasattr(self, "home_quick_filter_var"):
+            return
+        if self.home_quick_filter_var.get():
+            self.home_quick_filter_var.set("")
+            self.notify("次の作業の絞り込みを解除しました", level="info", transient=True)
+
+    def _button_label_text(self, value: object) -> str:
+        if isinstance(value, tk.Variable):
+            try:
+                return str(value.get())
+            except tk.TclError:
+                return ""
+        return str(value)
 
     def _build_button_bar(self, parent: ttk.Frame, actions, *, columns: int = 5) -> None:
         for index, action in enumerate(actions):
