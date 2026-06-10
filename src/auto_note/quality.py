@@ -5116,6 +5116,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package freshness",
+            "_home_buyer_delivery_package_matches_release",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send package freshness action",
+            "購入者ZIP更新",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home buyer send next action",
             "home_buyer_send_next_var",
         )

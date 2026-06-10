@@ -6030,6 +6030,11 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_package,
             latest_buyer_message,
         )
+        buyer_package_matches_release = _home_buyer_delivery_package_matches_release(
+            latest_buyer_package,
+            releases[0] if releases else None,
+            package_errors=buyer_package_errors,
+        )
         buyer_receipt_matches_delivery = _home_buyer_send_receipt_matches_delivery(
             latest_buyer_package,
             latest_buyer_message,
@@ -6040,6 +6045,7 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_message,
             latest_seller_receipt,
             package_errors=buyer_package_errors,
+            package_matches_release=buyer_package_matches_release,
             message_matches_package=buyer_message_matches_package,
             receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
@@ -6048,6 +6054,7 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_message,
             latest_seller_receipt,
             package_errors=buyer_package_errors,
+            package_matches_release=buyer_package_matches_release,
             message_matches_package=buyer_message_matches_package,
             receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
@@ -6073,10 +6080,19 @@ class AutoNoteApp(tk.Tk):
         self._set_home_sales_stage("release", "ok" if releases else "warn", "あり" if releases else "未作成")
         buyer_package_ready = bool(buyer_packages and not buyer_package_errors)
         buyer_ready = bool(buyer_package_ready and buyer_messages)
+        buyer_package_stale = buyer_package_matches_release is False
         self._set_home_sales_stage(
             "buyer",
-            "fail" if buyer_package_errors else ("ok" if buyer_ready else "warn"),
-            "ZIP NG" if buyer_package_errors else ("ZIP+送付文" if buyer_ready else "未完了"),
+            (
+                "fail"
+                if buyer_package_errors
+                else ("warn" if buyer_package_stale else ("ok" if buyer_ready else "warn"))
+            ),
+            (
+                "ZIP NG"
+                if buyer_package_errors
+                else ("ZIP要更新" if buyer_package_stale else ("ZIP+送付文" if buyer_ready else "未完了"))
+            ),
         )
         send_ready = bool(buyer_ready and seller_receipts)
         self._set_home_sales_stage(
@@ -6102,6 +6118,7 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_message=latest_buyer_message,
             latest_seller_receipt=latest_seller_receipt,
             buyer_package_errors=buyer_package_errors,
+            buyer_package_matches_release=buyer_package_matches_release,
             buyer_message_matches_package=buyer_message_matches_package,
             buyer_receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
@@ -6184,6 +6201,7 @@ class AutoNoteApp(tk.Tk):
         latest_buyer_message: Path | None,
         latest_seller_receipt: Path | None,
         buyer_package_errors: list[str],
+        buyer_package_matches_release: bool | None,
         buyer_message_matches_package: bool | None,
         buyer_receipt_matches_delivery: bool | None,
     ) -> None:
@@ -6243,6 +6261,9 @@ class AutoNoteApp(tk.Tk):
         if buyer_package_errors:
             buyer_state = "fail"
             buyer_detail = f"ZIP検証NG {len(buyer_package_errors)}件"
+        elif buyer_package_matches_release is False:
+            buyer_state = "warn"
+            buyer_detail = "最新ZIPへ更新"
         elif buyer_package_ready and buyer_message_ready and buyer_message_matches_package is False:
             buyer_state = "fail"
             buyer_detail = "送付文のZIP/SHA不一致"
@@ -6257,7 +6278,10 @@ class AutoNoteApp(tk.Tk):
             buyer_detail = "購入者ZIP待ち"
         put("buyer", "購入者ZIP/送付文", buyer_state, buyer_detail)
 
-        if buyer_message_matches_package is False:
+        if buyer_package_matches_release is False:
+            send_state = "warn"
+            send_detail = "購入者ZIP要更新"
+        elif buyer_message_matches_package is False:
             send_state = "fail"
             send_detail = "送付文のZIP/SHA不一致"
         elif buyer_receipt_matches_delivery is False:
@@ -6601,7 +6625,7 @@ class AutoNoteApp(tk.Tk):
     def run_home_buyer_send_next_action(self) -> None:
         self._refresh_home_sales_summary()
         action = self.home_buyer_send_action_var.get()
-        if action in {"購入者ZIP作成", "送付文作成"}:
+        if action in {"購入者ZIP作成", "購入者ZIP更新", "送付文作成"}:
             self.create_sales_finalize_with_template_action()
         elif action == "購入者ZIP検証":
             self.verify_latest_buyer_delivery_action()
@@ -10182,6 +10206,7 @@ def _home_support_next_button_label(action: str) -> str:
 def _home_buyer_send_button_label(action: str) -> str:
     return {
         "購入者ZIP作成": "購入者送付: ZIP作成",
+        "購入者ZIP更新": "購入者送付: ZIP更新",
         "購入者ZIP検証": "購入者送付: ZIP検証",
         "送付文作成": "購入者送付: 文作成",
         "送付記録": "購入者送付: 記録",
@@ -10383,6 +10408,7 @@ def _home_buyer_send_summary(
     receipt_path: Path | None,
     *,
     package_errors: list[str] | None = None,
+    package_matches_release: bool | None = None,
     message_matches_package: bool | None = None,
     receipt_matches_delivery: bool | None = None,
 ) -> tuple[str, str, str]:
@@ -10404,6 +10430,13 @@ def _home_buyer_send_summary(
             f"購入者送付: {package_detail} / ZIP検証NG {package_error_count}件 / "
             f"送付文 {'あり' if message_ok else 'なし'} / 記録 {'あり' if receipt_ok else 'なし'}",
             "次: 購入者ZIP検証で詳細確認、必要なら販売一括作成で作り直す",
+        )
+    if package_matches_release is False:
+        return (
+            "warn",
+            f"購入者送付: {package_detail} / 配布ZIP要更新 / "
+            f"送付文 {'あり' if message_ok else 'なし'} / 記録 {'あり' if receipt_ok else 'なし'}",
+            "次: 販売一括作成で最新配布ZIPの購入者ZIPと送付文を作り直す",
         )
     if not message_ok:
         return (
@@ -10530,6 +10563,22 @@ def _home_buyer_delivery_package_release_name(path: Path | None) -> str:
     return PurePosixPath(release_entries[0]).name
 
 
+def _home_buyer_delivery_package_matches_release(
+    package_path: Path | None,
+    release_path: Path | None,
+    *,
+    package_errors: list[str] | None = None,
+) -> bool | None:
+    if not (package_path and package_path.exists() and release_path):
+        return None
+    if package_errors:
+        return None
+    package_release_name = _home_buyer_delivery_package_release_name(package_path)
+    if not package_release_name:
+        return None
+    return package_release_name == release_path.name
+
+
 def _home_sales_artifact_stale_count(
     releases: list[Path],
     handoffs: list[Path],
@@ -10574,6 +10623,7 @@ def _home_buyer_send_action(
     receipt_path: Path | None,
     *,
     package_errors: list[str] | None = None,
+    package_matches_release: bool | None = None,
     message_matches_package: bool | None = None,
     receipt_matches_delivery: bool | None = None,
 ) -> str:
@@ -10581,6 +10631,8 @@ def _home_buyer_send_action(
         return "購入者ZIP作成"
     if package_errors:
         return "購入者ZIP検証"
+    if package_matches_release is False:
+        return "購入者ZIP更新"
     if not (message_path and message_path.exists()):
         return "送付文作成"
     if message_matches_package is False:

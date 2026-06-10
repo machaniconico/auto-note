@@ -81,6 +81,7 @@ from auto_note.gui import (
     _note_login_safety_text,
     _home_buyer_send_action,
     _home_buyer_send_button_label,
+    _home_buyer_delivery_package_matches_release,
     _home_buyer_send_message_matches_package,
     _home_buyer_send_receipt_matches_delivery,
     _home_commercial_focus_button_label,
@@ -668,6 +669,15 @@ class ArticleTests(unittest.TestCase):
             state, summary, next_text = _home_buyer_send_summary(
                 package,
                 message,
+                receipt,
+                package_matches_release=False,
+            )
+            self.assertEqual(state, "warn")
+            self.assertIn("配布ZIP要更新", summary)
+            self.assertIn("最新配布ZIP", next_text)
+            state, summary, next_text = _home_buyer_send_summary(
+                package,
+                message,
                 None,
                 message_matches_package=False,
             )
@@ -710,6 +720,16 @@ class ArticleTests(unittest.TestCase):
                 _home_buyer_send_action(package, message, None, message_matches_package=False),
                 "送付文作成",
             )
+            self.assertEqual(
+                _home_buyer_send_action(
+                    package,
+                    message,
+                    None,
+                    package_matches_release=False,
+                ),
+                "購入者ZIP更新",
+            )
+            self.assertEqual(_home_buyer_send_button_label("購入者ZIP更新"), "購入者送付: ZIP更新")
             self.assertEqual(_home_buyer_send_action(package, message, None), "送付記録")
             self.assertEqual(_home_buyer_send_button_label("送付記録"), "購入者送付: 記録")
             receipt.write_text("receipt", encoding="utf-8")
@@ -719,6 +739,33 @@ class ArticleTests(unittest.TestCase):
             )
             self.assertEqual(_home_buyer_send_action(package, message, receipt), "最終レビュー")
             self.assertEqual(_home_buyer_send_button_label("最終レビュー"), "購入者送付: 最終確認")
+
+    def test_home_buyer_delivery_package_matches_latest_release(self) -> None:
+        self.assertIsNone(_home_buyer_delivery_package_matches_release(None, None))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            release = root / "auto-note-release-new.zip"
+            release.write_text("latest", encoding="utf-8")
+            package = root / "auto-note-buyer-delivery.zip"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr(
+                    "BUYER_DELIVERY_MANIFEST.json",
+                    json.dumps({"release_package": "auto-note-release-old.zip"}),
+                )
+            self.assertFalse(_home_buyer_delivery_package_matches_release(package, release))
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr(
+                    "BUYER_DELIVERY_MANIFEST.json",
+                    json.dumps({"release_package": release.name}),
+                )
+            self.assertTrue(_home_buyer_delivery_package_matches_release(package, release))
+            self.assertIsNone(
+                _home_buyer_delivery_package_matches_release(
+                    package,
+                    release,
+                    package_errors=["bad package"],
+                )
+            )
 
     def test_home_buyer_send_message_matches_latest_package_name_and_sha(self) -> None:
         self.assertIsNone(_home_buyer_send_message_matches_package(None, None))
@@ -4450,6 +4497,9 @@ tags:
                 + "buyer_package_errors = verify_buyer_delivery_package\n"
                 + "package_errors=buyer_package_errors\n"
                 + "ZIP検証NG\n"
+                + "_home_buyer_delivery_package_matches_release\n"
+                + "package_matches_release=buyer_package_matches_release\n"
+                + "配布ZIP要更新\n"
                 + "home_buyer_send_next_var\n",
                 encoding="utf-8",
             )
@@ -4460,6 +4510,7 @@ tags:
                 + "_home_buyer_send_message_matches_package\n"
                 + "_home_buyer_send_receipt_matches_delivery\n"
                 + '"購入者ZIP検証": "購入者送付: ZIP検証"\n'
+                + '"購入者ZIP更新": "購入者送付: ZIP更新"\n'
                 + "run_home_buyer_send_next_action\n",
                 encoding="utf-8",
             )
@@ -5307,6 +5358,8 @@ tags:
         self.assertIn("GUI home buyer send package verification:fail", product_details)
         self.assertIn("GUI home buyer send package verification summary:fail", product_details)
         self.assertIn("GUI home buyer send package verification warning:fail", product_details)
+        self.assertIn("GUI home buyer send package freshness:fail", product_details)
+        self.assertIn("GUI home buyer send package freshness action:fail", product_details)
         self.assertIn("GUI home buyer send next action:fail", product_details)
         self.assertIn("GUI home buyer send dynamic button:fail", product_details)
         self.assertIn("GUI home buyer send action helper:fail", product_details)
@@ -6081,6 +6134,8 @@ tags:
         self.assertIn("GUI home buyer send package verification:pass", launcher_details)
         self.assertIn("GUI home buyer send package verification summary:pass", launcher_details)
         self.assertIn("GUI home buyer send package verification warning:pass", launcher_details)
+        self.assertIn("GUI home buyer send package freshness:pass", launcher_details)
+        self.assertIn("GUI home buyer send package freshness action:pass", launcher_details)
         self.assertIn("GUI home buyer send next action:pass", launcher_details)
         self.assertIn("GUI home buyer send dynamic button:pass", launcher_details)
         self.assertIn("GUI home buyer send action helper:pass", launcher_details)
