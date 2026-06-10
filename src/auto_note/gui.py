@@ -203,26 +203,26 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer Windows Japanese UI faces that stay readable in Tk at small sizes.
-# Yu/BIZ/MS Gothic can render too dense or too heavy on some displays and make kana look crushed.
-UI_FONT_CANDIDATES = ("Meiryo UI", "Meiryo", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
+# Prefer Japanese UI faces that keep full kana/kanji forms readable in Tk.
+# Japanese Windows exposes full Meiryo as "メイリオ"; Meiryo UI is narrower.
+UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans CJK JP", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_MIN_FONT_LINESPACE_RATIO = 1.55
-UI_TEXT_SIZE = 13
-UI_SMALL_TEXT_SIZE = 12
-UI_BADGE_FONT_SIZE = 12
+UI_MIN_FONT_LINESPACE_RATIO = 1.62
+UI_TEXT_SIZE = 14
+UI_SMALL_TEXT_SIZE = 13
+UI_BADGE_FONT_SIZE = 13
 UI_HEADING_FONT_WEIGHT = "normal"
 UI_BADGE_FONT_WEIGHT = "normal"
-UI_TREE_ROW_HEIGHT = 58
-UI_NOTEBOOK_TAB_PADDING = (24, 18)
-UI_BUTTON_PADDING = (21, 17)
-UI_PRIMARY_BUTTON_PADDING = (23, 17)
-UI_DANGER_BUTTON_PADDING = (19, 15)
-UI_TEXT_SPACING_TOP = 5
-UI_TEXT_SPACING_BOTTOM = 7
+UI_TREE_ROW_HEIGHT = 64
+UI_NOTEBOOK_TAB_PADDING = (24, 20)
+UI_BUTTON_PADDING = (23, 19)
+UI_PRIMARY_BUTTON_PADDING = (25, 19)
+UI_DANGER_BUTTON_PADDING = (21, 18)
+UI_TEXT_SPACING_TOP = 6
+UI_TEXT_SPACING_BOTTOM = 8
 UI_DENSITY_LABELS = {
     "standard": "標準",
     "comfortable": "ゆったり",
@@ -231,18 +231,6 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 13,
-        "small_text_size": 12,
-        "badge_font_size": 12,
-        "tree_row_height": 58,
-        "notebook_tab_padding": (22, 18),
-        "button_padding": (21, 17),
-        "primary_button_padding": (23, 17),
-        "danger_button_padding": (19, 15),
-        "text_spacing_top": 5,
-        "text_spacing_bottom": 7,
-    },
-    "comfortable": {
         "text_size": 14,
         "small_text_size": 13,
         "badge_font_size": 13,
@@ -250,11 +238,11 @@ UI_DENSITY_VALUES = {
         "notebook_tab_padding": (24, 20),
         "button_padding": (23, 19),
         "primary_button_padding": (25, 19),
-        "danger_button_padding": (21, 17),
+        "danger_button_padding": (21, 18),
         "text_spacing_top": 6,
         "text_spacing_bottom": 8,
     },
-    "large": {
+    "comfortable": {
         "text_size": 15,
         "small_text_size": 14,
         "badge_font_size": 14,
@@ -262,9 +250,21 @@ UI_DENSITY_VALUES = {
         "notebook_tab_padding": (26, 22),
         "button_padding": (25, 21),
         "primary_button_padding": (27, 21),
-        "danger_button_padding": (23, 19),
+        "danger_button_padding": (23, 20),
         "text_spacing_top": 7,
         "text_spacing_bottom": 9,
+    },
+    "large": {
+        "text_size": 16,
+        "small_text_size": 15,
+        "badge_font_size": 15,
+        "tree_row_height": 80,
+        "notebook_tab_padding": (28, 24),
+        "button_padding": (27, 23),
+        "primary_button_padding": (29, 23),
+        "danger_button_padding": (25, 22),
+        "text_spacing_top": 8,
+        "text_spacing_bottom": 10,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -412,12 +412,12 @@ def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> 
         pass
     for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkTooltipFont"):
         try:
-            tkfont.nametofont(name).configure(family=ui_font, size=UI_TEXT_SIZE)
+            tkfont.nametofont(name).configure(family=ui_font, size=UI_TEXT_SIZE, weight="normal")
         except tk.TclError:
             continue
     for name in ("TkFixedFont",):
         try:
-            tkfont.nametofont(name).configure(family=code_font, size=UI_TEXT_SIZE)
+            tkfont.nametofont(name).configure(family=code_font, size=UI_TEXT_SIZE, weight="normal")
         except tk.TclError:
             continue
 
@@ -454,25 +454,25 @@ def _guard_ui_readability_metrics(root: tk.Misc, ui_font: str) -> None:
     button_vertical = _readable_vertical_padding(
         UI_BUTTON_PADDING,
         main_linespace,
-        minimum=17,
+        minimum=19,
         ratio=0.62,
     )
     primary_vertical = _readable_vertical_padding(
         UI_PRIMARY_BUTTON_PADDING,
         main_linespace,
-        minimum=17,
+        minimum=19,
         ratio=0.62,
     )
     danger_vertical = _readable_vertical_padding(
         UI_DANGER_BUTTON_PADDING,
         main_linespace,
-        minimum=15,
+        minimum=18,
         ratio=0.58,
     )
     tab_vertical = _readable_vertical_padding(
         UI_NOTEBOOK_TAB_PADDING,
         main_linespace,
-        minimum=18,
+        minimum=20,
         ratio=0.58,
     )
 
@@ -6757,21 +6757,21 @@ class AutoNoteApp(tk.Tk):
         minimum_small_linespace = _minimum_readable_linespace(UI_SMALL_TEXT_SIZE)
         minimum_badge_linespace = _minimum_readable_linespace(UI_BADGE_FONT_SIZE)
         line_target = main_linespace or (UI_TEXT_SIZE + 9)
-        tree_target = max(52, int(math.ceil(line_target * 2.05)), line_target + 24)
-        tab_target = _readable_vertical_padding((0, 0), main_linespace, minimum=18, ratio=0.58)
-        button_target = _readable_vertical_padding((0, 0), main_linespace, minimum=17, ratio=0.62)
+        tree_target = max(60, int(math.ceil(line_target * 2.05)), line_target + 24)
+        tab_target = _readable_vertical_padding((0, 0), main_linespace, minimum=20, ratio=0.58)
+        button_target = _readable_vertical_padding((0, 0), main_linespace, minimum=19, ratio=0.62)
         text_room_target = math.ceil((main_linespace or UI_TEXT_SIZE) * 1.2)
 
         add(
             "main text",
-            UI_TEXT_SIZE >= 13,
-            f"{UI_TEXT_SIZE}pt (target 13+)",
+            UI_TEXT_SIZE >= 14,
+            f"{UI_TEXT_SIZE}pt (target 14+)",
             "ヘッダーの 表示 で ゆったり または 大きめ を選ぶ",
         )
         add(
             "small text",
-            UI_SMALL_TEXT_SIZE >= 12,
-            f"{UI_SMALL_TEXT_SIZE}pt (target 12+)",
+            UI_SMALL_TEXT_SIZE >= 13,
+            f"{UI_SMALL_TEXT_SIZE}pt (target 13+)",
             "表示サイズを ゆったり または 大きめ にする",
         )
         add(
@@ -6792,7 +6792,7 @@ class AutoNoteApp(tk.Tk):
         add(
             "Japanese font family",
             not _is_crush_prone_font_family(UI_FONT),
-            f"{UI_FONT} (preferred: Meiryo UI / Meiryo)",
+            f"{UI_FONT} (preferred: メイリオ / Meiryo UI)",
             "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
