@@ -104,7 +104,7 @@ def format_acceptance_report(report: AcceptanceReport) -> str:
         f"Items: {counts['pass']} OK, {counts['info']} INFO, {counts['warn']} WARN, {counts['fail']} NG",
         "",
     ]
-    next_actions: list[str] = []
+    next_actions: list[tuple[str, str]] = []
     for index, item in enumerate(report.items, start=1):
         label = {"pass": "OK", "info": "INFO", "warn": "WARN", "fail": "NG"}.get(
             item.status,
@@ -113,14 +113,14 @@ def format_acceptance_report(report: AcceptanceReport) -> str:
         lines.append(f"[{label}] {index}. {item.name}: {item.detail}")
         if item.action:
             lines.append(f"  next: {item.action}")
-            next_actions.append(f"- {item.name}: {item.action}")
+            next_actions.append((item.name, item.action))
         if item.gui:
             lines.append(f"  gui: {item.gui}")
         if item.command:
             lines.append(f"  cli: {item.command}")
     if next_actions:
         lines.extend(["", "Next actions"])
-        lines.extend(next_actions)
+        lines.extend(_format_next_actions(next_actions))
     return "\n".join(lines)
 
 
@@ -378,6 +378,21 @@ def _item_by_name(items, name: str):
         if item.name == name:
             return item
     return None
+
+
+def _format_next_actions(actions: list[tuple[str, str]]) -> list[str]:
+    grouped: dict[str, list[str]] = {}
+    ordered_actions: list[str] = []
+    for name, action in actions:
+        action = action.strip()
+        if not action:
+            continue
+        if action not in grouped:
+            grouped[action] = []
+            ordered_actions.append(action)
+        if name not in grouped[action]:
+            grouped[action].append(name)
+    return [f"- {' / '.join(grouped[action])}: {action}" for action in ordered_actions]
 
 
 def _first_report_issue(items, status: str):

@@ -1717,6 +1717,11 @@ tags: note
         self.assertIn("auto-note sales-handoff --project-dir .", acceptance_self_test.action)
         self.assertIn("first NG: sales handoff privacy", text)
         self.assertIn("auto-note sales-handoff --project-dir .", text)
+        next_section = text.split("Next actions", 1)[1]
+        self.assertIn("- 初回チェック / セルフテスト / トラブル診断: `auto-note sales-handoff --project-dir .`", next_section)
+        self.assertNotIn("- 初回チェック: `auto-note sales-handoff --project-dir .`", next_section)
+        self.assertNotIn("- セルフテスト: `auto-note sales-handoff --project-dir .`", next_section)
+        self.assertNotIn("- トラブル診断: `auto-note sales-handoff --project-dir .`", next_section)
 
     def test_commercial_readiness_summarizes_sale_handoff_and_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3863,7 +3868,8 @@ tags:
             (project / "src" / "auto_note" / "acceptance.py").write_text(
                 "is_support_bundle_stale\n"
                 "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n"
-                "_score_issue_detail\n",
+                "_score_issue_detail\n"
+                "_format_next_actions\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -4383,6 +4389,7 @@ tags:
         self.assertIn("acceptance display readability item:fail", product_details)
         self.assertIn("acceptance display safe display action:fail", product_details)
         self.assertIn("acceptance nested NG detail:fail", product_details)
+        self.assertIn("acceptance deduplicated next actions:fail", product_details)
         self.assertIn("self-test privacy first NG detail:fail", product_details)
         self.assertIn("self-test privacy specific action:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
@@ -5927,6 +5934,7 @@ tags:
         self.assertIn("acceptance display readability item:pass", launcher_details)
         self.assertIn("acceptance display safe display action:pass", launcher_details)
         self.assertIn("acceptance nested NG detail:pass", launcher_details)
+        self.assertIn("acceptance deduplicated next actions:pass", launcher_details)
         self.assertIn("self-test privacy first NG detail:pass", launcher_details)
         self.assertIn("self-test privacy specific action:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)

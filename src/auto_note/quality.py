@@ -507,6 +507,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "acceptance.py",
+            "acceptance deduplicated next actions",
+            "_format_next_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "selftest.py",
             "self-test privacy first NG detail",
             "first NG:",
