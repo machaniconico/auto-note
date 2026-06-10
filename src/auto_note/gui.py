@@ -5970,10 +5970,12 @@ class AutoNoteApp(tk.Tk):
             verify_buyer_delivery_package(latest_buyer_package) if latest_buyer_package else []
         )
         buyer_package_text = "NG" if buyer_package_errors else ("あり" if buyer_packages else "なし")
+        screenshot_text = _home_sales_screenshot_text(screenshot_packs)
         self.home_sales_status_var.set(f"販売準備: {status} / 軽量 {score}/100")
         self.home_sales_detail_var.set(
             f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
-            f"生成物不足 {artifact_remaining} / 購入者ZIP {buyer_package_text} / "
+            f"生成物不足 {artifact_remaining} / 掲載画像 {screenshot_text} / "
+            f"購入者ZIP {buyer_package_text} / "
             f"送付文 {'あり' if buyer_messages else 'なし'} / 送付記録 {'あり' if seller_receipts else 'なし'} / "
             f"サポート {support_text}"
         )
@@ -10304,6 +10306,12 @@ def _home_buyer_send_summary(
         f"購入者送付: {package_detail} / 送付文あり / 記録あり",
         "次: 最終レビューで販売ページ文案と納品物の整合性を確認",
     )
+
+
+def _home_sales_screenshot_text(screenshot_packs: list[Path]) -> str:
+    if not screenshot_packs:
+        return "なし"
+    return "NG" if verify_sales_screenshot_pack(screenshot_packs[0]) else "あり"
 
 
 def _home_buyer_send_action(
