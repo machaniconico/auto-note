@@ -96,6 +96,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff sales screenshots evidence",
+            "sales-screenshots --project-dir .",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
             "RC handoff sales launch evidence",
             "sales-launch --project-dir . --report",
         )
@@ -1321,6 +1328,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales screenshots command",
+            "sales-screenshots",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales screenshots verify command",
+            "Verify a generated sales screenshot pack directory.",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_materials.py",
             "sales materials commercial setup warnings",
             "commercial setup warning:",
@@ -1331,6 +1352,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_materials.py",
             "sales materials buyer first 10 minutes",
             "Buyer First 10 Minutes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_screenshots.py",
+            "sales screenshots generator",
+            "create_sales_screenshot_pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_screenshots.py",
+            "sales screenshots SVG assets",
+            "SCREENSHOT_ASSETS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_screenshots.py",
+            "sales screenshots captions",
+            "SCREENSHOT_CAPTIONS.md",
         )
     )
     checks.append(
@@ -4577,6 +4619,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales screenshots action",
+            "掲載画像作成",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales screenshots verify action",
+            "掲載画像検証",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales screenshots report status",
+            "list_sales_screenshot_packs",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales finalize action",
             "販売一括作成",
         )
@@ -4929,6 +4992,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README sales materials verify guidance",
             "sales-materials --project-dir . --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales screenshots guidance",
+            "auto-note sales-screenshots",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales screenshots verify guidance",
+            "sales-screenshots --project-dir . --verify",
         )
     )
     checks.append(
@@ -5405,6 +5482,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness sales materials verify command",
             "sales-materials --project-dir . --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales screenshots command",
+            "sales-screenshots",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales screenshots verify command",
+            "sales-screenshots --project-dir . --verify",
         )
     )
     checks.append(

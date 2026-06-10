@@ -141,6 +141,13 @@ from .sales_materials import (
     list_sales_materials,
     verify_sales_materials,
 )
+from .sales_screenshots import (
+    create_sales_screenshot_pack,
+    format_sales_screenshot_pack,
+    format_sales_screenshot_verification,
+    list_sales_screenshot_packs,
+    verify_sales_screenshot_pack,
+)
 from .sales_plan import SalesPlanStep, build_sales_plan, format_sales_plan, write_sales_plan_report
 from .sales_review import (
     format_sales_review,
@@ -2064,6 +2071,8 @@ class AutoNoteApp(tk.Tk):
             ("次を実行", self.run_home_sales_next_action, "Primary.TButton"),
             ("販売者情報へ", self.focus_next_commercial_missing_field, None),
             ("販売ナビ", self.run_sales_plan_to_tab, None),
+            ("販売素材", self.create_sales_materials_action, None),
+            ("掲載画像", self.create_sales_screenshots_action, None),
             ("送付前チェック", self.run_buyer_send_readiness_to_tab, None),
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
@@ -2200,6 +2209,8 @@ class AutoNoteApp(tk.Tk):
             ("テンプレ適用", self.apply_latest_commercial_setup_template_action),
             ("販売素材作成", self.create_sales_materials_action),
             ("販売素材検証", self.verify_latest_sales_materials_action),
+            ("掲載画像作成", self.create_sales_screenshots_action),
+            ("掲載画像検証", self.verify_latest_sales_screenshots_action),
             ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
             ("販売一括作成", self.create_sales_finalize_action),
             ("販売準備", self.run_commercial_readiness_to_tab),
@@ -2300,6 +2311,14 @@ class AutoNoteApp(tk.Tk):
         )
         ttk.Button(top, text="販売素材作成", command=self.create_sales_materials_action).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="販売素材検証", command=self.verify_latest_sales_materials_action).pack(
+            side=tk.RIGHT,
+            padx=6,
+        )
+        ttk.Button(top, text="掲載画像作成", command=self.create_sales_screenshots_action).pack(
+            side=tk.RIGHT,
+            padx=6,
+        )
+        ttk.Button(top, text="掲載画像検証", command=self.verify_latest_sales_screenshots_action).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -3259,6 +3278,8 @@ class AutoNoteApp(tk.Tk):
                 ("テンプレ適用", self.apply_latest_commercial_setup_template_action),
                 ("販売素材作成", self.create_sales_materials_action),
                 ("販売素材検証", self.verify_latest_sales_materials_action),
+                ("掲載画像作成", self.create_sales_screenshots_action),
+                ("掲載画像検証", self.verify_latest_sales_screenshots_action),
                 ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
                 ("販売一括作成", self.create_sales_finalize_action),
                 ("販売準備", self.run_commercial_readiness_to_tab),
@@ -3517,6 +3538,7 @@ class AutoNoteApp(tk.Tk):
                 ("販売ナビ保存", self.create_sales_plan_report_action),
                 ("販売者情報確認", self.show_commercial_setup_status_action),
                 ("販売素材作成", self.create_sales_materials_action),
+                ("掲載画像作成", self.create_sales_screenshots_action),
                 ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
                 ("販売一括作成", self.create_sales_finalize_action),
                 ("販売準備", self.run_commercial_readiness_to_tab),
@@ -3757,6 +3779,8 @@ class AutoNoteApp(tk.Tk):
             "販売ナビ保存": self.create_sales_plan_report_action,
             "販売者情報確認": self.show_commercial_setup_status_action,
             "販売素材作成": self.create_sales_materials_action,
+            "掲載画像作成": self.create_sales_screenshots_action,
+            "掲載画像検証": self.verify_latest_sales_screenshots_action,
             "テンプレ適用": self.apply_latest_commercial_setup_template_action,
             "テンプレ取込一括": self.create_sales_finalize_with_template_action,
             "販売一括作成": self.create_sales_finalize_action,
@@ -5627,6 +5651,7 @@ class AutoNoteApp(tk.Tk):
             ("復旧レポート", list_recovery_kit_reports(self.project_dir)),
             ("診断ZIP", list_diagnostic_reports(self.project_dir)),
             ("配布ZIP", list_releases(self.project_dir)),
+            ("掲載画像", list_sales_screenshot_packs(self.project_dir)),
             ("購入者ZIP", list_buyer_delivery_packages(self.project_dir)),
             ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
             ("送付記録", list_seller_delivery_receipts(self.project_dir)),
@@ -6659,6 +6684,8 @@ class AutoNoteApp(tk.Tk):
             ("テンプレ適用", "最新の販売者テンプレから設定へ値を保存", self.apply_latest_commercial_setup_template_action),
             ("販売素材作成", "販売ページ、納品文、FAQ、サポート文案を作成", self.create_sales_materials_action),
             ("販売素材検証", "最新販売素材Markdownの未設定項目と反映漏れを確認", self.verify_latest_sales_materials_action),
+            ("掲載画像作成", "販売ページ掲載用のSVG画像、キャプション、HTMLプレビューを作成", self.create_sales_screenshots_action),
+            ("掲載画像検証", "最新の販売ページ画像パックを検証", self.verify_latest_sales_screenshots_action),
             ("テンプレ取込一括", "最新販売者テンプレを取り込んでから販売一括作成", self.create_sales_finalize_with_template_action),
             ("販売一括作成", "配布ZIP、販売素材、販売一式ZIP、購入者ZIP、診断、監査をまとめて作成", self.create_sales_finalize_action),
             ("販売準備", "配布ZIP、監査、受入、文書、連絡先を販売目線で確認", self.run_commercial_readiness_to_tab),
@@ -7669,6 +7696,43 @@ class AutoNoteApp(tk.Tk):
             self.notify("販売素材Markdownの検証で確認事項が見つかりました", level="warning")
         else:
             self.notify(f"販売素材Markdownを検証しました: {latest.name}", level="success")
+
+    def create_sales_screenshots_action(self) -> None:
+        try:
+            pack = create_sales_screenshot_pack(self.project_dir)
+        except OSError as exc:
+            self.notify("掲載画像パックの作成に失敗しました", level="error")
+            messagebox.showerror("掲載画像エラー", str(exc))
+            return
+        errors = verify_sales_screenshot_pack(pack.directory)
+        text = (
+            f"{format_sales_screenshot_pack(pack)}\n\n"
+            f"{format_sales_screenshot_verification(pack.directory, errors)}"
+        )
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        _open_path(pack.html_path)
+        self.refresh_home()
+        level = "warning" if errors else "success"
+        self.notify(f"掲載画像パックを作成しました: {pack.directory.name}", level=level)
+
+    def verify_latest_sales_screenshots_action(self) -> None:
+        packs = list_sales_screenshot_packs(self.project_dir)
+        if not packs:
+            messagebox.showinfo("掲載画像検証", "掲載画像パックがまだありません。")
+            self.notify("掲載画像パックがありません", level="warning")
+            return
+        latest = packs[0]
+        errors = verify_sales_screenshot_pack(latest)
+        self._set_text(
+            self.diagnostics_text,
+            format_sales_screenshot_verification(latest, errors),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        if errors:
+            self.notify("掲載画像パックの検証で確認事項が見つかりました", level="warning")
+        else:
+            self.notify(f"掲載画像パックを検証しました: {latest.name}", level="success")
 
     def create_sales_finalize_action(self) -> None:
         self._create_sales_finalize_action(apply_latest_template=False)
@@ -9908,6 +9972,8 @@ def _home_report_status(label: str, path: Path) -> str:
         return "NG" if verify_support_bundle(path) else "OK"
     if label == "配布ZIP":
         return "NG" if verify_release_package(path) else "OK"
+    if label == "掲載画像":
+        return "NG" if verify_sales_screenshot_pack(path) else "OK"
     if label == "購入者ZIP":
         return "NG" if verify_buyer_delivery_package(path) else "OK"
     if label == "販売直前":

@@ -624,6 +624,32 @@ def main(argv: list[str] | None = None) -> int:
             print(format_sales_materials_verification(result.path, errors, strict=args.strict))
             return 1 if errors else 0
 
+        if args.command == "sales-screenshots":
+            from .sales_screenshots import (
+                create_sales_screenshot_pack,
+                format_sales_screenshot_pack,
+                format_sales_screenshot_verification,
+                list_sales_screenshot_packs,
+                verify_sales_screenshot_pack,
+            )
+
+            project_dir = args.project_dir.resolve()
+            if args.verify:
+                errors = verify_sales_screenshot_pack(args.verify)
+                print(format_sales_screenshot_verification(args.verify, errors))
+                return 1 if errors else 0
+            if args.list:
+                packs = list_sales_screenshot_packs(project_dir)
+                print("\n".join(str(path) for path in packs) if packs else "No sales screenshot packs.")
+                return 0
+            pack = create_sales_screenshot_pack(project_dir)
+            print(format_sales_screenshot_pack(pack))
+            errors = verify_sales_screenshot_pack(pack.directory)
+            print(format_sales_screenshot_verification(pack.directory, errors))
+            if args.open:
+                _open_path(pack.html_path)
+            return 1 if errors else 0
+
         if args.command == "sales-finalize":
             from .sales_finalize import (
                 create_sales_finalize,
@@ -1414,6 +1440,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Fail while unresolved placeholders, raw emails, or a stale release name remain.",
     )
+
+    sales_screenshots = subparsers.add_parser(
+        "sales-screenshots",
+        help="Generate marketplace listing screenshot SVGs, captions, and an HTML preview.",
+    )
+    sales_screenshots.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
+    sales_screenshots.add_argument("--list", action="store_true", help="List existing sales screenshot packs.")
+    sales_screenshots.add_argument("--verify", type=Path, help="Verify a generated sales screenshot pack directory.")
+    sales_screenshots.add_argument("--open", action="store_true", help="Open the generated HTML preview.")
 
     sales_finalize = subparsers.add_parser(
         "sales-finalize",
