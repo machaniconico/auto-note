@@ -2653,14 +2653,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"Yu Gothic UI"',
+            '"Meiryo UI"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI wide Japanese preferred font",
-            'UI_FONT_CANDIDATES = ("Yu Gothic UI"',
+            'UI_FONT_CANDIDATES = ("Meiryo UI", "Meiryo"',
         )
     )
     checks.append(
@@ -3269,7 +3269,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "README.md",
             "README current readable Japanese font guidance",
-            "Yu Gothic UI` / `Meiryo UI",
+            "Meiryo UI` / `Meiryo",
         )
     )
     checks.append(
@@ -3283,7 +3283,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "docs" / "CHANGELOG.md",
             "changelog current readable Japanese font guidance",
-            "Yu Gothic UI` / `Meiryo UI",
+            "Meiryo UI` / `Meiryo",
         )
     )
     checks.append(
@@ -3422,6 +3422,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log clear action",
+            "clear_gui_log_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui_errors.py",
+            "GUI log clear archive helper",
+            "clear_gui_error_log",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui_errors.py",
+            "GUI log clear archived filename",
+            "gui-error-cleared-",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI log folder action",
             "open_gui_log_folder_action",
         )
@@ -3459,6 +3480,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI log copy button",
             "GUIログコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log clear button",
+            "GUIログクリア",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log clear confirmation",
+            "現在のGUIログを退避して",
         )
     )
     checks.append(
@@ -3527,6 +3562,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log clear preview content",
+            "GUI log clear / GUIログクリア",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI log clear command palette metric",
+            "command_palette_gui_log_clear_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI runtime error actionable helper",
             "_gui_runtime_error_message",
         )
@@ -3585,6 +3634,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README GUI log folder guidance",
             "GUIログ場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README GUI log clear guidance",
+            "GUIログクリア",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README GUI log clear archive guidance",
+            "gui-error-cleared-*.log",
         )
     )
     checks.append(
@@ -4628,6 +4691,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log folder guidance",
             "GUIログ場所",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide GUI log clear guidance",
+            "GUIログクリア",
         )
     )
     checks.append(

@@ -58,7 +58,7 @@ from .diagnostics import (
 )
 from .export import export_article_inventory, list_reports
 from .first_run import FirstRunItem, FirstRunReport, format_first_run_report, run_first_run_checklist
-from .gui_errors import append_gui_error, gui_error_log_path
+from .gui_errors import append_gui_error, clear_gui_error_log, gui_error_log_path
 from .history import create_revision, format_revisions, list_revisions, restore_revision, revision_dir
 from .images import (
     collect_article_images,
@@ -203,16 +203,19 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer modern Windows Japanese UI faces with generous line metrics.
-# BIZ UD/UDP Gothic can render with a short Tk linespace on some displays and make kana look crushed.
-UI_FONT_CANDIDATES = ("Yu Gothic UI", "Meiryo UI", "Meiryo", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
+# Prefer Windows Japanese UI faces that stay readable in Tk at small sizes.
+# Yu/BIZ/MS Gothic can render too dense or too heavy on some displays and make kana look crushed.
+UI_FONT_CANDIDATES = ("Meiryo UI", "Meiryo", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
+UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
 UI_MIN_FONT_LINESPACE_RATIO = 1.55
 UI_TEXT_SIZE = 13
 UI_SMALL_TEXT_SIZE = 12
 UI_BADGE_FONT_SIZE = 12
+UI_HEADING_FONT_WEIGHT = "normal"
+UI_BADGE_FONT_WEIGHT = "normal"
 UI_TREE_ROW_HEIGHT = 58
 UI_NOTEBOOK_TAB_PADDING = (24, 18)
 UI_BUTTON_PADDING = (21, 17)
@@ -362,6 +365,11 @@ def _enable_windows_dpi_awareness() -> None:
 
 def _minimum_readable_linespace(size: int) -> int:
     return int(math.ceil(size * UI_MIN_FONT_LINESPACE_RATIO))
+
+
+def _is_crush_prone_font_family(family: str) -> bool:
+    normalized = " ".join(str(family or "").lower().split())
+    return any(keyword in normalized for keyword in UI_CRUSH_PRONE_FONT_KEYWORDS)
 
 
 def _candidate_font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> int | None:
@@ -567,8 +575,9 @@ def _gui_runtime_error_message(path: Path) -> str:
             "1. 診断タブの「GUIログ表示」で内容を確認",
             "2. 「復旧セット」で基本修復と再診断を実行",
             "3. 解決しない場合は「問い合わせ一式」で送付用ZIPを作成",
+            "4. 解決後は「GUIログクリア」で確認済みログを退避して状態を戻す",
             "",
-            "コマンド検索(Ctrl+K)から GUIログ表示 / 復旧セット / 問い合わせ一式 を探せます。",
+            "コマンド検索(Ctrl+K)から GUIログ表示 / GUIログクリア / 復旧セット / 問い合わせ一式 を探せます。",
         ]
     )
 
@@ -714,6 +723,9 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         command_palette_display_diagnostics_copy_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "表示診断コピー"
         )
+        command_palette_gui_log_clear_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "GUIログクリア"
+        )
         command_palette_support_display_diagnostics_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "ZIP表示診断"
         )
@@ -721,7 +733,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
         display_font_family = UI_FONT
         display_font_linespace = _font_linespace(app, UI_FONT, UI_TEXT_SIZE) or 0
-        display_badge_linespace = _font_linespace(app, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold") or 0
+        display_badge_linespace = _font_linespace(app, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT) or 0
         display_diagnostics = app._format_display_diagnostics()
         display_diagnostics_chars = len(display_diagnostics)
         diagnostics_chars = len(app.diagnostics_text.get("1.0", tk.END).strip())
@@ -766,6 +778,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
             f"command_palette_display_diagnostics_actions={command_palette_display_diagnostics_actions}, "
             f"command_palette_display_diagnostics_copy_actions={command_palette_display_diagnostics_copy_actions}, "
+            f"command_palette_gui_log_clear_actions={command_palette_gui_log_clear_actions}, "
             f"command_palette_support_display_diagnostics_actions={command_palette_support_display_diagnostics_actions}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
@@ -968,7 +981,7 @@ class AutoNoteApp(tk.Tk):
             "HomeTitle.TLabel",
             background=UI_COLORS["surface_strong"],
             foreground=primary,
-            font=(font, 22, "bold"),
+            font=(font, 22, UI_HEADING_FONT_WEIGHT),
         )
         style.configure("SurfaceMuted.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("Muted.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
@@ -998,9 +1011,9 @@ class AutoNoteApp(tk.Tk):
             font=(font, UI_TEXT_SIZE),
         )
         style.configure("ArticleFocusMuted.TLabel", background=surface_alt, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
-        style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, "bold"))
+        style.configure("PageTitle.TLabel", background=bg, foreground=primary, font=(font, 20, UI_HEADING_FONT_WEIGHT))
         style.configure("PageSubtitle.TLabel", background=bg, foreground=muted, font=(font, UI_TEXT_SIZE))
-        style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, "bold"))
+        style.configure("AppTitle.TLabel", background=chrome, foreground="#ffffff", font=(font, 19, UI_HEADING_FONT_WEIGHT))
         style.configure("ChromeMuted.TLabel", background=chrome, foreground=chrome_muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("ChromeAction.TLabel", background=chrome_alt, foreground="#ffffff", font=(font, UI_TEXT_SIZE))
         style.configure(
@@ -1029,9 +1042,9 @@ class AutoNoteApp(tk.Tk):
             arrowcolor=[("active", "#ffffff"), ("pressed", "#ffffff")],
             bordercolor=[("focus", UI_COLORS["focus"]), ("active", "#64748b")],
         )
-        style.configure("Title.TLabel", background=surface, foreground=primary, font=(font, 16, "bold"))
+        style.configure("Title.TLabel", background=surface, foreground=primary, font=(font, 16, UI_HEADING_FONT_WEIGHT))
         style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
-        style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 20, "bold"))
+        style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 20, UI_HEADING_FONT_WEIGHT))
         style.configure("KpiHint.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("TNotebook", background=bg, borderwidth=0, tabmargins=(0, 8, 0, 0))
         style.configure(
@@ -1247,12 +1260,12 @@ class AutoNoteApp(tk.Tk):
         return widgets
 
     def _refresh_manual_readability_widgets(self) -> None:
-        badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold")
-        badge_padding = max(5, math.ceil((badge_linespace or UI_BADGE_FONT_SIZE + 7) * 0.34))
+        badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT)
+        badge_padding = max(6, math.ceil((badge_linespace or UI_BADGE_FONT_SIZE + 7) * 0.38))
         for widget in self._manual_status_widgets():
             try:
                 widget.configure(
-                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                     pady=badge_padding,
                 )
             except tk.TclError:
@@ -1400,7 +1413,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg=UI_COLORS["warn"],
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=9,
             pady=4,
             width=12,
@@ -1456,7 +1469,7 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg=UI_COLORS["warn"],
                 fg="#ffffff",
-                font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                 padx=7,
                 pady=3,
                 width=8,
@@ -1541,7 +1554,7 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg="#8a4f00",
                 fg="#ffffff",
-                font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                 padx=8,
                 pady=4,
                 width=8,
@@ -1575,7 +1588,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=10,
             pady=4,
             width=12,
@@ -1640,7 +1653,7 @@ class AutoNoteApp(tk.Tk):
             text="OK",
             bg="#047857",
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=10,
             pady=4,
             width=12,
@@ -1667,9 +1680,10 @@ class AutoNoteApp(tk.Tk):
                 ("GUIログ表示", self.show_gui_log_action, "Primary.TButton"),
                 ("復旧セット", self.run_recovery_kit_to_tab),
                 ("問い合わせ一式", self.create_support_bundle_action),
+                ("ログクリア", self.clear_gui_log_action, "Danger.TButton"),
                 ("場所", self.open_gui_log_folder_action),
             ],
-            columns=2,
+            columns=3,
         )
 
         sales_box = ttk.LabelFrame(home, text="販売準備", padding=10)
@@ -1695,7 +1709,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=10,
             pady=4,
             width=12,
@@ -1731,7 +1745,7 @@ class AutoNoteApp(tk.Tk):
                 text="CHECK",
                 bg="#8a4f00",
                 fg="#ffffff",
-                font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                 padx=8,
                 pady=4,
                 width=8,
@@ -1754,7 +1768,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=8,
             pady=4,
             width=8,
@@ -2065,7 +2079,7 @@ class AutoNoteApp(tk.Tk):
             text="CHECK",
             bg="#8a4f00",
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=12,
             pady=5,
             width=10,
@@ -2122,7 +2136,12 @@ class AutoNoteApp(tk.Tk):
         self.first_run_detail_text_var = tk.StringVar(value="")
         self.first_run_detail_gui_var = tk.StringVar(value="")
         self.first_run_detail_cli_var = tk.StringVar(value="")
-        ttk.Label(detail_panel, textvariable=self.first_run_detail_name_var, style="Surface.TLabel", font=(UI_FONT, 12, "bold")).pack(
+        ttk.Label(
+            detail_panel,
+            textvariable=self.first_run_detail_name_var,
+            style="Surface.TLabel",
+            font=(UI_FONT, 12, UI_HEADING_FONT_WEIGHT),
+        ).pack(
             anchor=tk.W,
             pady=(10, 0),
         )
@@ -2290,7 +2309,7 @@ class AutoNoteApp(tk.Tk):
             text="未選択",
             bg="#344054",
             fg="#ffffff",
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=9,
             pady=4,
             width=9,
@@ -2445,7 +2464,7 @@ class AutoNoteApp(tk.Tk):
     def _build_ideas_tab(self) -> None:
         top = ttk.Frame(self.ideas_tab)
         top.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(top, text="アイデア箱", font=(UI_FONT, 16, "bold")).pack(side=tk.LEFT)
+        ttk.Label(top, text="アイデア箱", font=(UI_FONT, 16, UI_HEADING_FONT_WEIGHT)).pack(side=tk.LEFT)
         ttk.Button(top, text="追加", style="Primary.TButton", command=self.add_idea_dialog).pack(
             side=tk.RIGHT, padx=(6, 0)
         )
@@ -2474,7 +2493,7 @@ class AutoNoteApp(tk.Tk):
     def _build_schedule_tab(self) -> None:
         top = ttk.Frame(self.schedule_tab)
         top.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(top, text="工程と公開予定", font=(UI_FONT, 16, "bold")).pack(side=tk.LEFT)
+        ttk.Label(top, text="工程と公開予定", font=(UI_FONT, 16, UI_HEADING_FONT_WEIGHT)).pack(side=tk.LEFT)
         ttk.Button(top, text="更新", command=self.refresh_schedule).pack(side=tk.RIGHT)
         ttk.Button(top, text="ICS出力", command=self.export_calendar_action).pack(side=tk.RIGHT, padx=6)
         ttk.Button(top, text="選択記事を予定にする", command=self.save_schedule).pack(side=tk.RIGHT, padx=6)
@@ -2488,7 +2507,7 @@ class AutoNoteApp(tk.Tk):
     def _build_check_tab(self) -> None:
         top = ttk.Frame(self.check_tab)
         top.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(top, text="公開前チェック", font=(UI_FONT, 16, "bold")).pack(side=tk.LEFT)
+        ttk.Label(top, text="公開前チェック", font=(UI_FONT, 16, UI_HEADING_FONT_WEIGHT)).pack(side=tk.LEFT)
 
         actions = ttk.Frame(self.check_tab)
         actions.pack(fill=tk.X, pady=(0, 8))
@@ -2570,7 +2589,12 @@ class AutoNoteApp(tk.Tk):
 
         self.review_detail_title_var = tk.StringVar(value="記事を選択してください")
         self.review_detail_status_var = tk.StringVar(value="")
-        ttk.Label(detail_panel, textvariable=self.review_detail_title_var, style="Surface.TLabel", font=(UI_FONT, 12, "bold")).pack(
+        ttk.Label(
+            detail_panel,
+            textvariable=self.review_detail_title_var,
+            style="Surface.TLabel",
+            font=(UI_FONT, 12, UI_HEADING_FONT_WEIGHT),
+        ).pack(
             anchor=tk.W,
             pady=(0, 2),
         )
@@ -3029,6 +3053,7 @@ class AutoNoteApp(tk.Tk):
                 ("表示診断コピー", self.copy_display_diagnostics_action),
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
+                ("GUIログクリア", self.clear_gui_log_action, "Danger.TButton"),
                 ("ログを開く", self.open_gui_log),
                 ("GUIログ場所", self.open_gui_log_folder_action),
                 ("保守フォルダ", self.open_maintenance_folder),
@@ -3098,7 +3123,7 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                     padx=6,
                     pady=3,
                     width=8,
@@ -3124,7 +3149,7 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                     padx=6,
                     pady=3,
                     width=8,
@@ -3150,7 +3175,7 @@ class AutoNoteApp(tk.Tk):
                     text=pill_text,
                     bg=bg,
                     fg=fg,
-                    font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+                    font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
                     padx=8,
                     pady=4,
                     width=8,
@@ -3290,6 +3315,7 @@ class AutoNoteApp(tk.Tk):
                 ("表示診断コピー", self.copy_display_diagnostics_action),
                 ("GUIログ表示", self.show_gui_log_action),
                 ("GUIログコピー", self.copy_gui_log_action),
+                ("GUIログクリア", self.clear_gui_log_action, "Danger.TButton"),
                 ("GUIログ場所", self.open_gui_log_folder_action),
                 ("保守フォルダ", self.open_maintenance_folder),
             ],
@@ -3308,7 +3334,7 @@ class AutoNoteApp(tk.Tk):
             anchor=tk.W,
             bg=UI_COLORS["surface_selected"],
             fg=UI_COLORS["ink"],
-            font=(UI_FONT, UI_BADGE_FONT_SIZE, "bold"),
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
             padx=12,
             pady=7,
             relief=tk.FLAT,
@@ -5881,7 +5907,7 @@ class AutoNoteApp(tk.Tk):
 
         frame = ttk.Frame(win, padding=16)
         frame.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(frame, text="auto-note セットアップ", font=(UI_FONT, 18, "bold")).pack(anchor=tk.W)
+        ttk.Label(frame, text="auto-note セットアップ", font=(UI_FONT, 18, UI_HEADING_FONT_WEIGHT)).pack(anchor=tk.W)
 
         notebook = ttk.Notebook(frame)
         notebook.pack(fill=tk.BOTH, expand=True, pady=(12, 8))
@@ -6237,6 +6263,7 @@ class AutoNoteApp(tk.Tk):
             ("アプリ情報", "バージョンと環境概要を表示", self.show_app_info),
             ("GUIログ表示", "最新GUIログを診断タブに表示", self.show_gui_log_action),
             ("GUIログコピー", "最新GUIログをクリップボードへコピー", self.copy_gui_log_action),
+            ("GUIログクリア", "確認済みGUIログを退避して復旧ステータスをリセット", self.clear_gui_log_action),
             ("GUIログ場所", "GUIログが保存されるフォルダを開く", self.open_gui_log_folder_action),
             ("ライセンス表示", "依存ライブラリの第三者表記を表示", self.show_dependency_notices),
             ("第三者表記更新", "依存ライブラリ表記をMarkdownへ書き出す", self.write_dependency_notices_action),
@@ -6725,7 +6752,7 @@ class AutoNoteApp(tk.Tk):
         button_vertical_padding = _vertical_padding(button_padding)
         main_linespace = _font_linespace(self, UI_FONT, UI_TEXT_SIZE)
         small_linespace = _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE)
-        badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold")
+        badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT)
         minimum_main_linespace = _minimum_readable_linespace(UI_TEXT_SIZE)
         minimum_small_linespace = _minimum_readable_linespace(UI_SMALL_TEXT_SIZE)
         minimum_badge_linespace = _minimum_readable_linespace(UI_BADGE_FONT_SIZE)
@@ -6761,6 +6788,12 @@ class AutoNoteApp(tk.Tk):
                 f"(target {minimum_main_linespace}/{minimum_small_linespace}/{minimum_badge_linespace}+)"
             ),
             "表示リセット後、改善しない場合は表示診断コピーを送る",
+        )
+        add(
+            "Japanese font family",
+            not _is_crush_prone_font_family(UI_FONT),
+            f"{UI_FONT} (preferred: Meiryo UI / Meiryo)",
+            "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
             "tree rows",
@@ -6828,7 +6861,10 @@ class AutoNoteApp(tk.Tk):
         button_padding = _safe(lambda: style.lookup("TButton", "padding"))
         main_linespace = _safe(lambda: _font_linespace(self, UI_FONT, UI_TEXT_SIZE) or "unknown")
         small_linespace = _safe(lambda: _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE) or "unknown")
-        badge_linespace = _safe(lambda: _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight="bold") or "unknown")
+        badge_linespace = _safe(
+            lambda: _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT) or "unknown"
+        )
+        crush_prone_font = "yes" if _is_crush_prone_font_family(UI_FONT) else "no"
         _status, readability_lines = self._display_readability_checks(style)
         lines = [
             "Display diagnostics / 表示診断",
@@ -6846,6 +6882,7 @@ class AutoNoteApp(tk.Tk):
             f"- saved display density: {saved_density} / {_ui_density_label(saved_density)}",
             f"- display density: {density} / {_ui_density_label(density)}",
             f"- UI font: {UI_FONT}",
+            f"- crush-prone font fallback: {crush_prone_font}",
             f"- code font: {CODE_FONT}",
             f"- text size: {UI_TEXT_SIZE}",
             f"- small text size: {UI_SMALL_TEXT_SIZE}",
@@ -6873,6 +6910,7 @@ class AutoNoteApp(tk.Tk):
             "",
             "Recommended actions",
             "- 文字が潰れる時: ヘッダーの 表示 で 大きめ を選ぶ",
+            "- フォントが Yu/BIZ/MS Gothic 系になった時: 表示リセット後に再起動する",
             "- 画面位置やサイズが扱いにくい時: 表示リセット を実行する",
             "- サポートへ送る時: この表示診断、GUIログ表示、復旧セットの結果を確認する",
         ]
@@ -8396,6 +8434,51 @@ class AutoNoteApp(tk.Tk):
             messagebox.showerror("GUIログコピー", str(exc))
             return
         self.notify("GUIログをコピーしました", level="success")
+
+    def clear_gui_log_action(self) -> None:
+        path = gui_error_log_path(self.project_dir)
+        has_log = False
+        if path.exists():
+            try:
+                has_log = path.stat().st_size > 0
+            except OSError as exc:
+                self.notify("GUIログを確認できませんでした", level="error")
+                messagebox.showerror("GUIログクリア", str(exc))
+                return
+        if has_log:
+            confirmed = messagebox.askyesno(
+                "GUIログクリア",
+                "現在のGUIログを退避して、復旧ステータスをOKに戻します。\n"
+                "退避ファイルは同じフォルダに残ります。実行しますか？",
+            )
+            if not confirmed:
+                self.notify("GUIログクリアをキャンセルしました", level="info")
+                return
+        try:
+            archive = clear_gui_error_log(self.project_dir)
+        except OSError as exc:
+            self.notify("GUIログをクリアできませんでした", level="error")
+            messagebox.showerror("GUIログクリア", str(exc))
+            return
+        lines = [
+            "GUI log clear / GUIログクリア",
+            "",
+            f"current log: {path}",
+        ]
+        if archive:
+            lines.extend(
+                [
+                    f"archived to: {archive}",
+                    "",
+                    "[OK] GUIログを退避して、現在ログをクリアしました。",
+                ]
+            )
+        else:
+            lines.extend(["", "[OK] クリアするGUIログはありません。復旧ステータスを更新しました。"])
+        self._set_text(self.diagnostics_text, "\n".join(lines))
+        self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_gui_log_status()
+        self.notify("GUIログをクリアしました", level="success")
 
     def _format_gui_log_preview(self) -> tuple[str, bool]:
         path = gui_error_log_path(self.project_dir)

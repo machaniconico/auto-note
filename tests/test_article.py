@@ -95,13 +95,17 @@ from auto_note.gui import (
     _home_snapshot_values,
     _home_snapshot_worst_state,
     _home_state_accent_color,
+    _is_crush_prone_font_family,
     _padding_with_vertical,
     _readable_vertical_padding,
     _support_bundle_indicator_style,
     _support_send_readiness_indicator_style,
+    UI_BADGE_FONT_WEIGHT,
+    UI_FONT_CANDIDATES,
+    UI_HEADING_FONT_WEIGHT,
     smoke_gui,
 )
-from auto_note.gui_errors import append_gui_error, gui_error_log_path
+from auto_note.gui_errors import append_gui_error, clear_gui_error_log, gui_error_log_path
 from auto_note.history import create_revision, list_revisions, restore_revision
 from auto_note.images import (
     format_image_report,
@@ -419,6 +423,14 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_padding_with_vertical((21, 17), 27), (21, 27))
         self.assertEqual(_padding_with_vertical((8, 4, 10, 4), 12), (8, 12, 10, 12))
 
+    def test_ui_readability_prefers_meiryo_and_flags_dense_fonts(self) -> None:
+        self.assertEqual(UI_FONT_CANDIDATES[:2], ("Meiryo UI", "Meiryo"))
+        self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
+        self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
+        self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
+        self.assertTrue(_is_crush_prone_font_family("Yu Gothic UI"))
+        self.assertTrue(_is_crush_prone_font_family("BIZ UDPゴシック"))
+
     def test_home_first_run_summary_points_to_next_item(self) -> None:
         report = FirstRunReport(
             project_dir=Path("."),
@@ -620,6 +632,7 @@ class ArticleTests(unittest.TestCase):
     def test_gui_runtime_error_message_guides_recovery(self) -> None:
         message = _gui_runtime_error_message(Path("D:/workspace/auto-note/.auto-note/gui-error.log"))
         self.assertIn("GUIログ表示", message)
+        self.assertIn("GUIログクリア", message)
         self.assertIn("復旧セット", message)
         self.assertIn("問い合わせ一式", message)
         self.assertIn("Ctrl+K", message)
@@ -2991,6 +3004,23 @@ tags: note
         self.assertIn("Traceback line", text)
         self.assertIn("second error", text)
 
+    def test_clear_gui_error_log_archives_current_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            path = append_gui_error(project, "test error", "Traceback line")
+            archive = clear_gui_error_log(project)
+
+            self.assertIsNotNone(archive)
+            assert archive is not None
+            self.assertFalse(path.exists())
+            self.assertTrue(archive.exists())
+            self.assertIn("Traceback line", archive.read_text(encoding="utf-8"))
+            self.assertTrue(archive.name.startswith("gui-error-cleared-"))
+
+    def test_clear_gui_error_log_is_noop_without_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(clear_gui_error_log(Path(tmp)))
+
     def test_gui_smoke_initializes_when_desktop_is_available(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -3013,6 +3043,7 @@ tags: note
         self.assertIn("home_updated_chars=", text)
         self.assertIn("home_primary_button_chars=", text)
         self.assertIn("command_palette_display_diagnostics_copy_actions=1", text)
+        self.assertIn("command_palette_gui_log_clear_actions=1", text)
         self.assertIn("command_palette_support_display_diagnostics_actions=1", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
@@ -3350,8 +3381,8 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
-                + '"Yu Gothic UI"\n'
-                + 'UI_FONT_CANDIDATES = ("Yu Gothic UI"\n'
+                + '"Meiryo UI"\n'
+                + 'UI_FONT_CANDIDATES = ("Meiryo UI", "Meiryo"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
                 + "UI_TEXT_SIZE = 13\n"
@@ -3454,12 +3485,19 @@ tags:
                 + 'extra_entries={"DISPLAY_DIAGNOSTICS.txt": self._format_display_diagnostics()}\n'
                 + "show_gui_log_action\n"
                 + "copy_gui_log_action\n"
+                + "clear_gui_log_action\n"
+                + "clear_gui_error_log\n"
+                + "gui-error-cleared-\n"
                 + "GUIログ表示\n"
                 + "GUIログコピー\n"
+                + "GUIログクリア\n"
+                + "現在のGUIログを退避して\n"
                 + "open_gui_log_folder_action\n"
                 + "GUIログ場所\n"
                 + "GUIログの保存場所を開きました\n"
                 + "GUI log / GUIログ\n"
+                + "GUI log clear / GUIログクリア\n"
+                + "command_palette_gui_log_clear_actions=\n"
                 + "self.clipboard_append(text)\n"
                 + "診断ZIP検証\n"
                 + "verify_latest_diagnostic_report_action\n"
@@ -3644,6 +3682,10 @@ tags:
                 + "問い合わせ一式\n",
                 encoding="utf-8",
             )
+            (project / "src" / "auto_note" / "gui_errors.py").write_text(
+                "clear_gui_error_log\ngui-error-cleared-\n",
+                encoding="utf-8",
+            )
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "復旧ステータス\n"
@@ -3660,12 +3702,12 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic UI` / `Meiryo UI\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nMeiryo UI` / `Meiryo\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "CHANGELOG.md").write_text(
-                "Yu Gothic UI` / `Meiryo UI\n",
+                "Meiryo UI` / `Meiryo\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RELEASE_CHECKLIST.md").write_text(
@@ -3683,7 +3725,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\nGUIログクリア\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -4109,12 +4151,17 @@ tags:
         self.assertIn("GUI display readability warning actions:fail", product_details)
         self.assertIn("GUI display diagnostics support guidance:fail", product_details)
         self.assertIn("GUI log copy action:fail", product_details)
+        self.assertIn("GUI log clear action:fail", product_details)
+        self.assertIn("GUI log clear archive helper:fail", product_details)
+        self.assertIn("GUI log clear archived filename:fail", product_details)
         self.assertIn("GUI log folder action:fail", product_details)
         self.assertIn("GUI log display button:fail", product_details)
         self.assertIn("GUI display diagnostics button:fail", product_details)
         self.assertIn("GUI display diagnostics copy button:fail", product_details)
         self.assertIn("GUI display diagnostics copy clipboard:fail", product_details)
         self.assertIn("GUI log copy button:fail", product_details)
+        self.assertIn("GUI log clear button:fail", product_details)
+        self.assertIn("GUI log clear confirmation:fail", product_details)
         self.assertIn("GUI log folder button:fail", product_details)
         self.assertIn("GUI diagnostic ZIP folder button:fail", product_details)
         self.assertIn("GUI diagnostic ZIP verify button:fail", product_details)
@@ -4124,6 +4171,8 @@ tags:
         self.assertIn("GUI diagnostic ZIP path action:fail", product_details)
         self.assertIn("GUI diagnostic ZIP path clipboard:fail", product_details)
         self.assertIn("GUI log preview content:fail", product_details)
+        self.assertIn("GUI log clear preview content:fail", product_details)
+        self.assertIn("GUI log clear command palette metric:fail", product_details)
         self.assertIn("GUI runtime error actionable helper:fail", product_details)
         self.assertIn("GUI runtime error recovery guidance:fail", product_details)
         self.assertIn("GUI runtime error support bundle guidance:fail", product_details)
@@ -4314,6 +4363,8 @@ tags:
         self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
         self.assertIn("README GUI log folder guidance:fail", product_details)
+        self.assertIn("README GUI log clear guidance:fail", product_details)
+        self.assertIn("README GUI log clear archive guidance:fail", product_details)
         self.assertIn("README runtime error recovery guidance:fail", product_details)
         self.assertIn("README runtime error command palette guidance:fail", product_details)
         self.assertIn("README home recovery status guidance:fail", product_details)
@@ -4323,6 +4374,7 @@ tags:
         self.assertIn("support guide GUI log display guidance:fail", product_details)
         self.assertIn("support guide GUI log copy guidance:fail", product_details)
         self.assertIn("support guide GUI log folder guidance:fail", product_details)
+        self.assertIn("support guide GUI log clear guidance:fail", product_details)
         self.assertIn("support guide diagnostic ZIP path guidance:fail", product_details)
         self.assertIn("support guide diagnostic ZIP verification guidance:fail", product_details)
         self.assertIn("support guide GUI log summary guidance:fail", product_details)
@@ -4737,12 +4789,17 @@ tags:
         self.assertIn("GUI display readability warning actions:pass", launcher_details)
         self.assertIn("GUI display diagnostics support guidance:pass", launcher_details)
         self.assertIn("GUI log copy action:pass", launcher_details)
+        self.assertIn("GUI log clear action:pass", launcher_details)
+        self.assertIn("GUI log clear archive helper:pass", launcher_details)
+        self.assertIn("GUI log clear archived filename:pass", launcher_details)
         self.assertIn("GUI log folder action:pass", launcher_details)
         self.assertIn("GUI log display button:pass", launcher_details)
         self.assertIn("GUI display diagnostics button:pass", launcher_details)
         self.assertIn("GUI display diagnostics copy button:pass", launcher_details)
         self.assertIn("GUI display diagnostics copy clipboard:pass", launcher_details)
         self.assertIn("GUI log copy button:pass", launcher_details)
+        self.assertIn("GUI log clear button:pass", launcher_details)
+        self.assertIn("GUI log clear confirmation:pass", launcher_details)
         self.assertIn("GUI log folder button:pass", launcher_details)
         self.assertIn("GUI diagnostic ZIP folder button:pass", launcher_details)
         self.assertIn("GUI diagnostic ZIP verify button:pass", launcher_details)
@@ -4752,6 +4809,8 @@ tags:
         self.assertIn("GUI diagnostic ZIP path action:pass", launcher_details)
         self.assertIn("GUI diagnostic ZIP path clipboard:pass", launcher_details)
         self.assertIn("GUI log preview content:pass", launcher_details)
+        self.assertIn("GUI log clear preview content:pass", launcher_details)
+        self.assertIn("GUI log clear command palette metric:pass", launcher_details)
         self.assertIn("GUI runtime error actionable helper:pass", launcher_details)
         self.assertIn("GUI runtime error recovery guidance:pass", launcher_details)
         self.assertIn("GUI runtime error support bundle guidance:pass", launcher_details)
@@ -4943,6 +5002,8 @@ tags:
         self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
         self.assertIn("README GUI log folder guidance:pass", launcher_details)
+        self.assertIn("README GUI log clear guidance:pass", launcher_details)
+        self.assertIn("README GUI log clear archive guidance:pass", launcher_details)
         self.assertIn("README runtime error recovery guidance:pass", launcher_details)
         self.assertIn("README runtime error command palette guidance:pass", launcher_details)
         self.assertIn("README home recovery status guidance:pass", launcher_details)
@@ -4952,6 +5013,7 @@ tags:
         self.assertIn("support guide GUI log display guidance:pass", launcher_details)
         self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
         self.assertIn("support guide GUI log folder guidance:pass", launcher_details)
+        self.assertIn("support guide GUI log clear guidance:pass", launcher_details)
         self.assertIn("support guide diagnostic ZIP path guidance:pass", launcher_details)
         self.assertIn("support guide diagnostic ZIP verification guidance:pass", launcher_details)
         self.assertIn("support guide GUI log summary guidance:pass", launcher_details)
