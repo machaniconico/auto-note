@@ -854,12 +854,16 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "home_commercial_focus_button_var")
             else 0
         )
+        home_release_check_chars = (
+            len(app.home_release_check_var.get()) if hasattr(app, "home_release_check_var") else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
                 + app.home_sales_detail_var.get()
                 + app.home_sales_next_var.get()
                 + app.home_commercial_focus_var.get()
+                + app.home_release_check_var.get()
                 + app.home_buyer_send_var.get()
                 + app.home_buyer_send_next_var.get()
             )
@@ -996,6 +1000,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"commercial_setup_chars={commercial_setup_chars}, "
             f"home_commercial_focus_chars={home_commercial_focus_chars}, "
             f"home_commercial_focus_button_chars={home_commercial_focus_button_chars}, "
+            f"home_release_check_chars={home_release_check_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_sales_timeline_items={home_sales_timeline_items}, "
@@ -1964,6 +1969,7 @@ class AutoNoteApp(tk.Tk):
         self.home_sales_next_var = tk.StringVar(value="")
         self.home_commercial_focus_var = tk.StringVar(value="販売者次項目を確認中です。")
         self.home_commercial_focus_button_var = tk.StringVar(value="販売者次へ")
+        self.home_release_check_var = tk.StringVar(value="販売前一括チェックを確認中です。")
         self.home_buyer_send_var = tk.StringVar(value="購入者送付を確認中です。")
         self.home_buyer_send_next_var = tk.StringVar(value="")
         self.home_buyer_send_action_var = tk.StringVar(value="購入者ZIP作成")
@@ -2082,6 +2088,16 @@ class AutoNoteApp(tk.Tk):
             anchor=tk.W,
             fill=tk.X,
             pady=(3, 0),
+        )
+        ttk.Label(
+            sales_text,
+            textvariable=self.home_release_check_var,
+            style="Surface.TLabel",
+            wraplength=820,
+        ).pack(
+            anchor=tk.W,
+            fill=tk.X,
+            pady=(4, 0),
         )
         sales_timeline = ttk.Frame(sales_text, style="Surface.TFrame")
         sales_timeline.pack(fill=tk.X, pady=(10, 0))
@@ -5882,6 +5898,7 @@ class AutoNoteApp(tk.Tk):
         materials = list_sales_materials(self.project_dir)
         listing_kits = list_sales_listing_kits(self.project_dir)
         listing_packages = list_sales_listing_packages(self.project_dir)
+        release_checks = _list_release_check_reports(self.project_dir)
         latest_buyer_package = buyer_packages[0] if buyer_packages else None
         latest_buyer_message = buyer_messages[0] if buyer_messages else None
         latest_seller_receipt = seller_receipts[0] if seller_receipts else None
@@ -5945,6 +5962,9 @@ class AutoNoteApp(tk.Tk):
             self.home_commercial_focus_var.set(_home_commercial_focus_text(settings))
         if hasattr(self, "home_commercial_focus_button_var"):
             self.home_commercial_focus_button_var.set(_home_commercial_focus_button_label(focus.status))
+        if hasattr(self, "home_release_check_var"):
+            _release_check_state, release_check_text = _home_release_check_summary(release_checks)
+            self.home_release_check_var.set(release_check_text)
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
         self.home_buyer_send_next_var.set(buyer_next)
@@ -5980,6 +6000,7 @@ class AutoNoteApp(tk.Tk):
             materials=materials,
             listing_kits=listing_kits,
             listing_packages=listing_packages,
+            release_checks=release_checks,
             latest_buyer_package=latest_buyer_package,
             latest_buyer_message=latest_buyer_message,
             latest_seller_receipt=latest_seller_receipt,
@@ -6060,6 +6081,7 @@ class AutoNoteApp(tk.Tk):
         materials: list[Path],
         listing_kits: list[Path],
         listing_packages: list[Path],
+        release_checks: list[Path],
         latest_buyer_package: Path | None,
         latest_buyer_message: Path | None,
         latest_seller_receipt: Path | None,
@@ -6155,7 +6177,6 @@ class AutoNoteApp(tk.Tk):
             launch_detail = "未保存"
         put("launch", "販売直前", launch_state, launch_detail)
 
-        release_checks = _list_release_check_reports(self.project_dir)
         if release_checks:
             full_status = _home_report_status("一括チェック", release_checks[0])
             full_state = _home_report_status_state(full_status)
@@ -10050,6 +10071,24 @@ def _home_commercial_focus_button_label(status: str) -> str:
     if status == "ready":
         return "販売素材へ"
     return "販売者次へ"
+
+
+def _home_release_check_summary(reports: list[Path]) -> tuple[str, str]:
+    if not reports:
+        return (
+            "warn",
+            "販売前一括: 未実行 / 販売前一括チェックで出荷前の総点検を保存します。",
+        )
+    latest = reports[0]
+    status = _home_report_status("一括チェック", latest)
+    state = _home_report_status_state(status)
+    if status == "OK":
+        action = "販売直前の証跡として利用できます。"
+    elif status == "NG":
+        action = "表示で失敗箇所を確認します。"
+    else:
+        action = "表示で内容を確認します。"
+    return state, f"販売前一括: {status} / {_format_mtime(latest)} / {action}"
 
 
 def _home_buyer_send_summary(

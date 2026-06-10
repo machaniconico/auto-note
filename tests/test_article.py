@@ -98,6 +98,7 @@ from auto_note.gui import (
     _home_report_status,
     _home_report_status_tag,
     _home_report_summary,
+    _home_release_check_summary,
     _home_snapshot_brief,
     _home_snapshot_next_state,
     _home_snapshot_readiness_state,
@@ -532,15 +533,29 @@ class ArticleTests(unittest.TestCase):
             self.assertEqual(first.parent, project / ".auto-note" / "reports")
             self.assertTrue(first.name.startswith("release-check-"))
             self.assertEqual(_list_release_check_reports(project), [])
+            summary_state, summary_text = _home_release_check_summary([])
+            self.assertEqual(summary_state, "warn")
+            self.assertIn("販売前一括: 未実行", summary_text)
             write_text_atomic(first, "status: OK\n")
             second = _release_check_report_path(project)
             self.assertNotEqual(first, second)
             self.assertEqual(_list_release_check_reports(project), [first])
             self.assertEqual(_home_report_status("一括チェック", first), "OK")
+            summary_state, summary_text = _home_release_check_summary([first])
+            self.assertEqual(summary_state, "ok")
+            self.assertIn("販売前一括: OK", summary_text)
+            self.assertIn("販売直前の証跡", summary_text)
             write_text_atomic(first, "status: NG\n")
             self.assertEqual(_home_report_status("一括チェック", first), "NG")
+            summary_state, summary_text = _home_release_check_summary([first])
+            self.assertEqual(summary_state, "fail")
+            self.assertIn("販売前一括: NG", summary_text)
+            self.assertIn("失敗箇所", summary_text)
             write_text_atomic(first, "status: RUNNING\n")
             self.assertEqual(_home_report_status("一括チェック", first), "確認")
+            summary_state, summary_text = _home_release_check_summary([first])
+            self.assertEqual(summary_state, "info")
+            self.assertIn("販売前一括: 確認", summary_text)
 
     def test_format_release_check_output_includes_execution_summary(self) -> None:
         started = datetime(2026, 6, 10, 9, 0, 0)
@@ -3586,6 +3601,7 @@ tags: note
         self.assertIn("home_sales_chars=", text)
         self.assertIn("home_commercial_focus_chars=", text)
         self.assertIn("home_commercial_focus_button_chars=", text)
+        self.assertIn("home_release_check_chars=", text)
         self.assertIn("home_sales_stage_chars=", text)
         self.assertIn("home_sales_timeline_items=", text)
         self.assertIn("home_sales_timeline_chars=", text)
@@ -4255,9 +4271,12 @@ tags:
                 + "home_buyer_send_var.get()\n"
                 + "home_commercial_focus_chars=\n"
                 + "home_commercial_focus_button_chars=\n"
+                + "home_release_check_chars=\n"
                 + "home_commercial_focus_var\n"
                 + "home_commercial_focus_button_var\n"
+                + "home_release_check_var\n"
                 + "_home_commercial_focus_button_label\n"
+                + "_home_release_check_summary\n"
                 + "run_home_commercial_focus_action\n"
                 + "_home_commercial_focus_text\n"
                 + "home_buyer_send_var\n"
@@ -5059,11 +5078,13 @@ tags:
         self.assertIn("GUI smoke home sales includes buyer send:fail", product_details)
         self.assertIn("GUI smoke home commercial focus:fail", product_details)
         self.assertIn("GUI smoke home commercial focus button:fail", product_details)
+        self.assertIn("GUI smoke home release check summary:fail", product_details)
         self.assertIn("GUI smoke home sales timeline count:fail", product_details)
         self.assertIn("GUI smoke home sales timeline chars:fail", product_details)
         self.assertIn("GUI home sales next action:fail", product_details)
         self.assertIn("GUI home sales lightweight summary:fail", product_details)
         self.assertIn("GUI home commercial setup focus summary:fail", product_details)
+        self.assertIn("GUI home release check summary:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic action:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic button:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
@@ -5815,11 +5836,13 @@ tags:
         self.assertIn("GUI smoke home sales includes buyer send:pass", launcher_details)
         self.assertIn("GUI smoke home commercial focus:pass", launcher_details)
         self.assertIn("GUI smoke home commercial focus button:pass", launcher_details)
+        self.assertIn("GUI smoke home release check summary:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline count:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline chars:pass", launcher_details)
         self.assertIn("GUI home sales next action:pass", launcher_details)
         self.assertIn("GUI home sales lightweight summary:pass", launcher_details)
         self.assertIn("GUI home commercial setup focus summary:pass", launcher_details)
+        self.assertIn("GUI home release check summary:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic action:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic button:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
