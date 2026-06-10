@@ -3665,7 +3665,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
@@ -4313,6 +4313,8 @@ tags:
         self.assertIn("product readiness home recent reports copy guidance:fail", product_details)
         self.assertIn("product readiness first-run actionable filter guidance:fail", product_details)
         self.assertIn("product readiness self-test launcher health guidance:fail", product_details)
+        self.assertIn("product readiness CI safe display smoke guidance:fail", product_details)
+        self.assertIn("product readiness release check safe display smoke guidance:fail", product_details)
         self.assertIn("product readiness commercial setup template apply command:fail", product_details)
         self.assertIn("product readiness commercial setup safe template guidance:fail", product_details)
         self.assertIn("product readiness commercial setup GUI next missing guidance:fail", product_details)
@@ -4931,6 +4933,8 @@ tags:
         self.assertIn("product readiness home recent reports copy guidance:pass", launcher_details)
         self.assertIn("product readiness first-run actionable filter guidance:pass", launcher_details)
         self.assertIn("product readiness self-test launcher health guidance:pass", launcher_details)
+        self.assertIn("product readiness CI safe display smoke guidance:pass", launcher_details)
+        self.assertIn("product readiness release check safe display smoke guidance:pass", launcher_details)
         self.assertIn("product readiness commercial setup template command:pass", launcher_details)
         self.assertIn("product readiness commercial setup template apply command:pass", launcher_details)
         self.assertIn("product readiness commercial setup safe template guidance:pass", launcher_details)

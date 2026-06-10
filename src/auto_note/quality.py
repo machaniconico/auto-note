@@ -4745,6 +4745,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness CI safe display smoke guidance",
+            "GUI safe display smokeをpush/PRごとに確認できる",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness release check safe display smoke guidance",
+            "GUI smoke、GUI safe display smokeを一括確認でき",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness commercial setup template command",
             "commercial-setup --project-dir . --template",
         )
