@@ -207,9 +207,9 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer Japanese UI faces that keep full kana/kanji forms readable in Tk.
-# Noto Sans JP is less visually heavy in dense ttk controls; Japanese Windows exposes full Meiryo as "メイリオ".
-UI_FONT_CANDIDATES = ("Noto Sans JP", "メイリオ", "Meiryo", "Meiryo UI", "Noto Sans CJK JP", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
+# Prefer native Japanese UI faces first. Tk on high-DPI Windows can render
+# Noto Sans JP with heavy strokes, so Meiryo is the safer default.
+UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
