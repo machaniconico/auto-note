@@ -26,6 +26,16 @@ class CommercialSetupApplyResult:
     warnings: list[str]
 
 
+@dataclass(frozen=True)
+class CommercialSetupFocus:
+    field: str
+    label: str
+    status: str
+    detail: str
+    gui: str
+    cli: str
+
+
 def update_commercial_settings(
     project_dir: Path,
     *,
@@ -240,6 +250,7 @@ def format_commercial_settings(settings: AppSettings) -> str:
     warnings = commercial_setup_warnings(settings)
     next_actions = commercial_setup_next_actions(settings)
     complete, total = commercial_setup_completion(settings)
+    focus = commercial_setup_next_focus(settings)
     lines = [
         "Commercial setup / 商用設定",
         f"completion: {complete}/{total}",
@@ -255,6 +266,16 @@ def format_commercial_settings(settings: AppSettings) -> str:
     if warnings:
         lines.append("warnings:")
         lines.extend(f"- {warning}" for warning in warnings)
+    lines.extend(
+        [
+            "next focus:",
+            f"- field: {focus.label}",
+            f"- status: {focus.status}",
+            f"- why: {focus.detail}",
+            f"- gui: {focus.gui}",
+            f"- cli: {focus.cli}",
+        ]
+    )
     if next_actions:
         lines.append("next actions:")
         lines.extend(f"- {action}" for action in next_actions)
@@ -306,6 +327,30 @@ def commercial_setup_next_field(settings: AppSettings) -> str:
     if not settings.commercial_support_scope_confirmed:
         return "commercial_support_scope_confirmed"
     return ""
+
+
+def commercial_setup_next_focus(settings: AppSettings) -> CommercialSetupFocus:
+    field = commercial_setup_next_field(settings)
+    if not field:
+        return CommercialSetupFocus(
+            field="sales_materials",
+            label="販売素材へ反映",
+            status="ready",
+            detail="販売者情報は6項目そろっています。販売素材と販売ナビを作り直して反映します。",
+            gui="診断 > 販売素材作成 / 販売ナビ",
+            cli="auto-note sales-materials --project-dir .",
+        )
+    label, gui, cli = _FOCUS_GUIDE[field]
+    status = _commercial_setup_focus_status(settings, field)
+    detail = _commercial_setup_focus_detail(settings, field, status)
+    return CommercialSetupFocus(
+        field=field,
+        label=label,
+        status=status,
+        detail=detail,
+        gui=gui,
+        cli=cli,
+    )
 
 
 def commercial_setup_missing_fields(settings: AppSettings) -> list[str]:
@@ -409,6 +454,39 @@ def _unique(values: list[str]) -> list[str]:
     return result
 
 
+def _commercial_setup_focus_status(settings: AppSettings, field: str) -> str:
+    if field == "seller_name":
+        return "missing"
+    if field == "sales_channel_url":
+        return "missing" if not settings.sales_channel_url.strip() else "warn"
+    if field == "refund_policy_url":
+        return "missing" if not settings.refund_policy_url.strip() else "warn"
+    if field == "support_contact":
+        return "missing" if not settings.support_contact.strip() else "warn"
+    if field in {"commercial_terms_reviewed", "commercial_support_scope_confirmed"}:
+        return "check"
+    return "check"
+
+
+def _commercial_setup_focus_detail(settings: AppSettings, field: str, status: str) -> str:
+    if status == "missing":
+        return _FOCUS_MISSING_DETAILS[field]
+    if field == "sales_channel_url":
+        return "販売ページURLは https:// で始まる公開URLにします。"
+    if field == "refund_policy_url":
+        return "返金方針URLは購入者が確認できる https:// URLにします。"
+    if field == "support_contact":
+        contact = settings.support_contact.strip()
+        if _has_raw_email(contact):
+            return "メール直書きより、問い合わせフォームやサポートページの公開URLが安全です。"
+        return "サポート連絡先は https:// で始まる公開URLにします。"
+    if field == "commercial_terms_reviewed":
+        return "利用条件と商用方針を販売ページの内容に合わせて確認してからONにします。"
+    if field == "commercial_support_scope_confirmed":
+        return "サポート範囲、返金条件、返信目安を販売ページに明記してからONにします。"
+    return "販売前に確認します。"
+
+
 _FIELD_ALIASES = {
     "seller_name": "seller_name",
     "seller": "seller_name",
@@ -433,6 +511,46 @@ _DISPLAY_ORDER = (
 )
 
 _STRING_FIELDS = {"seller_name", "sales_channel_url", "refund_policy_url", "support_contact"}
+
+_FOCUS_GUIDE = {
+    "seller_name": (
+        "販売者/屋号",
+        "設定 > 販売者/屋号",
+        '--seller-name "Your Shop"',
+    ),
+    "sales_channel_url": (
+        "販売ページURL",
+        "設定 > 販売ページURL",
+        '--sales-url "https://example.com"',
+    ),
+    "refund_policy_url": (
+        "返金方針URL",
+        "設定 > 返金方針URL",
+        '--refund-url "https://example.com/refund"',
+    ),
+    "support_contact": (
+        "サポート連絡先",
+        "設定 > サポート連絡先",
+        '--support-contact "https://example.com/support"',
+    ),
+    "commercial_terms_reviewed": (
+        "利用条件/商用方針確認",
+        "設定 > 利用条件/商用方針を販売前に確認済み",
+        "--terms-reviewed",
+    ),
+    "commercial_support_scope_confirmed": (
+        "サポート範囲確認",
+        "設定 > サポート範囲と返金条件を販売ページに明記済み",
+        "--support-scope-confirmed",
+    ),
+}
+
+_FOCUS_MISSING_DETAILS = {
+    "seller_name": "販売ページやサポート文面に出す販売者名を入力します。",
+    "sales_channel_url": "販売ページ、マーケットプレイス、または購入ページの公開URLを入力します。",
+    "refund_policy_url": "返金/キャンセル方針を購入者が確認できる公開URLを入力します。",
+    "support_contact": "問い合わせフォームやサポートページの公開URLを入力します。",
+}
 
 _PLACEHOLDERS = {
     "[販売者/屋号]",

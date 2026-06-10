@@ -1469,6 +1469,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup next focus helper",
+            "commercial_setup_next_focus",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
             "commercial setup safe template apply",
             "Safe Apply / 編集後の保存",
         )
@@ -3367,14 +3374,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"Noto Sans JP"',
+            '"Yu Gothic UI"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI native Japanese preferred font",
-            '"Noto Sans JP",\n    "Yu Gothic UI",\n    "Yu Gothic"',
+            '"Yu Gothic UI",\n    "Yu Gothic",\n    "Meiryo UI"',
         )
     )
     checks.append(
@@ -4095,7 +4102,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "README.md",
             "README current readable Japanese font guidance",
-            "Noto Sans JP` / `Yu Gothic UI` / `Yu Gothic",
+            "Yu Gothic UI` / `Yu Gothic` / `Meiryo UI",
         )
     )
     checks.append(
@@ -4109,7 +4116,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "docs" / "CHANGELOG.md",
             "changelog current readable Japanese font guidance",
-            "Noto Sans JP` / `Yu Gothic UI",
+            "Yu Gothic UI` / `Yu Gothic",
         )
     )
     checks.append(

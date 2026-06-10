@@ -224,15 +224,15 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer lighter modern Japanese UI faces first. Meiryo stays as a fallback,
-# but its thicker strokes can look cramped inside dense ttk controls.
+# Prefer Windows-native Japanese UI faces first. Noto stays as a fallback,
+# but Tk on Windows can render it with tall metrics and cramped glyphs.
 UI_FONT_CANDIDATES = (
-    "Noto Sans JP",
     "Yu Gothic UI",
     "Yu Gothic",
-    "メイリオ",
-    "Meiryo",
     "Meiryo UI",
+    "Meiryo",
+    "メイリオ",
+    "Noto Sans JP",
     "Noto Sans CJK JP",
     "BIZ UDPゴシック",
     "BIZ UDゴシック",
@@ -240,7 +240,14 @@ UI_FONT_CANDIDATES = (
     "Segoe UI",
 )
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
-UI_CRUSH_PRONE_FONT_KEYWORDS = ("biz ud", "ms gothic", "ms pgothic", "segoe ui")
+UI_CRUSH_PRONE_FONT_KEYWORDS = (
+    "noto sans jp",
+    "noto sans cjk jp",
+    "biz ud",
+    "ms gothic",
+    "ms pgothic",
+    "segoe ui",
+)
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
 UI_MIN_FONT_LINESPACE_RATIO = 1.25
@@ -7402,7 +7409,7 @@ class AutoNoteApp(tk.Tk):
         add(
             "Japanese font family",
             not _is_crush_prone_font_family(UI_FONT) and not _is_crush_prone_font_family(actual_font_family),
-            f"{UI_FONT} -> actual {actual_font_family} (preferred: Noto Sans JP / Yu Gothic UI)",
+            f"{UI_FONT} -> actual {actual_font_family} (preferred: Yu Gothic UI / Yu Gothic / Meiryo UI)",
             "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
@@ -7536,7 +7543,7 @@ class AutoNoteApp(tk.Tk):
             "",
             "Recommended actions",
             "- 文字が潰れる時: ヘッダーの 表示 で 大きめ を選ぶ",
-            "- フォントが Yu/BIZ/MS Gothic 系になった時: 表示リセット後に再起動する",
+            "- フォントが Noto/BIZ/MS Gothic 系になった時: 表示リセット後に再起動する",
             "- 画面位置やサイズが扱いにくい時: 表示リセット を実行する",
             "- サポートへ送る時: この表示診断、GUIログ表示、復旧セットの結果を確認する",
         ]

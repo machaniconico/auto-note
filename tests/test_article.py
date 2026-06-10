@@ -37,6 +37,7 @@ from auto_note.commercial import (
 from auto_note.commercial_setup import (
     apply_commercial_setup_template,
     commercial_setup_next_field,
+    commercial_setup_next_focus,
     create_commercial_setup_template,
     format_commercial_setup_apply_result,
     format_commercial_settings,
@@ -469,7 +470,8 @@ class ArticleTests(unittest.TestCase):
         self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
     def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
-        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Noto Sans JP", "Yu Gothic UI", "Yu Gothic", "メイリオ"))
+        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Yu Gothic UI", "Yu Gothic", "Meiryo UI", "Meiryo"))
+        self.assertIn("Noto Sans JP", UI_FONT_CANDIDATES)
         self.assertGreaterEqual(UI_TEXT_SIZE, 16)
         self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 15)
         self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 15)
@@ -483,11 +485,12 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
         self.assertEqual(UI_CONTROL_FONT_WEIGHT, "normal")
-        self.assertFalse(_is_crush_prone_font_family("Noto Sans JP"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
         self.assertFalse(_is_crush_prone_font_family("メイリオ"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo"))
         self.assertFalse(_is_crush_prone_font_family("Yu Gothic UI"))
+        self.assertTrue(_is_crush_prone_font_family("Noto Sans JP"))
+        self.assertTrue(_is_crush_prone_font_family("Noto Sans CJK JP"))
         self.assertTrue(_is_crush_prone_font_family("BIZ UDPゴシック"))
 
     def test_release_check_report_helpers(self) -> None:
@@ -973,6 +976,7 @@ tags: note
             project = Path(tmp)
             missing_text = format_commercial_settings(load_settings(project))
             initial_next_field = commercial_setup_next_field(load_settings(project))
+            initial_next_focus = commercial_setup_next_focus(load_settings(project))
             empty_template = create_commercial_setup_template(project)
             empty_template_text = empty_template.path.read_text(encoding="utf-8")
             updated = update_commercial_settings(
@@ -985,6 +989,7 @@ tags: note
                 support_scope_confirmed=True,
             )
             updated_next_field = commercial_setup_next_field(updated)
+            updated_next_focus = commercial_setup_next_focus(updated)
             text = format_commercial_settings(updated)
             cli_output = io.StringIO()
             with redirect_stdout(cli_output):
@@ -1044,10 +1049,17 @@ tags: note
         self.assertIn("terms reviewed / 利用条件・商用方針確認", missing_text)
         self.assertIn("support scope confirmed / サポート範囲確認", missing_text)
         self.assertIn("completion: 0/6", missing_text)
+        self.assertIn("next focus:", missing_text)
+        self.assertIn("- field: 販売者/屋号", missing_text)
+        self.assertIn("- status: missing", missing_text)
+        self.assertIn("- gui: 設定 > 販売者/屋号", missing_text)
+        self.assertIn('- cli: --seller-name "Your Shop"', missing_text)
         self.assertIn("next actions:", missing_text)
         self.assertIn('CLI: --seller-name "Your Shop"', missing_text)
         self.assertIn("CLI: --support-scope-confirmed", missing_text)
         self.assertEqual(initial_next_field, "seller_name")
+        self.assertEqual(initial_next_focus.field, "seller_name")
+        self.assertEqual(initial_next_focus.status, "missing")
         self.assertIn("Completion: 0/6", empty_template_text)
         self.assertIn("--apply-latest-template", empty_template_text)
         self.assertIn("Field Guide / 入力の目安", empty_template_text)
@@ -1056,9 +1068,14 @@ tags: note
         self.assertIn("completion: 6/6", text)
         self.assertIn("missing fields: (none)", text)
         self.assertIn("terms reviewed: yes", text)
+        self.assertIn("- field: 販売素材へ反映", text)
+        self.assertIn("- status: ready", text)
+        self.assertIn("- gui: 診断 > 販売素材作成 / 販売ナビ", text)
+        self.assertIn("- cli: auto-note sales-materials --project-dir .", text)
         self.assertIn("販売素材へ反映する: auto-note sales-materials --project-dir .", text)
         self.assertIn("販売ナビで最終確認する: auto-note sales-plan --project-dir .", text)
         self.assertEqual(updated_next_field, "")
+        self.assertEqual(updated_next_focus.field, "sales_materials")
         self.assertEqual(code, 0)
         self.assertIn("commercial setup saved", cli_output.getvalue())
         self.assertIn("seller name: CLI Shop", cli_output.getvalue())
@@ -1111,6 +1128,7 @@ tags: note
 
             settings_text = format_commercial_settings(load_settings(project))
             next_field = commercial_setup_next_field(load_settings(project))
+            next_focus = commercial_setup_next_focus(load_settings(project))
             readiness = run_commercial_readiness(project)
             readiness_text = format_commercial_readiness_report(readiness)
             materials = create_sales_materials(project)
@@ -1121,7 +1139,11 @@ tags: note
         self.assertIn("sales page URL should start with http:// or https://", settings_text)
         self.assertIn("refund policy URL should start with http:// or https://", settings_text)
         self.assertIn("support contact is a raw email address", settings_text)
+        self.assertIn("- field: 販売ページURL", settings_text)
+        self.assertIn("- status: warn", settings_text)
         self.assertEqual(next_field, "sales_channel_url")
+        self.assertEqual(next_focus.field, "sales_channel_url")
+        self.assertEqual(next_focus.status, "warn")
         self.assertEqual(statuses["販売者プロフィール"], "warn")
         self.assertEqual(statuses["サポート連絡先"], "warn")
         self.assertIn("warnings:", readiness_text)
@@ -3822,7 +3844,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "commercial_setup.py").write_text(
-                "commercial_setup_warnings\ncommercial_setup_next_actions\ncommercial_setup_completion\ncommercial_setup_next_field\nSafe Apply / 編集後の保存\nsales-finalize --project-dir . --apply-latest-template\nauto-note sales-plan --project-dir .\n",
+                "commercial_setup_warnings\ncommercial_setup_next_actions\ncommercial_setup_completion\ncommercial_setup_next_field\ncommercial_setup_next_focus\nSafe Apply / 編集後の保存\nsales-finalize --project-dir . --apply-latest-template\nauto-note sales-plan --project-dir .\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "action_plan.py").write_text(
@@ -3936,8 +3958,9 @@ tags:
                 + "list_sales_launch_confirmations\n"
                 + "販売確認記録\n"
                 + "販売確認\n"
+                + '"Yu Gothic UI"\n'
                 + '"Noto Sans JP"\n'
-                + '"Noto Sans JP",\n    "Yu Gothic UI",\n    "Yu Gothic"\n'
+                + '"Yu Gothic UI",\n    "Yu Gothic",\n    "Meiryo UI"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
                 + 'UI_CONTROL_FONT_WEIGHT = "normal"\n'
@@ -4282,7 +4305,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nNoto Sans JP` / `Yu Gothic UI` / `Yu Gothic\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic UI` / `Yu Gothic` / `Meiryo UI\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             readme_fixture = project / "README.md"
@@ -4305,7 +4328,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "CHANGELOG.md").write_text(
-                "Noto Sans JP` / `Yu Gothic UI\n",
+                "Yu Gothic UI` / `Yu Gothic\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RELEASE_CHECKLIST.md").write_text(
@@ -4513,6 +4536,7 @@ tags:
         self.assertIn("commercial setup next actions:fail", product_details)
         self.assertIn("commercial setup completion progress:fail", product_details)
         self.assertIn("commercial setup next field helper:fail", product_details)
+        self.assertIn("commercial setup next focus helper:fail", product_details)
         self.assertIn("commercial setup safe template apply:fail", product_details)
         self.assertIn("commercial setup sales finalize followup:fail", product_details)
         self.assertIn("commercial setup sales plan followup:fail", product_details)
@@ -5255,6 +5279,7 @@ tags:
         self.assertIn("commercial setup next actions:pass", launcher_details)
         self.assertIn("commercial setup completion progress:pass", launcher_details)
         self.assertIn("commercial setup next field helper:pass", launcher_details)
+        self.assertIn("commercial setup next focus helper:pass", launcher_details)
         self.assertIn("commercial setup safe template apply:pass", launcher_details)
         self.assertIn("commercial setup sales finalize followup:pass", launcher_details)
         self.assertIn("commercial setup sales plan followup:pass", launcher_details)
