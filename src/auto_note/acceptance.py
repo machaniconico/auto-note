@@ -317,13 +317,13 @@ def _display_readability_item(self_test, *, gui_smoke: bool) -> AcceptanceItem:
     button_fit = _gui_smoke_metric(item.detail, "display_button_label_fit_status")
     actual_font = _gui_smoke_metric(item.detail, "display_actual_font_family")
     if readability == "OK" and button_fit == "OK":
-        detail = "readability OK, button labels OK"
+        detail = "可読性OK, ボタン文字OK"
         if actual_font:
-            detail = f"{detail}, font {actual_font}"
+            detail = f"{detail}, フォント {actual_font}"
         return AcceptanceItem("表示の読みやすさ", "pass", detail)
     detail = (
-        f"readability {readability or 'unknown'}, "
-        f"button labels {button_fit or 'unknown'}"
+        f"可読性 {readability or '不明'}, "
+        f"ボタン文字 {button_fit or '不明'}"
     )
     return AcceptanceItem(
         "表示の読みやすさ",
@@ -419,22 +419,22 @@ def _issue_action(issue, fallback: str) -> str:
 
 def _gui_smoke_summary(detail: str) -> str:
     metrics = _gui_smoke_metrics(detail)
-    parts = ["startup OK"]
+    parts = ["起動OK"]
     if metrics.get("tabs"):
-        parts.append(f"tabs {metrics['tabs']}")
+        parts.append(f"タブ {metrics['tabs']}")
     if metrics.get("articles"):
-        parts.append(f"articles {metrics['articles']}")
+        parts.append(f"記事 {metrics['articles']}")
     if metrics.get("home_quick_action_items"):
-        parts.append(f"quick actions {metrics['home_quick_action_items']}")
+        parts.append(f"操作 {metrics['home_quick_action_items']}")
     readability = metrics.get("display_readability_status")
     button_fit = metrics.get("display_button_label_fit_status")
     if readability:
-        parts.append(f"readability {readability}")
+        parts.append(f"可読性{readability}")
     if button_fit:
-        parts.append(f"button labels {button_fit}")
+        parts.append(f"ボタン文字{button_fit}")
     font = metrics.get("display_actual_font_family") or metrics.get("display_font_family")
     if font:
-        parts.append(f"font {font}")
+        parts.append(f"フォント {font}")
     return ", ".join(parts)
 
 
