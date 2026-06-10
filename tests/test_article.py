@@ -66,6 +66,7 @@ from auto_note.gui import (
     _article_focus_next_text,
     _article_focus_status_style,
     _article_focus_summary,
+    _bounded_scaled_dimension,
     _button_label_fit_status,
     _command_palette_matches,
     _command_palette_selection_index,
@@ -113,6 +114,7 @@ from auto_note.gui import (
     UI_DENSITY_VALUES,
     UI_FONT_CANDIDATES,
     UI_HEADING_FONT_WEIGHT,
+    UI_MIN_FONT_LINESPACE_RATIO,
     UI_SMALL_TEXT_SIZE,
     UI_TEXT_SIZE,
     smoke_gui,
@@ -447,14 +449,19 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_horizontal_padding((8, 4, 10, 4)), 8)
         self.assertGreaterEqual(UI_ACTION_BUTTON_MIN_WIDTH, 208)
         self.assertLessEqual(UI_ACTION_BUTTON_MAX_COLUMNS, 4)
+        self.assertEqual(_bounded_scaled_dimension(1240, 1.0, 3840, 0.92), 1240)
+        self.assertEqual(_bounded_scaled_dimension(1240, 2.0, 3840, 0.92), 2480)
+        self.assertEqual(_bounded_scaled_dimension(1240, 2.0, 1920, 0.92), 1766)
+        self.assertEqual(_bounded_scaled_dimension(780, 2.0, 1080, 0.88), 950)
         self.assertTrue(_button_label_fit_status([("短い", 40)], 80)[0])
         self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
     def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
-        self.assertEqual(UI_FONT_CANDIDATES[:4], ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP"))
+        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Meiryo UI", "メイリオ", "Meiryo", "Yu Gothic UI"))
         self.assertGreaterEqual(UI_TEXT_SIZE, 16)
         self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 15)
         self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 15)
+        self.assertLessEqual(UI_MIN_FONT_LINESPACE_RATIO, 1.6)
         self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 17)
         self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 16)
         self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 16)
@@ -464,10 +471,10 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
         self.assertFalse(_is_crush_prone_font_family("Noto Sans JP"))
+        self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
         self.assertFalse(_is_crush_prone_font_family("メイリオ"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo"))
-        self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
-        self.assertTrue(_is_crush_prone_font_family("Yu Gothic UI"))
+        self.assertFalse(_is_crush_prone_font_family("Yu Gothic UI"))
         self.assertTrue(_is_crush_prone_font_family("BIZ UDPゴシック"))
 
     def test_release_check_report_helpers(self) -> None:

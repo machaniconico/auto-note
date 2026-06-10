@@ -214,14 +214,26 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer native Japanese UI faces first. Tk on high-DPI Windows can render
-# Noto Sans JP with heavy strokes, so Meiryo is the safer default.
-UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
+# Prefer UI-specific Japanese faces first. They keep button labels narrower
+# than full Meiryo while still rendering Japanese cleanly on high-DPI Windows.
+UI_FONT_CANDIDATES = (
+    "Meiryo UI",
+    "メイリオ",
+    "Meiryo",
+    "Yu Gothic UI",
+    "Yu Gothic",
+    "Noto Sans JP",
+    "Noto Sans CJK JP",
+    "BIZ UDPゴシック",
+    "BIZ UDゴシック",
+    "MS Gothic",
+    "Segoe UI",
+)
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
-UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic", "segoe ui")
+UI_CRUSH_PRONE_FONT_KEYWORDS = ("biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_MIN_FONT_LINESPACE_RATIO = 1.85
+UI_MIN_FONT_LINESPACE_RATIO = 1.55
 UI_TEXT_SIZE = 16
 UI_SMALL_TEXT_SIZE = 15
 UI_BADGE_FONT_SIZE = 15
@@ -235,6 +247,10 @@ UI_DANGER_BUTTON_PADDING = (23, 20)
 UI_ACTION_BUTTON_MIN_WIDTH = 208
 UI_ACTION_BUTTON_MAX_COLUMNS = 4
 UI_BUTTON_LABEL_FIT_MARGIN = 8
+UI_BASE_WINDOW_SIZE = (1240, 780)
+UI_BASE_MIN_SIZE = (1020, 640)
+UI_INITIAL_WINDOW_SCREEN_RATIO = (0.92, 0.88)
+UI_MIN_WINDOW_SCREEN_RATIO = (0.86, 0.78)
 UI_BUTTON_LABEL_FIT_SAMPLES = (
     "コマンド検索",
     "問い合わせ一式",
@@ -500,12 +516,7 @@ def _button_label_fit_status(measured_widths: list[tuple[str, int]], available_w
 
 
 def _scaled_action_button_min_width(root: tk.Misc) -> int:
-    try:
-        scaling_value: object = root.tk.call("tk", "scaling")
-    except tk.TclError:
-        scaling_value = None
-    scaling = _first_number(scaling_value) or (96.0 / 72.0)
-    scale_factor = max(1.0, scaling / (96.0 / 72.0))
+    scale_factor = _display_scale_factor(root)
     scaled_base_width = int(math.ceil(UI_ACTION_BUTTON_MIN_WIDTH * scale_factor))
     try:
         font = tkfont.Font(root=root, family=UI_FONT, size=UI_TEXT_SIZE)
@@ -650,6 +661,30 @@ def _numeric_tokens(value: object) -> list[float]:
 def _first_number(value: object) -> float | None:
     numbers = _numeric_tokens(value)
     return numbers[0] if numbers else None
+
+
+def _display_scale_factor(root: tk.Misc) -> float:
+    try:
+        scaling_value: object = root.tk.call("tk", "scaling")
+    except tk.TclError:
+        return 1.0
+    scaling = _first_number(scaling_value) or (96.0 / 72.0)
+    return max(1.0, scaling / (96.0 / 72.0))
+
+
+def _bounded_scaled_dimension(base: int, scale: float, screen: int, ratio: float) -> int:
+    scaled = max(1, int(math.ceil(base * max(1.0, scale))))
+    if screen <= 0:
+        return scaled
+    limit = max(1, int(math.floor(screen * ratio)))
+    return max(1, min(scaled, limit))
+
+
+def _scaled_window_size(root: tk.Misc, base_size: tuple[int, int], screen_ratio: tuple[float, float]) -> tuple[int, int]:
+    scale = _display_scale_factor(root)
+    width = _bounded_scaled_dimension(base_size[0], scale, root.winfo_screenwidth(), screen_ratio[0])
+    height = _bounded_scaled_dimension(base_size[1], scale, root.winfo_screenheight(), screen_ratio[1])
+    return width, height
 
 
 def _vertical_padding(value: object) -> float | None:
@@ -1078,11 +1113,10 @@ class AutoNoteApp(tk.Tk):
         self._home_report_paths: dict[str, tuple[str, Path]] = {}
 
         self.title("auto-note")
-        self.geometry("1240x780")
-        self.minsize(1020, 640)
         self.configure(bg=UI_COLORS["bg"])
 
         self._configure_style()
+        self._configure_window_bounds()
         self._auto_enable_safe_display_if_needed()
         self._build_ui()
         self._bind_shortcuts()
@@ -1111,6 +1145,14 @@ class AutoNoteApp(tk.Tk):
 
     def _active_ui_density(self) -> str:
         return self.display_density_override or _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
+
+    def _configure_window_bounds(self) -> None:
+        min_width, min_height = _scaled_window_size(self, UI_BASE_MIN_SIZE, UI_MIN_WINDOW_SCREEN_RATIO)
+        width, height = _scaled_window_size(self, UI_BASE_WINDOW_SIZE, UI_INITIAL_WINDOW_SCREEN_RATIO)
+        width = max(width, min_width)
+        height = max(height, min_height)
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
 
     def _configure_style(self) -> None:
         global UI_FONT, CODE_FONT
@@ -7296,7 +7338,7 @@ class AutoNoteApp(tk.Tk):
         add(
             "Japanese font family",
             not _is_crush_prone_font_family(UI_FONT) and not _is_crush_prone_font_family(actual_font_family),
-            f"{UI_FONT} -> actual {actual_font_family} (preferred: Noto Sans JP / メイリオ)",
+            f"{UI_FONT} -> actual {actual_font_family} (preferred: Meiryo UI / メイリオ)",
             "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
