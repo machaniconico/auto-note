@@ -1568,9 +1568,14 @@ tags: note
         self.assertTrue(has_first_run_blockers(report, strict=True))
         self.assertIn("First-run checklist", text)
         self.assertIn("セルフテスト保存", item_names)
+        self.assertIn("表示の読みやすさ", item_names)
         self.assertIn("最初の記事", item_names)
         self.assertIn("投稿ヘルパー", item_names)
         self.assertIn("問い合わせ一式", item_names)
+        display_item = next(item for item in report.items if item.name == "表示の読みやすさ")
+        self.assertEqual(display_item.status, "info")
+        self.assertIn("--gui-smoke", display_item.command)
+        self.assertIn("表示診断", display_item.gui)
         note_item = next(item for item in report.items if item.name == "noteログイン")
         self.assertIn("ログイン安全ガイド", note_item.action)
         self.assertIn("ログイン安全ガイド", note_item.gui)
@@ -1664,13 +1669,20 @@ tags: note
         self.assertIn("トラブル診断", item_names)
         self.assertIn("投稿ヘルパー", item_names)
         self.assertIn("GUI初期化", item_names)
+        self.assertIn("表示の読みやすさ", item_names)
         self.assertIn("問い合わせ一式", item_names)
+        display_item = next(item for item in report.items if item.name == "表示の読みやすさ")
+        self.assertEqual(display_item.status, "info")
+        self.assertIn("--gui-smoke", display_item.command)
         self.assertTrue(saved_exists)
         self.assertGreaterEqual(len(reports), 3)
         self.assertIn("acceptance report created:", cli_output.getvalue())
         self.assertIn("acceptance report created:", full_output)
         self.assertIn("投稿ヘルパー", full_output)
         self.assertIn("GUI初期化", full_output)
+        self.assertIn("表示の読みやすさ", full_output)
+        self.assertIn("readability OK", full_output)
+        self.assertIn("button labels OK", full_output)
         self.assertFalse(has_privacy_audit_blockers(privacy))
         self.assertIn("acceptance report privacy", privacy_text)
 
@@ -3801,7 +3813,8 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "first_run.py").write_text(
-                "is_support_bundle_stale\nホーム > ログイン安全ガイド\n",
+                "is_support_bundle_stale\nホーム > ログイン安全ガイド\n"
+                "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "quickstart.py").write_text(
@@ -3809,7 +3822,8 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "acceptance.py").write_text(
-                "is_support_bundle_stale\n",
+                "is_support_bundle_stale\n"
+                "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -4219,7 +4233,8 @@ tags:
                 "購入/納品後の最初の3分\n"
                 "auto-note safe display.lnk\n"
                 "受入チェック\n"
-                "表示診断コピー\n",
+                "表示診断コピー\n"
+                "auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report\n",
                 encoding="utf-8",
             )
             (project / "docs" / "CHANGELOG.md").write_text(
@@ -4289,6 +4304,7 @@ tags:
         self.assertIn("quickstart safe display shortcut guidance:fail", product_details)
         self.assertIn("quickstart acceptance guidance:fail", product_details)
         self.assertIn("quickstart display diagnostics guidance:fail", product_details)
+        self.assertIn("quickstart acceptance GUI smoke guidance:fail", product_details)
         self.assertIn("install guide safe display shortcut guidance:fail", product_details)
         self.assertIn("install guide safe display CLI guidance:fail", product_details)
         self.assertIn("update guide safe display shortcut guidance:fail", product_details)
@@ -4318,9 +4334,13 @@ tags:
         self.assertIn("diagnostic support bundle age summary:fail", product_details)
         self.assertIn("diagnostic support bundle freshness summary:fail", product_details)
         self.assertIn("first-run support bundle freshness warning:fail", product_details)
+        self.assertIn("first-run display readability item:fail", product_details)
+        self.assertIn("first-run display safe display action:fail", product_details)
         self.assertIn("quickstart note login safety guide:fail", product_details)
         self.assertIn("first-run note login safety guide:fail", product_details)
         self.assertIn("acceptance support bundle freshness warning:fail", product_details)
+        self.assertIn("acceptance display readability item:fail", product_details)
+        self.assertIn("acceptance display safe display action:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
         self.assertIn("recovery kit report writer:fail", product_details)
@@ -5123,6 +5143,7 @@ tags:
         self.assertIn("quickstart safe display shortcut guidance:pass", launcher_details)
         self.assertIn("quickstart acceptance guidance:pass", launcher_details)
         self.assertIn("quickstart display diagnostics guidance:pass", launcher_details)
+        self.assertIn("quickstart acceptance GUI smoke guidance:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("release first-run note login safety guidance:pass", launcher_details)
         self.assertIn("release safe display shortcut guidance:pass", launcher_details)
@@ -5849,9 +5870,13 @@ tags:
         self.assertIn("diagnostic support bundle age summary:pass", launcher_details)
         self.assertIn("diagnostic support bundle freshness summary:pass", launcher_details)
         self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
+        self.assertIn("first-run display readability item:pass", launcher_details)
+        self.assertIn("first-run display safe display action:pass", launcher_details)
         self.assertIn("quickstart note login safety guide:pass", launcher_details)
         self.assertIn("first-run note login safety guide:pass", launcher_details)
         self.assertIn("acceptance support bundle freshness warning:pass", launcher_details)
+        self.assertIn("acceptance display readability item:pass", launcher_details)
+        self.assertIn("acceptance display safe display action:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
         self.assertIn("recovery kit support bundle fallback:pass", launcher_details)
         self.assertIn("recovery kit report writer:pass", launcher_details)

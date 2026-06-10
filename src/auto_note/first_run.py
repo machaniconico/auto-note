@@ -71,6 +71,7 @@ def run_first_run_checklist(
     items = [
         _setup_item(self_test),
         _self_test_item(self_test),
+        _display_readability_item(self_test, gui_smoke=gui_smoke),
         _self_test_report_item(project_dir),
         _first_article_item(quickstart),
         _posting_helper_item(quickstart),
@@ -177,6 +178,48 @@ def _self_test_item(self_test: SelfTestReport) -> FirstRunItem:
         action,
         "診断 > セルフテスト",
         "auto-note self-test --project-dir .",
+    )
+
+
+def _display_readability_item(self_test: SelfTestReport, *, gui_smoke: bool) -> FirstRunItem:
+    item = _self_test_item_by_name(self_test, "gui smoke")
+    if item is None:
+        return FirstRunItem(
+            "表示の読みやすさ",
+            "info",
+            "not available" if gui_smoke else "not run in this report",
+            "文字つぶれやボタン文字の収まりを確認する場合はGUI smoke付きで実行してください。",
+            "診断 > 表示診断 / ヘッダー > 表示",
+            "auto-note first-run --project-dir . --gui-smoke",
+        )
+    if item.status == "fail":
+        return FirstRunItem(
+            "表示の読みやすさ",
+            "fail",
+            item.detail,
+            "GUI起動ログを確認し、起動できる状態に戻してから表示診断を確認してください。",
+            "診断 > GUIログ表示 / ヘルプ > 問い合わせ一式",
+            "auto-note gui --project-dir . --smoke",
+        )
+    readability = _gui_smoke_metric(item.detail, "display_readability_status")
+    button_fit = _gui_smoke_metric(item.detail, "display_button_label_fit_status")
+    actual_font = _gui_smoke_metric(item.detail, "display_actual_font_family")
+    if readability == "OK" and button_fit == "OK":
+        detail = "readability OK, button labels OK"
+        if actual_font:
+            detail = f"{detail}, font {actual_font}"
+        return FirstRunItem("表示の読みやすさ", "pass", detail)
+    detail = (
+        f"readability {readability or 'unknown'}, "
+        f"button labels {button_fit or 'unknown'}"
+    )
+    return FirstRunItem(
+        "表示の読みやすさ",
+        "warn",
+        detail,
+        "文字や行高が潰れる場合は大きめ表示で開き、表示診断コピーを添えて相談してください。",
+        "ヘッダー > 表示 > 大きめ / 診断 > 表示診断コピー",
+        "auto-note gui --project-dir . --safe-display",
     )
 
 
@@ -330,6 +373,14 @@ def _quickstart_item_by_name(report: QuickstartReport, name: str):
         if item.name == name:
             return item
     return None
+
+
+def _gui_smoke_metric(detail: str, name: str) -> str:
+    marker = f"{name}="
+    for part in detail.split(", "):
+        if part.startswith(marker):
+            return part.split("=", 1)[1].strip()
+    return ""
 
 
 def _article_count_detail(detail: str) -> str:

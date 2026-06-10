@@ -72,6 +72,7 @@ def run_acceptance_check(
         _troubleshoot_item(troubleshoot),
         _posting_helper_item(first_run, smoke_helper=smoke_helper),
         _gui_smoke_item(self_test, gui_smoke=gui_smoke),
+        _display_readability_item(self_test, gui_smoke=gui_smoke),
         _support_item(project_dir),
     ]
     return AcceptanceReport(
@@ -288,6 +289,48 @@ def _gui_smoke_item(self_test, *, gui_smoke: bool) -> AcceptanceItem:
     )
 
 
+def _display_readability_item(self_test, *, gui_smoke: bool) -> AcceptanceItem:
+    item = _item_by_name(self_test.items, "gui smoke")
+    if item is None:
+        return AcceptanceItem(
+            "表示の読みやすさ",
+            "info",
+            "not available" if gui_smoke else "not run in this report",
+            "文字つぶれやボタン文字の収まりを確認する場合は gui-smoke 付きで実行してください。",
+            "診断 > 表示診断 / ヘッダー > 表示",
+            "auto-note acceptance --project-dir . --gui-smoke",
+        )
+    if item.status == "fail":
+        return AcceptanceItem(
+            "表示の読みやすさ",
+            "fail",
+            item.detail,
+            "GUI起動ログを確認し、起動できる状態に戻してから表示診断を確認してください。",
+            "診断 > GUIログ表示 / ヘルプ > 問い合わせ一式",
+            "auto-note gui --project-dir . --smoke",
+        )
+    readability = _gui_smoke_metric(item.detail, "display_readability_status")
+    button_fit = _gui_smoke_metric(item.detail, "display_button_label_fit_status")
+    actual_font = _gui_smoke_metric(item.detail, "display_actual_font_family")
+    if readability == "OK" and button_fit == "OK":
+        detail = "readability OK, button labels OK"
+        if actual_font:
+            detail = f"{detail}, font {actual_font}"
+        return AcceptanceItem("表示の読みやすさ", "pass", detail)
+    detail = (
+        f"readability {readability or 'unknown'}, "
+        f"button labels {button_fit or 'unknown'}"
+    )
+    return AcceptanceItem(
+        "表示の読みやすさ",
+        "warn",
+        detail,
+        "文字や行高が潰れる場合は大きめ表示で開き、表示診断コピーを添えて相談してください。",
+        "ヘッダー > 表示 > 大きめ / 診断 > 表示診断コピー",
+        "auto-note gui --project-dir . --safe-display",
+    )
+
+
 def _support_item(project_dir: Path) -> AcceptanceItem:
     bundles = list_support_bundles(project_dir)
     if not bundles:
@@ -331,6 +374,14 @@ def _item_by_name(items, name: str):
         if item.name == name:
             return item
     return None
+
+
+def _gui_smoke_metric(detail: str, name: str) -> str:
+    marker = f"{name}="
+    for part in detail.split(", "):
+        if part.startswith(marker):
+            return part.split("=", 1)[1].strip()
+    return ""
 
 
 def _overall_status(items: list[AcceptanceItem]) -> str:

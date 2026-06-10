@@ -61,6 +61,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "表示診断コピー",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "QUICKSTART.md",
+            "quickstart acceptance GUI smoke guidance",
+            "auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report",
+        )
+    )
     checks.append(_path_check(project_dir / "docs" / "PRODUCT_READINESS.md", "product readiness memo"))
     checks.append(_path_check(project_dir / "docs" / "INSTALL.md", "install guide"))
     checks.append(
@@ -437,6 +444,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run display readability item",
+            "表示の読みやすさ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run display safe display action",
+            "auto-note gui --project-dir . --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "quickstart.py",
             "quickstart note login safety guide",
             "ログイン安全ガイド",
@@ -454,6 +475,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "acceptance.py",
             "acceptance support bundle freshness warning",
             "is_support_bundle_stale",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "acceptance.py",
+            "acceptance display readability item",
+            "表示の読みやすさ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "acceptance.py",
+            "acceptance display safe display action",
+            "auto-note gui --project-dir . --safe-display",
         )
     )
     checks.append(

@@ -38,7 +38,7 @@ auto-note repair --project-dir .
 auto-note repair --project-dir . --apply
 auto-note troubleshoot --project-dir .
 auto-note first-run --project-dir . --create
-auto-note acceptance --project-dir . --create --smoke-helper --report
+auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report
 auto-note commercial-setup --project-dir . --seller-name "Your Shop" --sales-url "https://example.com" --refund-url "https://example.com/refund" --support-contact "https://example.com/support" --terms-reviewed --support-scope-confirmed
 auto-note commercial-readiness --project-dir . --report
 auto-note sales-plan --project-dir .
@@ -60,9 +60,9 @@ auto-note publish-queue --project-dir . --report
 auto-note calendar-export --project-dir .
 ```
 
-`auto-note first-run` は導入後10分の確認を、セットアップ、セルフテスト保存、最初の記事、投稿ヘルパー、バックアップ、問い合わせ一式の順番で表示します。GUIでは `初回` タブで同じ項目を確認し、その場で次の操作へ進めます。
+`auto-note first-run` は導入後10分の確認を、セットアップ、表示の読みやすさ、セルフテスト保存、最初の記事、投稿ヘルパー、バックアップ、問い合わせ一式の順番で表示します。GUIでは `初回` タブで同じ項目を確認し、その場で次の操作へ進めます。`--gui-smoke` を付けると、文字の収まりとボタン文字の収まりも確認します。
 
-`auto-note acceptance --project-dir . --create --smoke-helper --report` は、購入/納品後の受入確認を1枚のテキストレポートに保存します。GUIではホーム、初回、診断、ヘルプ、コマンド検索の `受入チェック` / `受入保存` から実行できます。
+`auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report` は、購入/納品後の受入確認を1枚のテキストレポートに保存します。GUIではホーム、初回、診断、ヘルプ、コマンド検索の `受入チェック` / `受入保存` から実行できます。表示の読みやすさがWARNの場合は `auto-note safe display.lnk`、ヘッダーの `表示 > 大きめ`、`表示診断コピー` へ進みます。
 
 `auto-note commercial-setup --project-dir .` は、販売者/屋号、販売ページURL、返金方針URL、サポート連絡先、利用条件/商用方針レビュー、サポート範囲確認を保存します。GUIでは `設定` タブから編集できます。
 
