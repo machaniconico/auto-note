@@ -100,6 +100,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "docs\\RC_HANDOFF.md",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RELEASE_CHECKLIST.md",
+            "release checklist safe display smoke guidance",
+            "auto_note gui --project-dir . --smoke --safe-display",
+        )
+    )
     checks.append(_path_check(project_dir / ".github" / "workflows" / "ci.yml", "GitHub Actions CI"))
     checks.append(
         _text_contains_check(
@@ -162,6 +169,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / ".github" / "workflows" / "ci.yml",
             "CI GUI smoke",
             "python -m auto_note gui --project-dir . --smoke",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / ".github" / "workflows" / "ci.yml",
+            "CI GUI safe display smoke",
+            "python -m auto_note gui --project-dir . --smoke --safe-display",
         )
     )
     checks.append(_version_consistency_check(project_dir / "pyproject.toml", project_dir / "src" / "auto_note" / "__init__.py"))
@@ -825,6 +839,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "scripts" / "check-release.ps1",
             "release check launcher syntax",
             "AUTO_NOTE_LAUNCHER_CHECK",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check GUI smoke",
+            "auto_note gui --project-dir $project --smoke",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "check-release.ps1",
+            "release check safe display GUI smoke",
+            "auto_note gui --project-dir $project --smoke --safe-display",
         )
     )
     checks.append(

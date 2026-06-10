@@ -70,3 +70,7 @@ jobs:
       - name: Run GUI smoke
         shell: pwsh
         run: python -m auto_note gui --project-dir . --smoke
+
+      - name: Run GUI safe display smoke
+        shell: pwsh
+        run: python -m auto_note gui --project-dir . --smoke --safe-display

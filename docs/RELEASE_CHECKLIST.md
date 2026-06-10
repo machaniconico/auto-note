@@ -24,6 +24,7 @@ $starter = Join-Path $env:TEMP "auto-note-starter-check"; New-Item -ItemType Dir
 $env:PYTHONPATH='src'; python -m auto_note starter-clean --project-dir $starter
 $env:PYTHONPATH='src'; python -m auto_note quickstart --project-dir . --smoke-helper
 $env:PYTHONPATH='src'; python -m auto_note gui --project-dir . --smoke
+$env:PYTHONPATH='src'; python -m auto_note gui --project-dir . --smoke --safe-display
 $env:PYTHONPATH='src'; python -m auto_note overview --project-dir . --report
 $env:PYTHONPATH='src'; python -m auto_note calendar-export --project-dir .
 $env:PYTHONPATH='src'; python -m auto_note improve .\articles\post.md --project-dir . --report
@@ -56,12 +57,13 @@ $env:PYTHONPATH='src'; python -m auto_note preflight --project-dir . --create-re
 ## GitHub Actions
 
 - `CI` が最新の `main` または販売用ブランチで成功している
-- `CI` が Windows runner、全unittest、製品品質ゲート、VBSランチャー構文チェック、GUI smokeを含んでいる
+- `CI` が Windows runner、全unittest、製品品質ゲート、VBSランチャー構文チェック、GUI smoke、GUI safe display smokeを含んでいる
 
 ## GUIチェック
 
 - `auto-note.lnk` でGUIが起動する
 - `auto-note gui --project-dir . --smoke` でGUI初期化スモークがOKになる
+- `auto-note gui --project-dir . --smoke --safe-display` で文字つぶれ対策込みのGUI初期化スモークがOKになる
 - セットアップウィザードを表示できる
 - 診断タブ、ヘルプ、コマンド検索の `自動修復` で、基本修復結果とプライバシー監査NG生成物候補を確認できる
 - ホーム、診断タブ、ヘルプ、コマンド検索の `トラブル診断` で、GUIログ、noteログイン案内、プライバシー監査、最新配布ZIP状態を確認できる

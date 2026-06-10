@@ -50,6 +50,10 @@ try {
     Invoke-Check "GUI smoke" {
       & $python -m auto_note gui --project-dir $project --smoke
     }
+
+    Invoke-Check "GUI safe display smoke" {
+      & $python -m auto_note gui --project-dir $project --smoke --safe-display
+    }
   }
 
   if ($Full) {

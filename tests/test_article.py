@@ -3177,6 +3177,8 @@ tags:
                 "python -m unittest discover -s tests\n"
                 "auto_note quality --project-dir\n"
                 "AUTO_NOTE_LAUNCHER_CHECK\n"
+                "auto_note gui --project-dir $project --smoke\n"
+                "auto_note gui --project-dir $project --smoke --safe-display\n"
                 "smoke-install.ps1\n"
                 "smoke-sales-delivery.ps1\n",
                 encoding="utf-8",
@@ -3200,7 +3202,8 @@ tags:
                 "python -m auto_note release --project-dir .\n"
                 "python -m auto_note release --verify\n"
                 "scripts\\smoke-sales-delivery.ps1\n"
-                "python -m auto_note gui --project-dir . --smoke\n",
+                "python -m auto_note gui --project-dir . --smoke\n"
+                "python -m auto_note gui --project-dir . --smoke --safe-display\n",
                 encoding="utf-8",
             )
             (project / "scripts" / "create-gui-shortcut.ps1").write_text(
@@ -3639,6 +3642,11 @@ tags:
                 "Yu Gothic UI` / `Meiryo UI\n",
                 encoding="utf-8",
             )
+            (project / "docs" / "RELEASE_CHECKLIST.md").write_text(
+                "docs\\RC_HANDOFF.md\n"
+                "auto_note gui --project-dir . --smoke --safe-display\n",
+                encoding="utf-8",
+            )
             (project / "docs" / "INSTALL.md").write_text(
                 "auto-note safe display\n"
                 "auto-note-gui.bat --safe-display\n",
@@ -3718,6 +3726,8 @@ tags:
         self.assertIn("release check unit tests:fail", product_details)
         self.assertIn("release check product quality:fail", product_details)
         self.assertIn("release check launcher syntax:fail", product_details)
+        self.assertIn("release check GUI smoke:fail", product_details)
+        self.assertIn("release check safe display GUI smoke:fail", product_details)
         self.assertIn("release check full install smoke:fail", product_details)
         self.assertIn("release check full sales delivery smoke:fail", product_details)
         self.assertIn("sales delivery smoke test:fail", product_details)
@@ -3737,6 +3747,7 @@ tags:
         self.assertIn("RC handoff sales launch evidence:fail", product_details)
         self.assertIn("RC handoff stop conditions:fail", product_details)
         self.assertIn("release checklist RC handoff guidance:fail", product_details)
+        self.assertIn("release checklist safe display smoke guidance:fail", product_details)
         self.assertIn("version consistency:fail", product_details)
         self.assertIn("GitHub Actions CI:fail", product_details)
         self.assertIn("CI Windows runner:fail", product_details)
@@ -3748,6 +3759,7 @@ tags:
         self.assertIn("CI release smoke verify:fail", product_details)
         self.assertIn("CI sales delivery smoke:fail", product_details)
         self.assertIn("CI GUI smoke:fail", product_details)
+        self.assertIn("CI GUI safe display smoke:fail", product_details)
         self.assertIn("release first-run checklist:fail", product_details)
         self.assertIn("release safe display shortcut guidance:fail", product_details)
         self.assertIn("release safe display CLI guidance:fail", product_details)
@@ -4340,10 +4352,13 @@ tags:
         self.assertIn("CI release smoke verify:pass", launcher_details)
         self.assertIn("CI sales delivery smoke:pass", launcher_details)
         self.assertIn("CI GUI smoke:pass", launcher_details)
+        self.assertIn("CI GUI safe display smoke:pass", launcher_details)
         self.assertIn("release check script:pass", launcher_details)
         self.assertIn("release check unit tests:pass", launcher_details)
         self.assertIn("release check product quality:pass", launcher_details)
         self.assertIn("release check launcher syntax:pass", launcher_details)
+        self.assertIn("release check GUI smoke:pass", launcher_details)
+        self.assertIn("release check safe display GUI smoke:pass", launcher_details)
         self.assertIn("release check full install smoke:pass", launcher_details)
         self.assertIn("release check full sales delivery smoke:pass", launcher_details)
         self.assertIn("sales delivery smoke test:pass", launcher_details)
@@ -4362,6 +4377,7 @@ tags:
         self.assertIn("RC handoff sales evidence:pass", launcher_details)
         self.assertIn("RC handoff sales launch evidence:pass", launcher_details)
         self.assertIn("RC handoff stop conditions:pass", launcher_details)
+        self.assertIn("release checklist safe display smoke guidance:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("release safe display shortcut guidance:pass", launcher_details)
         self.assertIn("release safe display CLI guidance:pass", launcher_details)
