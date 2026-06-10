@@ -210,7 +210,7 @@ CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_MIN_FONT_LINESPACE_RATIO = 1.62
+UI_MIN_FONT_LINESPACE_RATIO = 1.72
 UI_TEXT_SIZE = 14
 UI_SMALL_TEXT_SIZE = 13
 UI_BADGE_FONT_SIZE = 13
@@ -242,18 +242,6 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 14,
-        "small_text_size": 13,
-        "badge_font_size": 13,
-        "tree_row_height": 64,
-        "notebook_tab_padding": (24, 20),
-        "button_padding": (23, 19),
-        "primary_button_padding": (25, 19),
-        "danger_button_padding": (21, 18),
-        "text_spacing_top": 6,
-        "text_spacing_bottom": 8,
-    },
-    "comfortable": {
         "text_size": 15,
         "small_text_size": 14,
         "badge_font_size": 14,
@@ -265,17 +253,29 @@ UI_DENSITY_VALUES = {
         "text_spacing_top": 7,
         "text_spacing_bottom": 9,
     },
-    "large": {
+    "comfortable": {
         "text_size": 16,
         "small_text_size": 15,
         "badge_font_size": 15,
-        "tree_row_height": 80,
+        "tree_row_height": 82,
         "notebook_tab_padding": (28, 24),
-        "button_padding": (27, 23),
-        "primary_button_padding": (29, 23),
-        "danger_button_padding": (25, 22),
+        "button_padding": (28, 24),
+        "primary_button_padding": (30, 24),
+        "danger_button_padding": (26, 23),
         "text_spacing_top": 8,
         "text_spacing_bottom": 10,
+    },
+    "large": {
+        "text_size": 18,
+        "small_text_size": 16,
+        "badge_font_size": 16,
+        "tree_row_height": 96,
+        "notebook_tab_padding": (30, 27),
+        "button_padding": (31, 27),
+        "primary_button_padding": (33, 27),
+        "danger_button_padding": (29, 26),
+        "text_spacing_top": 10,
+        "text_spacing_bottom": 12,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -478,7 +478,21 @@ def _scaled_action_button_min_width(root: tk.Misc) -> int:
         scaling_value = None
     scaling = _first_number(scaling_value) or (96.0 / 72.0)
     scale_factor = max(1.0, scaling / (96.0 / 72.0))
-    return int(math.ceil(UI_ACTION_BUTTON_MIN_WIDTH * scale_factor))
+    scaled_base_width = int(math.ceil(UI_ACTION_BUTTON_MIN_WIDTH * scale_factor))
+    try:
+        font = tkfont.Font(root=root, family=UI_FONT, size=UI_TEXT_SIZE)
+        widest_label = max(font.measure(label) for label in UI_BUTTON_LABEL_FIT_SAMPLES)
+    except (tk.TclError, ValueError):
+        widest_label = 0
+    horizontal_padding = _horizontal_padding(UI_BUTTON_PADDING) or 0
+    minimum_width = max(scaled_base_width, int(math.ceil(widest_label + (horizontal_padding * 2))))
+    for _ in range(2):
+        margin = int(math.ceil(UI_BUTTON_LABEL_FIT_MARGIN * max(1.0, minimum_width / UI_ACTION_BUTTON_MIN_WIDTH)))
+        minimum_width = max(
+            scaled_base_width,
+            int(math.ceil(widest_label + (horizontal_padding * 2) + margin)),
+        )
+    return minimum_width
 
 
 def _guard_ui_readability_metrics(root: tk.Misc, ui_font: str) -> None:

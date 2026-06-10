@@ -107,6 +107,7 @@ from auto_note.gui import (
     UI_ACTION_BUTTON_MIN_WIDTH,
     UI_BADGE_FONT_WEIGHT,
     UI_BADGE_FONT_SIZE,
+    UI_DENSITY_VALUES,
     UI_FONT_CANDIDATES,
     UI_HEADING_FONT_WEIGHT,
     UI_SMALL_TEXT_SIZE,
@@ -444,6 +445,12 @@ class ArticleTests(unittest.TestCase):
         self.assertGreaterEqual(UI_TEXT_SIZE, 14)
         self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 13)
         self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 13)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 15)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 14)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 14)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 21)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 16)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 18)
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
         self.assertFalse(_is_crush_prone_font_family("メイリオ"))
@@ -3484,13 +3491,14 @@ tags:
                 + "UI_ACTION_BUTTON_MIN_WIDTH = 208\n"
                 + "UI_ACTION_BUTTON_MAX_COLUMNS = 4\n"
                 + "UI_TEXT_SPACING_BOTTOM = 8\n"
-                + '"standard": {\n        "text_size": 14,\n'
-                + '"small_text_size": 13,\n        "badge_font_size": 13,\n'
-                + '"large": {\n        "text_size": 16,\n'
+                + '"standard": {\n        "text_size": 15,\n'
+                + '"small_text_size": 14,\n        "badge_font_size": 14,\n'
+                + '"large": {\n        "text_size": 18,\n'
                 + "_font_linespace\n"
                 + "_horizontal_padding\n"
                 + "_button_label_fit_status\n"
                 + "_scaled_action_button_min_width\n"
+                + "widest_label = max(font.measure(label) for label in UI_BUTTON_LABEL_FIT_SAMPLES)\n"
                 + "_minimum_readable_linespace\n"
                 + "minimum_linespace_ratio\n"
                 + "UI_DENSITY_LABELS\n"
@@ -4206,6 +4214,7 @@ tags:
         self.assertIn("GUI readable horizontal padding helper:fail", product_details)
         self.assertIn("GUI readable button label fit helper:fail", product_details)
         self.assertIn("GUI readable scaled action button width helper:fail", product_details)
+        self.assertIn("GUI readable measured action button width:fail", product_details)
         self.assertIn("GUI display readability button label fit check:fail", product_details)
         self.assertIn("GUI per-monitor DPI awareness:fail", product_details)
         self.assertIn("settings UI density field:fail", product_details)
@@ -4866,6 +4875,7 @@ tags:
         self.assertIn("GUI readable horizontal padding helper:pass", launcher_details)
         self.assertIn("GUI readable button label fit helper:pass", launcher_details)
         self.assertIn("GUI readable scaled action button width helper:pass", launcher_details)
+        self.assertIn("GUI readable measured action button width:pass", launcher_details)
         self.assertIn("GUI display readability button label fit check:pass", launcher_details)
         self.assertIn("GUI per-monitor DPI awareness:pass", launcher_details)
         self.assertIn("settings UI density field:pass", launcher_details)

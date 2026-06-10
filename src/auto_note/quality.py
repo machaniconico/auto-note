@@ -2856,21 +2856,21 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable text",
-            '"standard": {\n        "text_size": 14,',
+            '"standard": {\n        "text_size": 15,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable small text",
-            '"small_text_size": 13,\n        "badge_font_size": 13,',
+            '"small_text_size": 14,\n        "badge_font_size": 14,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI large density safe-display text",
-            '"large": {\n        "text_size": 16,',
+            '"large": {\n        "text_size": 18,',
         )
     )
     checks.append(
@@ -2899,6 +2899,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable scaled action button width helper",
             "_scaled_action_button_min_width",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable measured action button width",
+            "widest_label = max(font.measure(label) for label in UI_BUTTON_LABEL_FIT_SAMPLES)",
         )
     )
     checks.append(
