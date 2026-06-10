@@ -352,8 +352,22 @@ def _format_bundle_verification_details(bundle_path: Path) -> list[str]:
     lines.append(f"- diagnostic-report.zip: {'present' if 'diagnostic-report.zip' in names else 'missing'}")
     if manifest_count is not None:
         lines.append(f"- manifest files: {manifest_count}")
+    lines.append(f"- freshness: {_format_support_bundle_freshness(bundle_path)}")
     lines.append("- send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending")
     return lines
+
+
+def _format_support_bundle_freshness(bundle_path: Path) -> str:
+    age_hours = support_bundle_age_hours(bundle_path)
+    if age_hours is None:
+        return f"unknown (warn after {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h)"
+    freshness = "stale" if age_hours > SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS else "fresh"
+    if freshness == "stale":
+        return (
+            f"stale (age {age_hours:.1f}h, recreate before sending; "
+            f"warn after {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h)"
+        )
+    return f"fresh (age {age_hours:.1f}h, warn after {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h)"
 
 
 def _manifest_file_count(archive: zipfile.ZipFile) -> int | None:

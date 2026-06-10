@@ -346,6 +346,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle verification freshness detail",
+            "freshness:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic support bundle age summary",
+            "latest_support_bundle_age_hours:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic support bundle freshness summary",
+            "latest_support_bundle_freshness:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "first_run.py",
             "first-run support bundle freshness warning",
             "is_support_bundle_stale",

@@ -2697,6 +2697,7 @@ tags: note
         self.assertIn("GUI_LOG_SUMMARY.txt: present", bundle_verification_text)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt: not included", bundle_verification_text)
         self.assertIn("manifest files: 5", bundle_verification_text)
+        self.assertIn("freshness: fresh", bundle_verification_text)
         self.assertIn("send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending", bundle_verification_text)
         self.assertIn("privacy-safe", bundle_readme)
         self.assertIn("Send-ready flow", bundle_readme)
@@ -2739,6 +2740,8 @@ tags: note
         self.assertIn("support_requests: 1", maintenance_preview)
         self.assertIn("support_bundles: 1", maintenance_preview)
         self.assertIn("latest_support_bundle_verified: yes", maintenance_preview)
+        self.assertIn("latest_support_bundle_age_hours:", maintenance_preview)
+        self.assertIn("latest_support_bundle_freshness: fresh", maintenance_preview)
         self.assertIn("privacy_failed_cleanup_candidates: 0", maintenance_preview)
         self.assertFalse(has_privacy_audit_blockers(privacy))
         self.assertIn("Privacy audit report", privacy_text)
@@ -2760,6 +2763,8 @@ tags: note
 
             bundle_age_hours = support_bundle_age_hours(bundle)
             bundle_stale = is_support_bundle_stale(bundle)
+            bundle_verification_text = format_support_bundle_verification(bundle, verify_support_bundle(bundle))
+            maintenance_preview = preview_diagnostic_report(project)
             first_run = run_first_run_checklist(project)
             acceptance = run_acceptance_check(project, smoke_helper=True)
 
@@ -2768,6 +2773,8 @@ tags: note
         self.assertIsNotNone(bundle_age_hours)
         self.assertGreater(bundle_age_hours or 0, 24)
         self.assertTrue(bundle_stale)
+        self.assertIn("freshness: stale", bundle_verification_text)
+        self.assertIn("latest_support_bundle_freshness: stale", maintenance_preview)
         self.assertEqual(first_support.status, "warn")
         self.assertIn("older than 24h", first_support.detail)
         self.assertIn("送付する直前", first_support.action)
@@ -3385,7 +3392,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "diagnostics.py").write_text(
-                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\n",
+                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\nlatest_support_bundle_age_hours:\nlatest_support_bundle_freshness:\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
@@ -3396,7 +3403,7 @@ tags:
                 "Send-ready flow\nSend-ready summary / 送付判断\n"
                 "Do not attach the whole `.auto-note` folder\n"
                 "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n"
-                "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\n",
+                "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\nfreshness:\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "first_run.py").write_text(
@@ -3837,6 +3844,9 @@ tags:
         self.assertIn("support bundle verification checklist hint:fail", product_details)
         self.assertIn("support bundle freshness threshold:fail", product_details)
         self.assertIn("support bundle stale helper:fail", product_details)
+        self.assertIn("support bundle verification freshness detail:fail", product_details)
+        self.assertIn("diagnostic support bundle age summary:fail", product_details)
+        self.assertIn("diagnostic support bundle freshness summary:fail", product_details)
         self.assertIn("first-run support bundle freshness warning:fail", product_details)
         self.assertIn("acceptance support bundle freshness warning:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
@@ -5150,6 +5160,9 @@ tags:
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("support bundle freshness threshold:pass", launcher_details)
         self.assertIn("support bundle stale helper:pass", launcher_details)
+        self.assertIn("support bundle verification freshness detail:pass", launcher_details)
+        self.assertIn("diagnostic support bundle age summary:pass", launcher_details)
+        self.assertIn("diagnostic support bundle freshness summary:pass", launcher_details)
         self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
         self.assertIn("acceptance support bundle freshness warning:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)

@@ -394,7 +394,13 @@ def preview_diagnostic_report(project_dir: Path, *, include_private: bool = Fals
             else DIAGNOSTIC_PREVIEW_SECTION_LIMIT
         )
         required_prefixes = (
-            ("latest_support_request:", "latest_support_bundle:", "latest_support_bundle_verified:")
+            (
+                "latest_support_request:",
+                "latest_support_bundle:",
+                "latest_support_bundle_verified:",
+                "latest_support_bundle_age_hours:",
+                "latest_support_bundle_freshness:",
+            )
             if name == "maintenance-summary.txt"
             else ()
         )
@@ -909,7 +915,14 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     from .sales_launch import list_sales_launch_checklists
     from .sales_review import list_sales_review_reports
     from .selftest import list_self_test_reports
-    from .support import list_support_bundles, list_support_requests, verify_support_bundle
+    from .support import (
+        SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS,
+        is_support_bundle_stale,
+        list_support_bundles,
+        list_support_requests,
+        support_bundle_age_hours,
+        verify_support_bundle,
+    )
     from .improvement_plan import list_improvement_plan_reports
     from .overview import list_overview_reports
     from .publish_queue import list_publish_queue_reports
@@ -1039,8 +1052,18 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     if support_bundles:
         latest_support_bundle = support_bundles[0]
         support_errors = verify_support_bundle(latest_support_bundle)
+        support_age_hours = support_bundle_age_hours(latest_support_bundle)
+        support_freshness = "unknown"
+        if support_age_hours is not None:
+            support_freshness = "stale" if is_support_bundle_stale(latest_support_bundle) else "fresh"
         lines.append(f"latest_support_bundle: {latest_support_bundle.name}")
         lines.append(f"latest_support_bundle_verified: {'yes' if not support_errors else 'no'}")
+        lines.append(
+            "latest_support_bundle_age_hours: "
+            + (f"{support_age_hours:.1f}" if support_age_hours is not None else "unknown")
+        )
+        lines.append(f"latest_support_bundle_freshness: {support_freshness}")
+        lines.append(f"latest_support_bundle_freshness_warning_hours: {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}")
         if support_errors:
             lines.append(f"latest_support_bundle_errors: {len(support_errors)}")
     if sales_handoffs:
