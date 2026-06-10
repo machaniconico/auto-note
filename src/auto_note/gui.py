@@ -862,6 +862,9 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "home_release_check_status_pill")
             else 0
         )
+        home_release_check_button_chars = (
+            len(app.home_release_check_button_var.get()) if hasattr(app, "home_release_check_button_var") else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
@@ -1007,6 +1010,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_commercial_focus_button_chars={home_commercial_focus_button_chars}, "
             f"home_release_check_chars={home_release_check_chars}, "
             f"home_release_check_pill_chars={home_release_check_pill_chars}, "
+            f"home_release_check_button_chars={home_release_check_button_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_sales_timeline_items={home_sales_timeline_items}, "
@@ -1977,6 +1981,7 @@ class AutoNoteApp(tk.Tk):
         self.home_commercial_focus_var = tk.StringVar(value="販売者次項目を確認中です。")
         self.home_commercial_focus_button_var = tk.StringVar(value="販売者次へ")
         self.home_release_check_var = tk.StringVar(value="販売前一括チェックを確認中です。")
+        self.home_release_check_button_var = tk.StringVar(value="一括実行")
         self.home_buyer_send_var = tk.StringVar(value="購入者送付を確認中です。")
         self.home_buyer_send_next_var = tk.StringVar(value="")
         self.home_buyer_send_action_var = tk.StringVar(value="購入者ZIP作成")
@@ -2110,11 +2115,17 @@ class AutoNoteApp(tk.Tk):
             width=8,
         )
         self.home_release_check_status_pill.pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Button(
+            release_check_row,
+            textvariable=self.home_release_check_button_var,
+            command=self.run_home_release_check_action,
+            style="Primary.TButton",
+        ).pack(side=tk.RIGHT, padx=(8, 0))
         ttk.Label(
             release_check_row,
             textvariable=self.home_release_check_var,
             style="Surface.TLabel",
-            wraplength=720,
+            wraplength=640,
         ).pack(
             side=tk.LEFT,
             fill=tk.X,
@@ -5987,6 +5998,8 @@ class AutoNoteApp(tk.Tk):
         if hasattr(self, "home_release_check_var"):
             release_check_state, release_check_text = _home_release_check_summary(release_checks)
             self._set_home_release_check_status(release_check_state, release_check_text)
+        if hasattr(self, "home_release_check_button_var"):
+            self.home_release_check_button_var.set(_home_release_check_button_label(release_checks))
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
         self.home_buyer_send_next_var.set(buyer_next)
@@ -6234,6 +6247,29 @@ class AutoNoteApp(tk.Tk):
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
         self.home_release_check_var.set(text)
+
+    def run_home_release_check_action(self) -> None:
+        if _list_release_check_reports(self.project_dir):
+            self.show_latest_release_check_report_action()
+            return
+        self.run_release_check_full_action()
+
+    def show_latest_release_check_report_action(self) -> None:
+        reports = _list_release_check_reports(self.project_dir)
+        if not reports:
+            self.notify("販売前一括チェックはまだありません", level="warning")
+            self.run_release_check_full_action()
+            return
+        latest = reports[0]
+        if not latest.exists():
+            self.notify("最新の販売前一括チェックが見つかりません", level="warning")
+            self._refresh_home_reports()
+            self._refresh_home_sales_summary()
+            return
+        text = self._format_home_report_preview("一括チェック", latest)
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"販売前一括チェック結果を表示しました: {latest.name}", level="success")
 
     def _set_home_buyer_send_action(self, action: str) -> None:
         action_var = getattr(self, "home_buyer_send_action_var", None)
@@ -8388,6 +8424,7 @@ class AutoNoteApp(tk.Tk):
         self._set_text(self.diagnostics_text, safe_initial_text + f"\nsaved: {report_path}\n")
         self.notebook.select(self.diagnostics_tab)
         self._refresh_home_reports()
+        self._refresh_home_sales_summary()
         self.notify(f"販売前一括チェックを開始しました: {report_path.name}", level="info")
 
         thread = threading.Thread(
@@ -8460,6 +8497,7 @@ class AutoNoteApp(tk.Tk):
         self._set_text(self.diagnostics_text, text + f"\nsaved: {report_path}\n")
         self.notebook.select(self.diagnostics_tab)
         self._refresh_home_reports()
+        self._refresh_home_sales_summary()
         if status == "OK":
             self.notify(f"販売前一括チェックが完了しました: {report_path.name}", level="success")
         else:
@@ -10120,6 +10158,10 @@ def _home_release_check_summary(reports: list[Path]) -> tuple[str, str]:
     else:
         action = "表示で内容を確認します。"
     return state, f"販売前一括: {status} / {_format_mtime(latest)} / {action}"
+
+
+def _home_release_check_button_label(reports: list[Path]) -> str:
+    return "結果表示" if reports else "一括実行"
 
 
 def _home_buyer_send_summary(
