@@ -443,19 +443,20 @@ class ArticleTests(unittest.TestCase):
         self.assertTrue(_button_label_fit_status([("短い", 40)], 80)[0])
         self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
-    def test_ui_readability_prefers_meiryo_and_flags_dense_fonts(self) -> None:
-        self.assertEqual(UI_FONT_CANDIDATES[:3], ("メイリオ", "Meiryo", "Meiryo UI"))
-        self.assertGreaterEqual(UI_TEXT_SIZE, 14)
-        self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 13)
-        self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 13)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 15)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 14)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 14)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 21)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 16)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 18)
+    def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
+        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Noto Sans JP", "メイリオ", "Meiryo", "Meiryo UI"))
+        self.assertGreaterEqual(UI_TEXT_SIZE, 15)
+        self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 14)
+        self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 14)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 16)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 15)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 15)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 24)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 17)
+        self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 19)
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
+        self.assertFalse(_is_crush_prone_font_family("Noto Sans JP"))
         self.assertFalse(_is_crush_prone_font_family("メイリオ"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
@@ -3184,6 +3185,7 @@ tags: note
         self.assertIn("display_button_label_fit_status=OK", text)
         self.assertIn("display_button_label_fit_warnings=0", text)
         self.assertIn("display_font_family=", text)
+        self.assertIn("display_actual_font_family=", text)
         self.assertIn("display_font_linespace=", text)
         self.assertIn("display_badge_linespace=", text)
         self.assertIn("active_ui_density_chars=", text)
@@ -3537,21 +3539,21 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
-                + '"メイリオ"\n'
-                + 'UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI"\n'
+                + '"Noto Sans JP"\n'
+                + 'UI_FONT_CANDIDATES = ("Noto Sans JP", "メイリオ", "Meiryo", "Meiryo UI"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
-                + "UI_TEXT_SIZE = 14\n"
-                + "UI_BADGE_FONT_SIZE = 13\n"
-                + "UI_TREE_ROW_HEIGHT = 64\n"
-                + "UI_NOTEBOOK_TAB_PADDING = (24, 20)\n"
-                + "UI_BUTTON_PADDING = (23, 19)\n"
+                + "UI_TEXT_SIZE = 15\n"
+                + "UI_BADGE_FONT_SIZE = 14\n"
+                + "UI_TREE_ROW_HEIGHT = 76\n"
+                + "UI_NOTEBOOK_TAB_PADDING = (26, 22)\n"
+                + "UI_BUTTON_PADDING = (25, 21)\n"
                 + "UI_ACTION_BUTTON_MIN_WIDTH = 208\n"
                 + "UI_ACTION_BUTTON_MAX_COLUMNS = 4\n"
                 + "UI_TEXT_SPACING_BOTTOM = 8\n"
-                + '"standard": {\n        "text_size": 15,\n'
-                + '"small_text_size": 14,\n        "badge_font_size": 14,\n'
-                + '"large": {\n        "text_size": 18,\n'
+                + '"standard": {\n        "text_size": 16,\n'
+                + '"small_text_size": 15,\n        "badge_font_size": 15,\n'
+                + '"large": {\n        "text_size": 19,\n'
                 + "_font_linespace\n"
                 + "_horizontal_padding\n"
                 + "_button_label_fit_status\n"
@@ -3614,8 +3616,10 @@ tags:
                 + "display_button_label_fit_status=\n"
                 + "display_button_label_fit_warnings=\n"
                 + "display_font_family=\n"
+                + "display_actual_font_family=\n"
                 + "display_font_linespace=\n"
                 + "display_diagnostics_chars=\n"
+                + "actual UI font\n"
                 + "safe display reason:\n"
                 + "Chrome.TCombobox\n"
                 + "_resolve_font_family\n"
@@ -3879,12 +3883,12 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nメイリオ` (`Meiryo`) / `Meiryo UI\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nNoto Sans JP` / `メイリオ\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "CHANGELOG.md").write_text(
-                "メイリオ` (`Meiryo`) / `Meiryo UI\n",
+                "Noto Sans JP` / `メイリオ\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RELEASE_CHECKLIST.md").write_text(
@@ -4330,6 +4334,8 @@ tags:
         self.assertIn("GUI smoke button label fit warning count:fail", product_details)
         self.assertIn("GUI smoke display font metrics:fail", product_details)
         self.assertIn("GUI smoke display font family:fail", product_details)
+        self.assertIn("GUI smoke actual display font family:fail", product_details)
+        self.assertIn("GUI actual font diagnostics:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
         self.assertIn("GUI resolved font family:fail", product_details)
         self.assertIn("GUI named font readability defaults:fail", product_details)
@@ -5008,6 +5014,8 @@ tags:
         self.assertIn("GUI smoke button label fit warning count:pass", launcher_details)
         self.assertIn("GUI smoke display font metrics:pass", launcher_details)
         self.assertIn("GUI smoke display font family:pass", launcher_details)
+        self.assertIn("GUI smoke actual display font family:pass", launcher_details)
+        self.assertIn("GUI actual font diagnostics:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
         self.assertIn("GUI resolved font family:pass", launcher_details)
         self.assertIn("GUI named font readability defaults:pass", launcher_details)

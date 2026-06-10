@@ -208,23 +208,23 @@ STATUS_LABELS = {
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
 # Prefer Japanese UI faces that keep full kana/kanji forms readable in Tk.
-# Japanese Windows exposes full Meiryo as "メイリオ"; Meiryo UI is narrower.
-UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans CJK JP", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
+# Noto Sans JP is less visually heavy in dense ttk controls; Japanese Windows exposes full Meiryo as "メイリオ".
+UI_FONT_CANDIDATES = ("Noto Sans JP", "メイリオ", "Meiryo", "Meiryo UI", "Noto Sans CJK JP", "Yu Gothic UI", "Yu Gothic", "BIZ UDPゴシック", "BIZ UDゴシック", "MS Gothic", "Segoe UI")
 CODE_FONT_CANDIDATES = ("Cascadia Mono", "Consolas", "MS Gothic")
 UI_CRUSH_PRONE_FONT_KEYWORDS = ("yu gothic", "biz ud", "ms gothic", "ms pgothic", "segoe ui")
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
-UI_MIN_FONT_LINESPACE_RATIO = 1.72
-UI_TEXT_SIZE = 14
-UI_SMALL_TEXT_SIZE = 13
-UI_BADGE_FONT_SIZE = 13
+UI_MIN_FONT_LINESPACE_RATIO = 1.85
+UI_TEXT_SIZE = 15
+UI_SMALL_TEXT_SIZE = 14
+UI_BADGE_FONT_SIZE = 14
 UI_HEADING_FONT_WEIGHT = "normal"
 UI_BADGE_FONT_WEIGHT = "normal"
-UI_TREE_ROW_HEIGHT = 64
-UI_NOTEBOOK_TAB_PADDING = (24, 20)
-UI_BUTTON_PADDING = (23, 19)
-UI_PRIMARY_BUTTON_PADDING = (25, 19)
-UI_DANGER_BUTTON_PADDING = (21, 18)
+UI_TREE_ROW_HEIGHT = 76
+UI_NOTEBOOK_TAB_PADDING = (26, 22)
+UI_BUTTON_PADDING = (25, 21)
+UI_PRIMARY_BUTTON_PADDING = (27, 21)
+UI_DANGER_BUTTON_PADDING = (23, 20)
 UI_ACTION_BUTTON_MIN_WIDTH = 208
 UI_ACTION_BUTTON_MAX_COLUMNS = 4
 UI_BUTTON_LABEL_FIT_MARGIN = 8
@@ -246,22 +246,10 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 15,
-        "small_text_size": 14,
-        "badge_font_size": 14,
-        "tree_row_height": 72,
-        "notebook_tab_padding": (26, 22),
-        "button_padding": (25, 21),
-        "primary_button_padding": (27, 21),
-        "danger_button_padding": (23, 20),
-        "text_spacing_top": 7,
-        "text_spacing_bottom": 9,
-    },
-    "comfortable": {
         "text_size": 16,
         "small_text_size": 15,
         "badge_font_size": 15,
-        "tree_row_height": 82,
+        "tree_row_height": 84,
         "notebook_tab_padding": (28, 24),
         "button_padding": (28, 24),
         "primary_button_padding": (30, 24),
@@ -269,17 +257,29 @@ UI_DENSITY_VALUES = {
         "text_spacing_top": 8,
         "text_spacing_bottom": 10,
     },
-    "large": {
-        "text_size": 18,
+    "comfortable": {
+        "text_size": 17,
         "small_text_size": 16,
         "badge_font_size": 16,
-        "tree_row_height": 96,
-        "notebook_tab_padding": (30, 27),
-        "button_padding": (31, 27),
-        "primary_button_padding": (33, 27),
-        "danger_button_padding": (29, 26),
+        "tree_row_height": 92,
+        "notebook_tab_padding": (30, 26),
+        "button_padding": (30, 26),
+        "primary_button_padding": (32, 26),
+        "danger_button_padding": (28, 25),
+        "text_spacing_top": 9,
+        "text_spacing_bottom": 11,
+    },
+    "large": {
+        "text_size": 19,
+        "small_text_size": 17,
+        "badge_font_size": 17,
+        "tree_row_height": 104,
+        "notebook_tab_padding": (32, 29),
+        "button_padding": (33, 29),
+        "primary_button_padding": (35, 29),
+        "danger_button_padding": (31, 28),
         "text_spacing_top": 10,
-        "text_spacing_bottom": 12,
+        "text_spacing_bottom": 13,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -425,7 +425,16 @@ def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> 
         root.tk.call("tk", "scaling", max(1.0, root.winfo_fpixels("1i") / 72.0))
     except tk.TclError:
         pass
-    for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkTooltipFont"):
+    for name in (
+        "TkDefaultFont",
+        "TkTextFont",
+        "TkMenuFont",
+        "TkHeadingFont",
+        "TkTooltipFont",
+        "TkCaptionFont",
+        "TkSmallCaptionFont",
+        "TkIconFont",
+    ):
         try:
             tkfont.nametofont(name).configure(family=ui_font, size=UI_TEXT_SIZE, weight="normal")
         except tk.TclError:
@@ -439,6 +448,14 @@ def _configure_tk_font_defaults(root: tk.Misc, ui_font: str, code_font: str) -> 
 
 def _font_linespace(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> int | None:
     return _candidate_font_linespace(root, family, size, weight=weight)
+
+
+def _actual_font_family(root: tk.Misc, family: str, size: int, *, weight: str = "normal") -> str:
+    try:
+        font = tkfont.Font(root=root, family=family, size=size, weight=weight)
+        return str(font.actual("family"))
+    except (tk.TclError, ValueError):
+        return "unknown"
 
 
 def _readable_vertical_padding(
@@ -883,6 +900,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         display_button_label_fit_status = "OK" if display_button_label_fit_ok else "WARN"
         display_button_label_fit_warnings = 0 if display_button_label_fit_ok else 1
         display_font_family = UI_FONT
+        display_actual_font_family = _actual_font_family(app, UI_FONT, UI_TEXT_SIZE)
         display_font_linespace = _font_linespace(app, UI_FONT, UI_TEXT_SIZE) or 0
         display_badge_linespace = _font_linespace(app, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT) or 0
         display_diagnostics = app._format_display_diagnostics()
@@ -940,6 +958,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"display_button_label_fit_status={display_button_label_fit_status}, "
             f"display_button_label_fit_warnings={display_button_label_fit_warnings}, "
             f"display_font_family={display_font_family}, "
+            f"display_actual_font_family={display_actual_font_family}, "
             f"display_font_linespace={display_font_linespace}, "
             f"display_badge_linespace={display_badge_linespace}, "
             f"display_diagnostics_chars={display_diagnostics_chars}, "
@@ -1473,9 +1492,9 @@ class AutoNoteApp(tk.Tk):
             style="ChromeMuted.TLabel",
         ).pack(anchor=tk.W, pady=(3, 0))
 
-        ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article, width=10).pack(side=tk.RIGHT)
-        ttk.Button(header, text="更新", style="Quiet.TButton", command=self.refresh_all, width=8).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(header, text="コマンド検索", style="Quiet.TButton", command=self.show_command_palette, width=12).pack(
+        ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
+        ttk.Button(header, text="更新", style="Quiet.TButton", command=self.refresh_all).pack(side=tk.RIGHT, padx=6)
+        ttk.Button(header, text="コマンド検索", style="Quiet.TButton", command=self.show_command_palette).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -1499,13 +1518,12 @@ class AutoNoteApp(tk.Tk):
             text="リセット",
             style="Quiet.TButton",
             command=self.reset_display_action,
-            width=8,
         )
         self.header_display_reset_button.pack(side=tk.LEFT, padx=(8, 0))
         quick = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
         quick.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Label(quick, text="note", style="ChromeAction.TLabel").pack(side=tk.LEFT)
-        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=self.open_note_login_action, width=8).pack(
+        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=self.open_note_login_action).pack(
             side=tk.LEFT,
             padx=(8, 0),
         )
@@ -1589,8 +1607,8 @@ class AutoNoteApp(tk.Tk):
             text="記事、投稿準備、販売、サポートを同じ作業面で確認します。",
             style="HomeLeadMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
-        ttk.Button(top, text="新規記事", style="Primary.TButton", command=self.new_article, width=10).pack(side=tk.RIGHT)
-        ttk.Button(top, text="コマンド検索", style="Secondary.TButton", command=self.show_command_palette, width=12).pack(
+        ttk.Button(top, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
+        ttk.Button(top, text="コマンド検索", style="Secondary.TButton", command=self.show_command_palette).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -1599,7 +1617,6 @@ class AutoNoteApp(tk.Tk):
             text="診断",
             style="Secondary.TButton",
             command=lambda: self.notebook.select(self.diagnostics_tab),
-            width=8,
         ).pack(side=tk.RIGHT, padx=6)
 
         snapshot = ttk.Frame(home, style="HomeSnapshot.TFrame")
@@ -6976,6 +6993,7 @@ class AutoNoteApp(tk.Tk):
         main_linespace = _font_linespace(self, UI_FONT, UI_TEXT_SIZE)
         small_linespace = _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE)
         badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT)
+        actual_font_family = _actual_font_family(self, UI_FONT, UI_TEXT_SIZE)
         button_label_fit_ok, button_label_fit_detail, _button_label_fit_lines = self._button_label_fit_details(style)
         minimum_main_linespace = _minimum_readable_linespace(UI_TEXT_SIZE)
         minimum_small_linespace = _minimum_readable_linespace(UI_SMALL_TEXT_SIZE)
@@ -7015,8 +7033,8 @@ class AutoNoteApp(tk.Tk):
         )
         add(
             "Japanese font family",
-            not _is_crush_prone_font_family(UI_FONT),
-            f"{UI_FONT} (preferred: メイリオ / Meiryo UI)",
+            not _is_crush_prone_font_family(UI_FONT) and not _is_crush_prone_font_family(actual_font_family),
+            f"{UI_FONT} -> actual {actual_font_family} (preferred: Noto Sans JP / メイリオ)",
             "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
@@ -7094,7 +7112,9 @@ class AutoNoteApp(tk.Tk):
         badge_linespace = _safe(
             lambda: _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT) or "unknown"
         )
+        actual_font_family = _safe(lambda: _actual_font_family(self, UI_FONT, UI_TEXT_SIZE))
         crush_prone_font = "yes" if _is_crush_prone_font_family(UI_FONT) else "no"
+        actual_crush_prone_font = "yes" if _is_crush_prone_font_family(actual_font_family) else "no"
         _status, readability_lines = self._display_readability_checks(style)
         button_label_fit_ok, button_label_fit_detail, button_label_fit_lines = self._button_label_fit_details(style)
         lines = [
@@ -7113,7 +7133,9 @@ class AutoNoteApp(tk.Tk):
             f"- saved display density: {saved_density} / {_ui_density_label(saved_density)}",
             f"- display density: {density} / {_ui_density_label(density)}",
             f"- UI font: {UI_FONT}",
+            f"- actual UI font: {actual_font_family}",
             f"- crush-prone font fallback: {crush_prone_font}",
+            f"- actual crush-prone font fallback: {actual_crush_prone_font}",
             f"- code font: {CODE_FONT}",
             f"- text size: {UI_TEXT_SIZE}",
             f"- small text size: {UI_SMALL_TEXT_SIZE}",

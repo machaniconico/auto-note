@@ -2842,14 +2842,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"メイリオ"',
+            '"Noto Sans JP"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI wide Japanese preferred font",
-            'UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI"',
+            'UI_FONT_CANDIDATES = ("Noto Sans JP", "メイリオ", "Meiryo", "Meiryo UI"',
         )
     )
     checks.append(
@@ -2870,14 +2870,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
-            "UI_TEXT_SIZE = 14",
+            "UI_TEXT_SIZE = 15",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable badge font size",
-            "UI_BADGE_FONT_SIZE = 13",
+            "UI_BADGE_FONT_SIZE = 14",
         )
     )
     checks.append(
@@ -2891,21 +2891,21 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tree row height",
-            "UI_TREE_ROW_HEIGHT = 64",
+            "UI_TREE_ROW_HEIGHT = 76",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tab padding",
-            "UI_NOTEBOOK_TAB_PADDING = (24, 20)",
+            "UI_NOTEBOOK_TAB_PADDING = (26, 22)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable button padding",
-            "UI_BUTTON_PADDING = (23, 19)",
+            "UI_BUTTON_PADDING = (25, 21)",
         )
     )
     checks.append(
@@ -2933,21 +2933,21 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable text",
-            '"standard": {\n        "text_size": 15,',
+            '"standard": {\n        "text_size": 16,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable small text",
-            '"small_text_size": 14,\n        "badge_font_size": 14,',
+            '"small_text_size": 15,\n        "badge_font_size": 15,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI large density safe-display text",
-            '"large": {\n        "text_size": 18,',
+            '"large": {\n        "text_size": 19,',
         )
     )
     checks.append(
@@ -3289,6 +3289,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke actual display font family",
+            "display_actual_font_family=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI actual font diagnostics",
+            "actual UI font",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI Japanese font fallback",
             "UI_FONT_CANDIDATES",
         )
@@ -3549,7 +3563,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "README.md",
             "README current readable Japanese font guidance",
-            "メイリオ` (`Meiryo`) / `Meiryo UI",
+            "Noto Sans JP` / `メイリオ",
         )
     )
     checks.append(
@@ -3563,7 +3577,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "docs" / "CHANGELOG.md",
             "changelog current readable Japanese font guidance",
-            "メイリオ` (`Meiryo`) / `Meiryo UI",
+            "Noto Sans JP` / `メイリオ",
         )
     )
     checks.append(
