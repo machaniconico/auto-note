@@ -112,6 +112,7 @@ class BuyerSendReadinessReport:
     project_dir: Path
     status: str
     checks: list[BuyerSendCheck]
+    latest_release_path: Path | None = None
     buyer_delivery_package_path: Path | None = None
     buyer_delivery_message_path: Path | None = None
     seller_send_checklist_path: Path | None = None
@@ -911,6 +912,7 @@ def run_buyer_send_readiness(project_dir: Path) -> BuyerSendReadinessReport:
         project_dir=project_dir,
         status=status,
         checks=checks,
+        latest_release_path=latest_release,
         buyer_delivery_package_path=package_path,
         buyer_delivery_message_path=message_path,
         seller_send_checklist_path=checklist_path,
@@ -934,6 +936,7 @@ def format_buyer_send_readiness_report(report: BuyerSendReadinessReport) -> str:
         f"Checks: {counts['pass']} OK, {counts['warn']} WARN, {counts['fail']} NG",
         "",
         "Artifacts / 送付関連ファイル",
+        f"- latest release package: {_name_or_none(report.latest_release_path)}",
         f"- buyer delivery zip: {_name_or_none(report.buyer_delivery_package_path)}",
         f"- buyer delivery message: {_name_or_none(report.buyer_delivery_message_path)}",
         f"- seller send checklist: {_name_or_none(report.seller_send_checklist_path)}",

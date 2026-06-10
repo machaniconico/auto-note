@@ -1938,6 +1938,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "buyer send readiness latest release artifact",
+            "latest release package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
             "buyer send readiness formatter",
             "format_buyer_send_readiness_report",
         )

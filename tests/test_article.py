@@ -2799,8 +2799,12 @@ tags: note
         self.assertEqual(buyer_send_readiness.buyer_delivery_package_path, report.buyer_delivery_package_path)
         self.assertEqual(buyer_send_readiness.buyer_delivery_message_path, report.buyer_delivery_message_path)
         self.assertEqual(buyer_send_readiness.sales_evidence_manifest_path, report.sales_evidence_manifest_path)
+        self.assertEqual(buyer_send_readiness.latest_release_path, release_path)
+        self.assertEqual(stale_buyer_send_readiness.latest_release_path, newer_release_path)
         self.assertIn("Buyer send readiness", buyer_send_readiness_text)
         self.assertIn("Verdict: READY", buyer_send_readiness_text)
+        self.assertIn("latest release package:", buyer_send_readiness_text)
+        self.assertIn(release_path.name, buyer_send_readiness_text)
         self.assertIn("buyer delivery zip", buyer_send_readiness_text)
         self.assertIn("buyer delivery zip freshness", buyer_send_readiness_text)
         self.assertIn("sales evidence manifest", buyer_send_readiness_text)
@@ -2808,6 +2812,7 @@ tags: note
         self.assertTrue(has_buyer_send_readiness_blockers(stale_buyer_send_readiness))
         self.assertEqual(stale_buyer_send_readiness.status, "fail")
         self.assertIn("Verdict: DO NOT SEND", stale_buyer_send_readiness_text)
+        self.assertIn("latest release package:", stale_buyer_send_readiness_text)
         self.assertIn("buyer delivery zip freshness", stale_buyer_send_readiness_text)
         self.assertIn(newer_release_path.name, stale_buyer_send_readiness_text)
         self.assertIn(report.buyer_delivery_package_path.name, stale_buyer_send_readiness_text)
@@ -4126,7 +4131,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_finalize.py").write_text(
-                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\ncreate_sales_listing_kit\nverify_sales_listing_kit\nformat_sales_listing_verification\nrun_buyer_send_readiness\n_buyer_delivery_package_release_name\nbuyer delivery zip freshness\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nsales_listing_package_path\nSales screenshot pack\nSales listing kit ZIP\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n\"sales_listing_package\"\n",
+                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\ncreate_sales_listing_kit\nverify_sales_listing_kit\nformat_sales_listing_verification\nrun_buyer_send_readiness\n_buyer_delivery_package_release_name\nbuyer delivery zip freshness\nlatest release package\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nsales_listing_package_path\nSales screenshot pack\nSales listing kit ZIP\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n\"sales_listing_package\"\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "privacy.py").write_text(
@@ -5372,6 +5377,7 @@ tags:
         self.assertIn("GUI home buyer send package verification warning:fail", product_details)
         self.assertIn("buyer send readiness package freshness:fail", product_details)
         self.assertIn("buyer send readiness latest release blocker:fail", product_details)
+        self.assertIn("buyer send readiness latest release artifact:fail", product_details)
         self.assertIn("GUI home buyer send package freshness:fail", product_details)
         self.assertIn("GUI home buyer send package freshness action:fail", product_details)
         self.assertIn("GUI home buyer send next action:fail", product_details)
