@@ -332,6 +332,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle freshness threshold",
+            "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle stale helper",
+            "is_support_bundle_stale",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run support bundle freshness warning",
+            "is_support_bundle_stale",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "acceptance.py",
+            "acceptance support bundle freshness warning",
+            "is_support_bundle_stale",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "repair.py",
             "recovery kit workflow",
             "run_recovery_kit",

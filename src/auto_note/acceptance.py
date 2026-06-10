@@ -7,7 +7,12 @@ from pathlib import Path
 from .first_run import run_first_run_checklist
 from .paths import unique_path
 from .selftest import run_self_test
-from .support import list_support_bundles, verify_support_bundle
+from .support import (
+    SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS,
+    is_support_bundle_stale,
+    list_support_bundles,
+    verify_support_bundle,
+)
 from .troubleshoot import run_troubleshoot
 
 
@@ -305,7 +310,20 @@ def _support_item(project_dir: Path) -> AcceptanceItem:
             "ヘルプ > 問い合わせ一式",
             "auto-note support --project-dir . --bundle",
         )
-    return AcceptanceItem("問い合わせ一式", "pass", f"{latest.name} verified")
+    if is_support_bundle_stale(latest):
+        return AcceptanceItem(
+            "問い合わせ一式",
+            "warn",
+            f"{latest.name}: verified but older than {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h",
+            "最新の状況で問い合わせ一式ZIPを作り直してください。",
+            "ヘルプ > 問い合わせ一式",
+            "auto-note support --project-dir . --bundle",
+        )
+    return AcceptanceItem(
+        "問い合わせ一式",
+        "pass",
+        f"{latest.name} verified; open SUPPORT_SEND_CHECKLIST.txt before sending",
+    )
 
 
 def _item_by_name(items, name: str):

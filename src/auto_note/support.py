@@ -14,6 +14,9 @@ from .diagnostics import create_diagnostic_report, mask_text, preview_diagnostic
 from .paths import unique_path
 
 
+SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
+
+
 def create_support_request(project_dir: Path, *, include_private: bool = False) -> Path:
     support_dir = project_dir / ".auto-note" / "support"
     support_dir.mkdir(parents=True, exist_ok=True)
@@ -199,6 +202,20 @@ def list_support_bundles(project_dir: Path) -> list[Path]:
     if not support_dir.exists():
         return []
     return sorted(support_dir.glob("auto-note-support-bundle-*.zip"), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def support_bundle_age_hours(bundle_path: Path, *, now: datetime | None = None) -> float | None:
+    try:
+        modified_at = bundle_path.stat().st_mtime
+    except OSError:
+        return None
+    current = (now or datetime.now()).timestamp()
+    return max(0.0, (current - modified_at) / 3600)
+
+
+def is_support_bundle_stale(bundle_path: Path, *, max_hours: int = SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS) -> bool:
+    age_hours = support_bundle_age_hours(bundle_path)
+    return age_hours is not None and age_hours > max_hours
 
 
 def _build_bundle_readme(*, include_private: bool = False) -> str:

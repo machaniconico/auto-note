@@ -245,9 +245,11 @@ from auto_note.support import (
     create_support_bundle,
     create_support_request,
     format_support_bundle_verification,
+    is_support_bundle_stale,
     read_support_display_diagnostics,
     read_support_gui_log_summary,
     read_support_send_checklist,
+    support_bundle_age_hours,
     verify_support_bundle,
 )
 from auto_note.troubleshoot import format_troubleshoot_report, has_troubleshoot_blockers, run_troubleshoot
@@ -2638,6 +2640,8 @@ tags: note
             bundle = create_support_bundle(project)
             bundle_errors = verify_support_bundle(bundle)
             bundle_verification_text = format_support_bundle_verification(bundle, bundle_errors)
+            bundle_age_hours = support_bundle_age_hours(bundle)
+            bundle_stale = is_support_bundle_stale(bundle)
             with zipfile.ZipFile(bundle) as archive:
                 bundle_names = set(archive.namelist())
                 bundle_readme = archive.read("README.txt").decode("utf-8")
@@ -2686,6 +2690,9 @@ tags: note
             },
         )
         self.assertEqual(bundle_errors, [])
+        self.assertIsNotNone(bundle_age_hours)
+        self.assertLess(bundle_age_hours or 0, 1)
+        self.assertFalse(bundle_stale)
         self.assertIn("[OK] support bundle verified", bundle_verification_text)
         self.assertIn("GUI_LOG_SUMMARY.txt: present", bundle_verification_text)
         self.assertIn("DISPLAY_DIAGNOSTICS.txt: not included", bundle_verification_text)
@@ -2740,6 +2747,33 @@ tags: note
         self.assertIn("auto-note:", info)
         self.assertIn("Installed at: 2026-06-06T10:00:00", info)
         self.assertIn("Pre-install backup: backup.zip", info)
+
+    def test_stale_support_bundle_warns_in_first_run_and_acceptance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "auto-note-gui.bat").write_text("@echo off\n", encoding="utf-8")
+            run_setup_check(project, create=True)
+            create_practice_article(articles_dir=project / "articles")
+            bundle = create_support_bundle(project)
+            old_time = (datetime.now() - timedelta(hours=25)).timestamp()
+            os.utime(bundle, (old_time, old_time))
+
+            bundle_age_hours = support_bundle_age_hours(bundle)
+            bundle_stale = is_support_bundle_stale(bundle)
+            first_run = run_first_run_checklist(project)
+            acceptance = run_acceptance_check(project, smoke_helper=True)
+
+        first_support = next(item for item in first_run.items if item.name == "問い合わせ一式")
+        acceptance_support = next(item for item in acceptance.items if item.name == "問い合わせ一式")
+        self.assertIsNotNone(bundle_age_hours)
+        self.assertGreater(bundle_age_hours or 0, 24)
+        self.assertTrue(bundle_stale)
+        self.assertEqual(first_support.status, "warn")
+        self.assertIn("older than 24h", first_support.detail)
+        self.assertIn("送付する直前", first_support.action)
+        self.assertEqual(acceptance_support.status, "warn")
+        self.assertIn("older than 24h", acceptance_support.detail)
+        self.assertIn("最新の状況", acceptance_support.action)
 
     def test_support_bundle_can_include_gui_display_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3361,7 +3395,16 @@ tags:
                 "DISPLAY_DIAGNOSTICS.txt: present\n_normalise_extra_entries\nSend this ZIP only\n"
                 "Send-ready flow\nSend-ready summary / 送付判断\n"
                 "Do not attach the whole `.auto-note` folder\n"
-                "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n",
+                "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n"
+                "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "first_run.py").write_text(
+                "is_support_bundle_stale\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "acceptance.py").write_text(
+                "is_support_bundle_stale\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -3792,6 +3835,10 @@ tags:
         self.assertIn("support bundle send-ready checklist summary:fail", product_details)
         self.assertIn("support bundle unsafe attachment warning:fail", product_details)
         self.assertIn("support bundle verification checklist hint:fail", product_details)
+        self.assertIn("support bundle freshness threshold:fail", product_details)
+        self.assertIn("support bundle stale helper:fail", product_details)
+        self.assertIn("first-run support bundle freshness warning:fail", product_details)
+        self.assertIn("acceptance support bundle freshness warning:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
         self.assertIn("recovery kit report writer:fail", product_details)
@@ -5101,6 +5148,10 @@ tags:
         self.assertIn("support bundle GUI log verification detail:pass", launcher_details)
         self.assertIn("support bundle GUI log summary reader:pass", launcher_details)
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
+        self.assertIn("support bundle freshness threshold:pass", launcher_details)
+        self.assertIn("support bundle stale helper:pass", launcher_details)
+        self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
+        self.assertIn("acceptance support bundle freshness warning:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
         self.assertIn("recovery kit support bundle fallback:pass", launcher_details)
         self.assertIn("recovery kit report writer:pass", launcher_details)

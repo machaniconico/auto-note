@@ -6,7 +6,12 @@ from pathlib import Path
 from .action_plan import ActionPlanReport, build_action_plan
 from .quickstart import QuickstartReport, run_quickstart
 from .selftest import SelfTestReport, list_self_test_reports, run_self_test
-from .support import list_support_bundles, verify_support_bundle
+from .support import (
+    SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS,
+    is_support_bundle_stale,
+    list_support_bundles,
+    verify_support_bundle,
+)
 
 
 CONTENT_POLISH_ACTION_TITLES = {
@@ -258,7 +263,20 @@ def _support_bundle_item(project_dir: Path) -> FirstRunItem:
             "ヘルプ > 問い合わせ一式",
             "auto-note support --project-dir . --bundle",
         )
-    return FirstRunItem("問い合わせ一式", "pass", f"{latest.name} verified")
+    if is_support_bundle_stale(latest):
+        return FirstRunItem(
+            "問い合わせ一式",
+            "warn",
+            f"{latest.name}: verified but older than {SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS}h",
+            "送付する直前に最新の問い合わせ一式ZIPを作り直してください。",
+            "ヘルプ > 問い合わせ一式",
+            "auto-note support --project-dir . --bundle",
+        )
+    return FirstRunItem(
+        "問い合わせ一式",
+        "pass",
+        f"{latest.name} verified; open SUPPORT_SEND_CHECKLIST.txt before sending",
+    )
 
 
 def _note_login_item(quickstart: QuickstartReport) -> FirstRunItem:
