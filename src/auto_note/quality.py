@@ -423,6 +423,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle fast diagnostic preview",
+            "Fast support diagnostic attached",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic support fast report",
+            "create_support_diagnostic_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic support fast omissions",
+            "Full check omitted for fast support bundle creation",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "diagnostics.py",
             "diagnostic support bundle age summary",
             "latest_support_bundle_age_hours:",

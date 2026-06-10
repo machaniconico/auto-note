@@ -285,6 +285,64 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
     return report_path
 
 
+def create_support_diagnostic_report(project_dir: Path, *, include_private: bool = False) -> Path:
+    reports_dir = project_dir / ".auto-note" / "diagnostics"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    report_path = unique_path(reports_dir / f"auto-note-support-diagnostic-{datetime.now():%Y%m%d-%H%M%S}.zip")
+    sections = _build_support_diagnostic_sections(project_dir, include_private=include_private)
+
+    with zipfile.ZipFile(report_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name in REQUIRED_DIAGNOSTIC_REPORT_FILES:
+            archive.writestr(name, sections.get(name, "(empty)") + "\n")
+        _write_text_file(archive, project_dir, ".auto-note/gui-error.log", include_private=include_private)
+        path = project_dir / "pyproject.toml"
+        if path.exists() and path.is_file():
+            archive.write(path, "pyproject.toml")
+        if include_private:
+            settings_path = project_dir / ".auto-note" / "settings.json"
+            if settings_path.exists():
+                archive.write(settings_path, ".auto-note/settings.json")
+
+    return report_path
+
+
+def _build_support_diagnostic_sections(project_dir: Path, *, include_private: bool = False) -> dict[str, str]:
+    sections = {
+        name: _support_diagnostic_omitted_report(name)
+        for name in REQUIRED_DIAGNOSTIC_REPORT_FILES
+    }
+    sections.update(
+        {
+            "diagnostics.txt": format_diagnostics(run_diagnostics(project_dir)),
+            "article-index.txt": _build_article_index(project_dir, include_private=include_private),
+            "article-review.txt": _build_article_review_report(project_dir, include_private=include_private),
+            "troubleshoot.txt": _build_troubleshoot_report(project_dir),
+            "settings-summary.txt": _build_settings_summary(project_dir).rstrip(),
+            "commercial-setup-template.txt": _build_commercial_setup_template_report(project_dir),
+            "sales-materials.txt": _build_sales_materials_report(project_dir),
+            "sales-finalize.txt": _build_sales_finalize_report(project_dir),
+            "sales-launch.txt": _build_sales_launch_report(project_dir),
+            "seller-send-checklist.txt": _build_seller_send_checklist_report(project_dir),
+            "sales-evidence-manifest.json": _build_sales_evidence_manifest_report(project_dir),
+            "maintenance-summary.txt": _build_maintenance_summary(project_dir),
+        }
+    )
+    if not include_private:
+        for name, text in list(sections.items()):
+            if name != "article-index.txt":
+                sections[name] = mask_text(text, project_dir)
+    return sections
+
+
+def _support_diagnostic_omitted_report(name: str) -> str:
+    title = DIAGNOSTIC_PREVIEW_OMITTED_SECTIONS.get(name, name)
+    return (
+        f"{title}\n\n"
+        "Full check omitted for fast support bundle creation. "
+        "Run `auto-note diagnose --project-dir . --report` when support asks for the complete diagnostic report."
+    )
+
+
 def preview_diagnostic_report(project_dir: Path, *, include_private: bool = False) -> str:
     diagnostics = format_diagnostics(run_diagnostics(project_dir))
     article_index = _build_article_index(project_dir, include_private=include_private)

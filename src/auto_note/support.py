@@ -10,7 +10,7 @@ import zipfile
 
 from . import __version__
 from .article import write_text_atomic
-from .diagnostics import create_diagnostic_report, mask_text, preview_diagnostic_report
+from .diagnostics import create_support_diagnostic_report, mask_text, preview_diagnostic_report
 from .paths import unique_path
 
 
@@ -36,7 +36,8 @@ def create_support_bundle(
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     bundle_path = unique_path(support_dir / f"auto-note-support-bundle-{stamp}.zip")
     temp_path = support_dir / f".{bundle_path.name}.tmp"
-    diagnostic_path = create_diagnostic_report(project_dir, include_private=include_private)
+    diagnostic_path = create_support_diagnostic_report(project_dir, include_private=include_private)
+    support_preview = _build_support_bundle_diagnostic_preview(diagnostic_path, include_private=include_private)
     created_at = datetime.now().isoformat(timespec="seconds")
     entries = {
         "README.txt": _build_bundle_readme(include_private=include_private).encode("utf-8"),
@@ -45,7 +46,11 @@ def create_support_bundle(
             diagnostic_name=diagnostic_path.name,
             include_private=include_private,
         ).encode("utf-8"),
-        "support-request.md": build_support_request(project_dir, include_private=include_private).encode("utf-8"),
+        "support-request.md": build_support_request(
+            project_dir,
+            include_private=include_private,
+            diagnostic_preview=support_preview,
+        ).encode("utf-8"),
         "GUI_LOG_SUMMARY.txt": _build_gui_log_summary(project_dir, include_private=include_private).encode("utf-8"),
         "diagnostic-report.zip": diagnostic_path.read_bytes(),
     }
@@ -154,8 +159,16 @@ def read_support_display_diagnostics(bundle_path: Path) -> str:
         raise ValueError(f"invalid support bundle zip: {exc}") from exc
 
 
-def build_support_request(project_dir: Path, *, include_private: bool = False) -> str:
+def build_support_request(
+    project_dir: Path,
+    *,
+    include_private: bool = False,
+    diagnostic_preview: str | None = None,
+) -> str:
     privacy = "raw details included" if include_private else "paths, user name, email, and article titles are masked"
+    preview = diagnostic_preview
+    if preview is None:
+        preview = preview_diagnostic_report(project_dir, include_private=include_private)
     return (
         "# auto-note support request\n\n"
         "## Summary / 概要\n\n"
@@ -185,7 +198,7 @@ def build_support_request(project_dir: Path, *, include_private: bool = False) -
         f"- Project privacy: {privacy}\n\n"
         "## Diagnostic preview\n\n"
         "```text\n"
-        f"{preview_diagnostic_report(project_dir, include_private=include_private)}\n"
+        f"{preview}\n"
         "```\n"
     )
 
@@ -316,6 +329,18 @@ def _build_gui_log_summary(project_dir: Path, *, include_private: bool = False, 
     )
     text = "\n".join(lines) + "\n"
     return text if include_private else mask_text(text, project_dir)
+
+
+def _build_support_bundle_diagnostic_preview(diagnostic_path: Path, *, include_private: bool = False) -> str:
+    privacy = "raw details included" if include_private else "paths, user name, email, and article details are masked"
+    return (
+        "Fast support diagnostic attached\n"
+        f"- Diagnostic report ZIP: {diagnostic_path.name}\n"
+        f"- Privacy: {privacy}\n"
+        "- Includes diagnostics.txt, article index/review, troubleshoot.txt, GUI log, maintenance summary, and seller support summaries.\n"
+        "- Heavy checks are intentionally omitted inside this support bundle for speed.\n"
+        "- Run `auto-note diagnose --project-dir . --report` when support asks for the complete diagnostic report."
+    )
 
 
 def _normalise_extra_entries(extra_entries: Mapping[str, str | bytes] | None) -> dict[str, bytes]:

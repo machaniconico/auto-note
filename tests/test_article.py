@@ -3084,6 +3084,8 @@ tags: note
             gui_log_summary_from_api = read_support_gui_log_summary(bundle)
             with zipfile.ZipFile(io.BytesIO(diagnostic_bytes)) as nested:
                 diagnostic_names = set(nested.namelist())
+                nested_first_run = nested.read("first-run.txt").decode("utf-8")
+                nested_diagnostics = nested.read("diagnostics.txt").decode("utf-8")
             maintenance_preview = preview_diagnostic_report(project)
             install_info = project / ".auto-note" / "install-info.json"
             install_info.write_text(
@@ -3156,6 +3158,9 @@ tags: note
         self.assertIn("SUPPORT_SEND_CHECKLIST.txt", checksums)
         self.assertIn("GUI_LOG_SUMMARY.txt", checksums)
         self.assertIn("SUPPORT_BUNDLE_MANIFEST.json", checksums)
+        self.assertIn("Fast support diagnostic attached", bundled_request)
+        self.assertIn("Full check omitted for fast support bundle creation", nested_first_run)
+        self.assertIn("commercial setup: completion", nested_diagnostics)
         self.assertIn("diagnostics.txt", diagnostic_names)
         self.assertIn(".auto-note/gui-error.log", diagnostic_names)
         self.assertIn("first-run.txt", diagnostic_names)
@@ -3849,7 +3854,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "diagnostics.py").write_text(
-                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\nsales_launch_confirmations\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\nlatest_support_bundle_age_hours:\nlatest_support_bundle_freshness:\n",
+                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\nsales_launch_confirmations\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\nlatest_support_bundle_age_hours:\nlatest_support_bundle_freshness:\ncreate_support_diagnostic_report\nFull check omitted for fast support bundle creation\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
@@ -3860,7 +3865,8 @@ tags:
                 "Send-ready flow\nSend-ready summary / 送付判断\n"
                 "Do not attach the whole `.auto-note` folder\n"
                 "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n"
-                "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\nfreshness:\n",
+                "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\nfreshness:\n"
+                "Fast support diagnostic attached\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "first_run.py").write_text(
@@ -4387,6 +4393,9 @@ tags:
         self.assertIn("support bundle freshness threshold:fail", product_details)
         self.assertIn("support bundle stale helper:fail", product_details)
         self.assertIn("support bundle verification freshness detail:fail", product_details)
+        self.assertIn("support bundle fast diagnostic preview:fail", product_details)
+        self.assertIn("diagnostic support fast report:fail", product_details)
+        self.assertIn("diagnostic support fast omissions:fail", product_details)
         self.assertIn("diagnostic support bundle age summary:fail", product_details)
         self.assertIn("diagnostic support bundle freshness summary:fail", product_details)
         self.assertIn("first-run support bundle freshness warning:fail", product_details)
@@ -5934,6 +5943,9 @@ tags:
         self.assertIn("support bundle freshness threshold:pass", launcher_details)
         self.assertIn("support bundle stale helper:pass", launcher_details)
         self.assertIn("support bundle verification freshness detail:pass", launcher_details)
+        self.assertIn("support bundle fast diagnostic preview:pass", launcher_details)
+        self.assertIn("diagnostic support fast report:pass", launcher_details)
+        self.assertIn("diagnostic support fast omissions:pass", launcher_details)
         self.assertIn("diagnostic support bundle age summary:pass", launcher_details)
         self.assertIn("diagnostic support bundle freshness summary:pass", launcher_details)
         self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
