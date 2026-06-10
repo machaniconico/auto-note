@@ -2799,6 +2799,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable action button minimum width",
+            "UI_ACTION_BUTTON_MIN_WIDTH = 208",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable action button max columns",
+            "UI_ACTION_BUTTON_MAX_COLUMNS = 4",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text line spacing",
             "UI_TEXT_SPACING_BOTTOM = 8",
         )
@@ -2829,6 +2843,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable font metrics helper",
             "_font_linespace",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable horizontal padding helper",
+            "_horizontal_padding",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable button label fit helper",
+            "_button_label_fit_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI readable scaled action button width helper",
+            "_scaled_action_button_min_width",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display readability button label fit check",
+            "button label fit",
         )
     )
     checks.append(
@@ -3067,6 +3109,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke display readability warning count",
             "display_readability_warnings=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke button label fit status",
+            "display_button_label_fit_status=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke button label fit warning count",
+            "display_button_label_fit_warnings=",
         )
     )
     checks.append(
@@ -3445,6 +3501,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI display diagnostics report",
             "Display diagnostics / 表示診断",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics text fit sample",
+            "Text fit sample / 文字収まりサンプル",
         )
     )
     checks.append(

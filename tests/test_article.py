@@ -66,6 +66,7 @@ from auto_note.gui import (
     _article_focus_next_text,
     _article_focus_status_style,
     _article_focus_summary,
+    _button_label_fit_status,
     _command_palette_matches,
     _command_palette_selection_index,
     _command_palette_status,
@@ -95,11 +96,14 @@ from auto_note.gui import (
     _home_snapshot_values,
     _home_snapshot_worst_state,
     _home_state_accent_color,
+    _horizontal_padding,
     _is_crush_prone_font_family,
     _padding_with_vertical,
     _readable_vertical_padding,
     _support_bundle_indicator_style,
     _support_send_readiness_indicator_style,
+    UI_ACTION_BUTTON_MAX_COLUMNS,
+    UI_ACTION_BUTTON_MIN_WIDTH,
     UI_BADGE_FONT_WEIGHT,
     UI_BADGE_FONT_SIZE,
     UI_FONT_CANDIDATES,
@@ -427,6 +431,12 @@ class ArticleTests(unittest.TestCase):
         )
         self.assertEqual(_padding_with_vertical((21, 17), 27), (21, 27))
         self.assertEqual(_padding_with_vertical((8, 4, 10, 4), 12), (8, 12, 10, 12))
+        self.assertEqual(_horizontal_padding((21, 17)), 21)
+        self.assertEqual(_horizontal_padding((8, 4, 10, 4)), 8)
+        self.assertGreaterEqual(UI_ACTION_BUTTON_MIN_WIDTH, 208)
+        self.assertLessEqual(UI_ACTION_BUTTON_MAX_COLUMNS, 4)
+        self.assertTrue(_button_label_fit_status([("短い", 40)], 80)[0])
+        self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
     def test_ui_readability_prefers_meiryo_and_flags_dense_fonts(self) -> None:
         self.assertEqual(UI_FONT_CANDIDATES[:3], ("メイリオ", "Meiryo", "Meiryo UI"))
@@ -3101,6 +3111,8 @@ tags: note
         self.assertIn("command_palette_support_display_diagnostics_actions=1", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
+        self.assertIn("display_button_label_fit_status=OK", text)
+        self.assertIn("display_button_label_fit_warnings=0", text)
         self.assertIn("display_font_family=", text)
         self.assertIn("display_font_linespace=", text)
         self.assertIn("display_badge_linespace=", text)
@@ -3124,6 +3136,7 @@ tags: note
         self.assertIn("display_safe_mode_reason=requested", text)
         self.assertIn("header_safe_display_visible=True", text)
         self.assertIn("display_readability_status=OK", text)
+        self.assertIn("display_button_label_fit_status=OK", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3456,11 +3469,16 @@ tags:
                 + "UI_TREE_ROW_HEIGHT = 64\n"
                 + "UI_NOTEBOOK_TAB_PADDING = (24, 20)\n"
                 + "UI_BUTTON_PADDING = (23, 19)\n"
+                + "UI_ACTION_BUTTON_MIN_WIDTH = 208\n"
+                + "UI_ACTION_BUTTON_MAX_COLUMNS = 4\n"
                 + "UI_TEXT_SPACING_BOTTOM = 8\n"
                 + '"standard": {\n        "text_size": 14,\n'
                 + '"small_text_size": 13,\n        "badge_font_size": 13,\n'
                 + '"large": {\n        "text_size": 16,\n'
                 + "_font_linespace\n"
+                + "_horizontal_padding\n"
+                + "_button_label_fit_status\n"
+                + "_scaled_action_button_min_width\n"
                 + "_minimum_readable_linespace\n"
                 + "minimum_linespace_ratio\n"
                 + "UI_DENSITY_LABELS\n"
@@ -3504,6 +3522,8 @@ tags:
                 + "command_palette_support_display_diagnostics_actions=\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
+                + "display_button_label_fit_status=\n"
+                + "display_button_label_fit_warnings=\n"
                 + "display_font_family=\n"
                 + "display_font_linespace=\n"
                 + "display_diagnostics_chars=\n"
@@ -3542,8 +3562,10 @@ tags:
                 + "show_display_diagnostics_action\n"
                 + "copy_display_diagnostics_action\n"
                 + "Display diagnostics / 表示診断\n"
+                + "Text fit sample / 文字収まりサンプル\n"
                 + "safe display mode:\n"
                 + "Readability check / 可読性チェック\n"
+                + "button label fit\n"
                 + "- status:\n"
                 + "/ action:\n"
                 + "表示診断をコピーしました\n"
@@ -4148,11 +4170,17 @@ tags:
         self.assertIn("GUI readable tree row height:fail", product_details)
         self.assertIn("GUI readable tab padding:fail", product_details)
         self.assertIn("GUI readable button padding:fail", product_details)
+        self.assertIn("GUI readable action button minimum width:fail", product_details)
+        self.assertIn("GUI readable action button max columns:fail", product_details)
         self.assertIn("GUI readable text line spacing:fail", product_details)
         self.assertIn("GUI standard density readable text:fail", product_details)
         self.assertIn("GUI standard density readable small text:fail", product_details)
         self.assertIn("GUI large density safe-display text:fail", product_details)
         self.assertIn("GUI readable font metrics helper:fail", product_details)
+        self.assertIn("GUI readable horizontal padding helper:fail", product_details)
+        self.assertIn("GUI readable button label fit helper:fail", product_details)
+        self.assertIn("GUI readable scaled action button width helper:fail", product_details)
+        self.assertIn("GUI display readability button label fit check:fail", product_details)
         self.assertIn("GUI per-monitor DPI awareness:fail", product_details)
         self.assertIn("settings UI density field:fail", product_details)
         self.assertIn("settings UI density options:fail", product_details)
@@ -4187,6 +4215,8 @@ tags:
         self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
         self.assertIn("GUI smoke display readability status:fail", product_details)
         self.assertIn("GUI smoke display readability warning count:fail", product_details)
+        self.assertIn("GUI smoke button label fit status:fail", product_details)
+        self.assertIn("GUI smoke button label fit warning count:fail", product_details)
         self.assertIn("GUI smoke display font metrics:fail", product_details)
         self.assertIn("GUI smoke display font family:fail", product_details)
         self.assertIn("GUI Japanese font fallback:fail", product_details)
@@ -4221,6 +4251,7 @@ tags:
         self.assertIn("GUI display diagnostics action:fail", product_details)
         self.assertIn("GUI display diagnostics copy action:fail", product_details)
         self.assertIn("GUI display diagnostics report:fail", product_details)
+        self.assertIn("GUI display diagnostics text fit sample:fail", product_details)
         self.assertIn("GUI display diagnostics safe display mode:fail", product_details)
         self.assertIn("GUI display diagnostics safe display reason:fail", product_details)
         self.assertIn("GUI display readability checks:fail", product_details)
@@ -4786,11 +4817,17 @@ tags:
         self.assertIn("GUI readable tree row height:pass", launcher_details)
         self.assertIn("GUI readable tab padding:pass", launcher_details)
         self.assertIn("GUI readable button padding:pass", launcher_details)
+        self.assertIn("GUI readable action button minimum width:pass", launcher_details)
+        self.assertIn("GUI readable action button max columns:pass", launcher_details)
         self.assertIn("GUI readable text line spacing:pass", launcher_details)
         self.assertIn("GUI standard density readable text:pass", launcher_details)
         self.assertIn("GUI standard density readable small text:pass", launcher_details)
         self.assertIn("GUI large density safe-display text:pass", launcher_details)
         self.assertIn("GUI readable font metrics helper:pass", launcher_details)
+        self.assertIn("GUI readable horizontal padding helper:pass", launcher_details)
+        self.assertIn("GUI readable button label fit helper:pass", launcher_details)
+        self.assertIn("GUI readable scaled action button width helper:pass", launcher_details)
+        self.assertIn("GUI display readability button label fit check:pass", launcher_details)
         self.assertIn("GUI per-monitor DPI awareness:pass", launcher_details)
         self.assertIn("settings UI density field:pass", launcher_details)
         self.assertIn("settings UI density options:pass", launcher_details)
@@ -4825,6 +4862,8 @@ tags:
         self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
         self.assertIn("GUI smoke display readability status:pass", launcher_details)
         self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
+        self.assertIn("GUI smoke button label fit status:pass", launcher_details)
+        self.assertIn("GUI smoke button label fit warning count:pass", launcher_details)
         self.assertIn("GUI smoke display font metrics:pass", launcher_details)
         self.assertIn("GUI smoke display font family:pass", launcher_details)
         self.assertIn("GUI Japanese font fallback:pass", launcher_details)
@@ -4859,6 +4898,7 @@ tags:
         self.assertIn("GUI display diagnostics action:pass", launcher_details)
         self.assertIn("GUI display diagnostics copy action:pass", launcher_details)
         self.assertIn("GUI display diagnostics report:pass", launcher_details)
+        self.assertIn("GUI display diagnostics text fit sample:pass", launcher_details)
         self.assertIn("GUI display diagnostics safe display mode:pass", launcher_details)
         self.assertIn("GUI display diagnostics safe display reason:pass", launcher_details)
         self.assertIn("GUI display readability checks:pass", launcher_details)

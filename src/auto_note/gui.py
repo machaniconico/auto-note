@@ -221,6 +221,17 @@ UI_NOTEBOOK_TAB_PADDING = (24, 20)
 UI_BUTTON_PADDING = (23, 19)
 UI_PRIMARY_BUTTON_PADDING = (25, 19)
 UI_DANGER_BUTTON_PADDING = (21, 18)
+UI_ACTION_BUTTON_MIN_WIDTH = 208
+UI_ACTION_BUTTON_MAX_COLUMNS = 4
+UI_BUTTON_LABEL_FIT_MARGIN = 8
+UI_BUTTON_LABEL_FIT_SAMPLES = (
+    "コマンド検索",
+    "問い合わせ一式",
+    "表示診断コピー",
+    "販売者情報確認",
+    "テンプレ取込一括",
+    "品質チェックへ",
+)
 UI_TEXT_SPACING_TOP = 6
 UI_TEXT_SPACING_BOTTOM = 8
 UI_DENSITY_LABELS = {
@@ -444,6 +455,30 @@ def _padding_with_vertical(current_padding: object, vertical: int) -> tuple[int,
         return (numbers[0], vertical, numbers[2], vertical)
     horizontal = numbers[0] if numbers else 0
     return (horizontal, vertical)
+
+
+def _horizontal_padding(value: object) -> float | None:
+    numbers = _numeric_tokens(value)
+    if len(numbers) >= 4:
+        return min(numbers[0], numbers[2])
+    return numbers[0] if numbers else None
+
+
+def _button_label_fit_status(measured_widths: list[tuple[str, int]], available_width: int) -> tuple[bool, str]:
+    if not measured_widths:
+        return False, "unavailable"
+    label, width = max(measured_widths, key=lambda item: item[1])
+    return width <= available_width, f"{label} {width}px / room {available_width}px"
+
+
+def _scaled_action_button_min_width(root: tk.Misc) -> int:
+    try:
+        scaling_value: object = root.tk.call("tk", "scaling")
+    except tk.TclError:
+        scaling_value = None
+    scaling = _first_number(scaling_value) or (96.0 / 72.0)
+    scale_factor = max(1.0, scaling / (96.0 / 72.0))
+    return int(math.ceil(UI_ACTION_BUTTON_MIN_WIDTH * scale_factor))
 
 
 def _guard_ui_readability_metrics(root: tk.Misc, ui_font: str) -> None:
@@ -731,6 +766,11 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         )
         display_readability_status, display_readability_lines = app._display_readability_checks(style)
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
+        display_button_label_fit_ok, _display_button_label_fit_detail, _display_button_label_fit_lines = (
+            app._button_label_fit_details(style)
+        )
+        display_button_label_fit_status = "OK" if display_button_label_fit_ok else "WARN"
+        display_button_label_fit_warnings = 0 if display_button_label_fit_ok else 1
         display_font_family = UI_FONT
         display_font_linespace = _font_linespace(app, UI_FONT, UI_TEXT_SIZE) or 0
         display_badge_linespace = _font_linespace(app, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT) or 0
@@ -782,6 +822,8 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"command_palette_support_display_diagnostics_actions={command_palette_support_display_diagnostics_actions}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
+            f"display_button_label_fit_status={display_button_label_fit_status}, "
+            f"display_button_label_fit_warnings={display_button_label_fit_warnings}, "
             f"display_font_family={display_font_family}, "
             f"display_font_linespace={display_font_linespace}, "
             f"display_badge_linespace={display_badge_linespace}, "
@@ -1315,9 +1357,9 @@ class AutoNoteApp(tk.Tk):
             style="ChromeMuted.TLabel",
         ).pack(anchor=tk.W, pady=(3, 0))
 
-        ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
-        ttk.Button(header, text="更新", style="Quiet.TButton", command=self.refresh_all).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(header, text="コマンド検索", style="Quiet.TButton", command=self.show_command_palette).pack(
+        ttk.Button(header, text="新規記事", style="Primary.TButton", command=self.new_article, width=10).pack(side=tk.RIGHT)
+        ttk.Button(header, text="更新", style="Quiet.TButton", command=self.refresh_all, width=8).pack(side=tk.RIGHT, padx=6)
+        ttk.Button(header, text="コマンド検索", style="Quiet.TButton", command=self.show_command_palette, width=12).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -1341,12 +1383,13 @@ class AutoNoteApp(tk.Tk):
             text="リセット",
             style="Quiet.TButton",
             command=self.reset_display_action,
+            width=8,
         )
         self.header_display_reset_button.pack(side=tk.LEFT, padx=(8, 0))
         quick = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
         quick.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Label(quick, text="note", style="ChromeAction.TLabel").pack(side=tk.LEFT)
-        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=lambda: webbrowser.open(NOTE_LOGIN_URL)).pack(
+        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=lambda: webbrowser.open(NOTE_LOGIN_URL), width=8).pack(
             side=tk.LEFT,
             padx=(8, 0),
         )
@@ -1430,8 +1473,8 @@ class AutoNoteApp(tk.Tk):
             text="記事、投稿準備、販売、サポートを同じ作業面で確認します。",
             style="HomeLeadMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
-        ttk.Button(top, text="新規記事", style="Primary.TButton", command=self.new_article).pack(side=tk.RIGHT)
-        ttk.Button(top, text="コマンド検索", style="Secondary.TButton", command=self.show_command_palette).pack(
+        ttk.Button(top, text="新規記事", style="Primary.TButton", command=self.new_article, width=10).pack(side=tk.RIGHT)
+        ttk.Button(top, text="コマンド検索", style="Secondary.TButton", command=self.show_command_palette, width=12).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -1440,6 +1483,7 @@ class AutoNoteApp(tk.Tk):
             text="診断",
             style="Secondary.TButton",
             command=lambda: self.notebook.select(self.diagnostics_tab),
+            width=8,
         ).pack(side=tk.RIGHT, padx=6)
 
         snapshot = ttk.Frame(home, style="HomeSnapshot.TFrame")
@@ -2884,11 +2928,12 @@ class AutoNoteApp(tk.Tk):
         return str(value)
 
     def _build_button_bar(self, parent: ttk.Frame, actions, *, columns: int = 5) -> None:
+        render_columns = max(1, min(columns, UI_ACTION_BUTTON_MAX_COLUMNS))
         for index, action in enumerate(actions):
             text = action[0]
             command = action[1]
             style = action[2] if len(action) > 2 else None
-            row, column = divmod(index, columns)
+            row, column = divmod(index, render_columns)
             options = {"command": command}
             if isinstance(text, tk.Variable):
                 options["textvariable"] = text
@@ -2898,8 +2943,9 @@ class AutoNoteApp(tk.Tk):
                 options["style"] = style
             button = ttk.Button(parent, **options)
             button.grid(row=row, column=column, sticky=tk.EW, padx=(0 if column == 0 else 6, 0), pady=(0, 6))
-        for column in range(columns):
-            parent.columnconfigure(column, weight=1, uniform="button_bar")
+        min_width = _scaled_action_button_min_width(parent)
+        for column in range(render_columns):
+            parent.columnconfigure(column, weight=1, uniform="button_bar", minsize=min_width)
 
     def _configure_home_action_tree_tags(self) -> None:
         self.home_action_tree.tag_configure("blocker", background="#ffe2df", foreground="#8b2119")
@@ -6731,6 +6777,42 @@ class AutoNoteApp(tk.Tk):
         else:
             self.notify("表示診断をコピーしました。注意項目があります", level="warning")
 
+    def _button_label_fit_details(self, style: ttk.Style | None = None) -> tuple[bool, str, list[str]]:
+        style = style or ttk.Style(self)
+        try:
+            button_padding = style.lookup("TButton", "padding")
+        except tk.TclError as exc:
+            return False, f"unavailable ({exc})", []
+        horizontal_padding = _horizontal_padding(button_padding)
+        minimum_width = _scaled_action_button_min_width(self)
+        margin = int(math.ceil(UI_BUTTON_LABEL_FIT_MARGIN * max(1.0, minimum_width / UI_ACTION_BUTTON_MIN_WIDTH)))
+        text_room = max(
+            0,
+            minimum_width
+            - int(math.ceil((horizontal_padding or 0) * 2))
+            - margin,
+        )
+        try:
+            font = tkfont.Font(root=self, family=UI_FONT, size=UI_TEXT_SIZE)
+            measured = [(label, int(font.measure(label))) for label in UI_BUTTON_LABEL_FIT_SAMPLES]
+        except (tk.TclError, ValueError) as exc:
+            return False, f"unavailable ({exc})", []
+        ok, detail = _button_label_fit_status(measured, text_room)
+        widest = sorted(measured, key=lambda item: item[1], reverse=True)[:3]
+        sample_line = ", ".join(f"{label} {width}px" for label, width in widest)
+        horizontal_text = (
+            str(int(horizontal_padding))
+            if horizontal_padding is not None and float(horizontal_padding).is_integer()
+            else str(horizontal_padding if horizontal_padding is not None else "unknown")
+        )
+        lines = [
+            f"- minimum button width: {minimum_width}px (base {UI_ACTION_BUTTON_MIN_WIDTH}px)",
+            f"- horizontal padding: {horizontal_text}px each side",
+            f"- available text room: {text_room}px",
+            f"- widest samples: {sample_line}",
+        ]
+        return ok, detail, lines
+
     def _display_readability_checks(self, style: ttk.Style | None = None) -> tuple[str, list[str]]:
         style = style or ttk.Style(self)
 
@@ -6753,6 +6835,7 @@ class AutoNoteApp(tk.Tk):
         main_linespace = _font_linespace(self, UI_FONT, UI_TEXT_SIZE)
         small_linespace = _font_linespace(self, UI_FONT, UI_SMALL_TEXT_SIZE)
         badge_linespace = _font_linespace(self, UI_FONT, UI_BADGE_FONT_SIZE, weight=UI_BADGE_FONT_WEIGHT)
+        button_label_fit_ok, button_label_fit_detail, _button_label_fit_lines = self._button_label_fit_details(style)
         minimum_main_linespace = _minimum_readable_linespace(UI_TEXT_SIZE)
         minimum_small_linespace = _minimum_readable_linespace(UI_SMALL_TEXT_SIZE)
         minimum_badge_linespace = _minimum_readable_linespace(UI_BADGE_FONT_SIZE)
@@ -6822,6 +6905,12 @@ class AutoNoteApp(tk.Tk):
             "表示リセットを実行し、改善しない場合は大きめを選ぶ",
         )
         add(
+            "button label fit",
+            button_label_fit_ok,
+            f"{button_label_fit_detail} (min button {_scaled_action_button_min_width(self)}px)",
+            "表示リセット後、改善しない場合は大きめ表示を使う",
+        )
+        add(
             "tk scaling",
             scaling_number is not None and scaling_number >= 1.0,
             f"{scaling_value} (target 1.0+)",
@@ -6866,6 +6955,7 @@ class AutoNoteApp(tk.Tk):
         )
         crush_prone_font = "yes" if _is_crush_prone_font_family(UI_FONT) else "no"
         _status, readability_lines = self._display_readability_checks(style)
+        button_label_fit_ok, button_label_fit_detail, button_label_fit_lines = self._button_label_fit_details(style)
         lines = [
             "Display diagnostics / 表示診断",
             "",
@@ -6894,6 +6984,11 @@ class AutoNoteApp(tk.Tk):
             f"- protected tree rowheight: {UI_TREE_ROW_HEIGHT}",
             f"- protected notebook tab padding: {UI_NOTEBOOK_TAB_PADDING}",
             f"- protected button padding: {UI_BUTTON_PADDING}",
+            "",
+            "Text fit sample / 文字収まりサンプル",
+            f"- status: {'OK' if button_label_fit_ok else 'WARN'}",
+            f"- widest sample: {button_label_fit_detail}",
+            *button_label_fit_lines,
             "",
             "Window and screen",
             f"- window geometry: {self.geometry()}",
