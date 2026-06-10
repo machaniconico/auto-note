@@ -110,6 +110,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff sales launch confirmation evidence",
+            "sales-launch --project-dir . --confirm-preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
             "RC handoff stop conditions",
             "止める条件",
         )
@@ -126,6 +133,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "RELEASE_CHECKLIST.md",
             "release checklist safe display smoke guidance",
             "auto_note gui --project-dir . --smoke --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RELEASE_CHECKLIST.md",
+            "release checklist sales launch confirmation guidance",
+            "sales-launch --project-dir . --confirm-preview",
         )
     )
     checks.append(_path_check(project_dir / ".github" / "workflows" / "ci.yml", "GitHub Actions CI"))
@@ -1036,7 +1050,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "scripts" / "smoke-sales-delivery.ps1",
             "sales delivery smoke launch checklist",
-            "sales-launch --project-dir . --report",
+            "sales-launch --project-dir . --report --confirm-preview",
         )
     )
     checks.append(
@@ -1065,6 +1079,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "scripts" / "smoke-sales-delivery.ps1",
             "sales delivery smoke buyer SHA-256 assertion",
             "zip SHA-256",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke launch confirmation assertion",
+            "sales-launch-confirmation-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke launch confirmation seller-only guard",
+            "seller-only evidence",
         )
     )
     checks.append(
@@ -2056,6 +2084,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales launch confirmation command",
+            "--confirm-preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales launch confirmation output",
+            "sales launch confirmation created",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_plan.py",
             "sales plan buyer delivery package list",
             "list_buyer_delivery_packages",
@@ -2197,6 +2239,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation writer",
+            "write_sales_launch_confirmation",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation lister",
+            "list_sales_launch_confirmations",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation seller-only guard",
+            "seller-only evidence",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch depends on final review",
             "run_sales_review(project_dir)",
         )
@@ -2273,6 +2336,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy.py",
+            "privacy audit sales launch confirmation",
+            "sales launch confirmation privacy",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "maintenance.py",
             "cleanup sales plan report",
             "sales-plan-*.txt",
@@ -2294,6 +2364,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup sales launch confirmation",
+            "sales-launch-confirmation-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "diagnostics.py",
             "maintenance sales plan report summary",
             "sales_plan_reports",
@@ -2311,6 +2388,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "diagnostics.py",
             "maintenance sales launch checklist summary",
             "sales_launch_checklists",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "maintenance sales launch confirmation summary",
+            "sales_launch_confirmations",
         )
     )
     checks.append(
@@ -4997,6 +5081,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation action",
+            "create_sales_launch_confirmation_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation recent report",
+            "list_sales_launch_confirmations",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI full release check action",
             "run_release_check_full_action",
         )
@@ -5335,6 +5433,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README sales launch report guidance",
             "sales-launch --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales launch confirmation command guidance",
+            "sales-launch --project-dir . --confirm-preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales launch confirmation GUI guidance",
+            "販売確認記録",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales launch confirmation artifact guidance",
+            "sales-launch-confirmation-*.txt",
         )
     )
     checks.append(
@@ -5839,6 +5958,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness sales launch report guidance",
             "sales-launch --project-dir . --report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales launch confirmation command",
+            "sales-launch --project-dir . --confirm-preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales launch confirmation artifact",
+            "sales-launch-confirmation-*.txt",
         )
     )
     checks.append(

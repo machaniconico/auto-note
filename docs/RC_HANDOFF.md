@@ -4,7 +4,7 @@
 
 ## 固定点
 
-- `v0.1.0-rc3`: 販売直前チェックと販売スモーク拡張込みの販売候補版
+- `v0.1.0-rc3`: 販売直前チェック、販売確認記録、販売スモーク拡張込みの販売候補版
 - `v0.1.0-rc2`: UI改善込みの販売候補版
 - `v0.1.0-rc1`: 販売前一括チェック追加時点の候補版
 - 以後の新機能追加は原則 `v0.2` に回します。
@@ -53,6 +53,7 @@ auto-note sales-finalize --project-dir . --strict --gui-smoke
 auto-note sales-finalize --project-dir . --send-check --send-check-report
 auto-note sales-finalize --project-dir . --delivery-receipt
 auto-note sales-launch --project-dir . --report
+auto-note sales-launch --project-dir . --confirm-preview --note "preview checked"
 ```
 
 残すもの:
@@ -66,6 +67,7 @@ auto-note sales-launch --project-dir . --report
 - 販売者向け納品記録
 - 販売証跡JSON
 - 販売直前チェックリスト
+- 販売ページ確認記録 `sales-launch-confirmation-*.txt`
 - 販売前一括チェックレポート `release-check-*.txt`
 
 ## 止める条件
@@ -78,6 +80,7 @@ auto-note sales-launch --project-dir . --report
 - 購入者向けZIP検証が失敗する
 - 送付前チェックがNGを出す
 - 販売直前チェックがNGを出す
+- 実際の販売ページプレビュー/テスト購入相当を見た後の販売確認記録が残っていない
 - 販売者情報や利用条件が未確認のまま本番販売しようとしている
 
 ## 次版へ回すもの

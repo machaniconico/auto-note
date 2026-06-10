@@ -117,8 +117,8 @@ try {
     & $python -m auto_note sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt
   }
 
-  Invoke-Smoke "Sales launch checklist" {
-    & $python -m auto_note sales-launch --project-dir . --report
+  Invoke-Smoke "Sales launch checklist and confirmation" {
+    & $python -m auto_note sales-launch --project-dir . --report --confirm-preview --note "smoke preview checked"
   }
 
   $readinessReport = Get-ChildItem -LiteralPath $salesDir -Filter "buyer-send-readiness-*.txt" |
@@ -128,6 +128,9 @@ try {
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
   $launchChecklist = Get-ChildItem -LiteralPath $salesDir -Filter "sales-launch-checklist-*.txt" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+  $launchConfirmation = Get-ChildItem -LiteralPath $salesDir -Filter "sales-launch-confirmation-*.txt" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
@@ -140,9 +143,13 @@ try {
   if (-not $launchChecklist) {
     throw "Sales launch checklist was not created."
   }
+  if (-not $launchConfirmation) {
+    throw "Sales launch confirmation was not created."
+  }
   Assert-Exists $readinessReport.FullName "Buyer send readiness report was not created."
   Assert-Exists $deliveryReceipt.FullName "Seller delivery receipt was not created."
   Assert-Exists $launchChecklist.FullName "Sales launch checklist was not created."
+  Assert-Exists $launchConfirmation.FullName "Sales launch confirmation was not created."
 
   $launchText = Get-Content -LiteralPath $launchChecklist.FullName -Raw -Encoding UTF8
   if ($launchText -notlike "*Marketplace launch confirmation*") {
@@ -158,6 +165,17 @@ try {
     throw "Sales launch checklist does not include the buyer ZIP SHA-256 value."
   }
 
+  $confirmationText = Get-Content -LiteralPath $launchConfirmation.FullName -Raw -Encoding UTF8
+  if ($confirmationText -notlike "*Sales launch confirmation*") {
+    throw "Sales launch confirmation title was not found."
+  }
+  if ($confirmationText -notlike "*smoke preview checked*") {
+    throw "Sales launch confirmation does not include the seller note."
+  }
+  if ($confirmationText -notlike "*seller-only evidence*") {
+    throw "Sales launch confirmation does not include seller-only evidence guidance."
+  }
+
   Write-Host ""
   Write-Host "sales delivery smoke OK"
   Write-Host "- work dir: $work"
@@ -165,6 +183,7 @@ try {
   Write-Host "- send readiness: $($readinessReport.Name)"
   Write-Host "- seller receipt: $($deliveryReceipt.Name)"
   Write-Host "- launch checklist: $($launchChecklist.Name)"
+  Write-Host "- launch confirmation: $($launchConfirmation.Name)"
 } finally {
   if ($pushedLocation) {
     Pop-Location

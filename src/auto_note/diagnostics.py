@@ -912,7 +912,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     from .sales_handoff import list_sales_handoffs, verify_sales_handoff
     from .sales_materials import list_sales_materials, verify_sales_materials
     from .sales_plan import list_sales_plan_reports
-    from .sales_launch import list_sales_launch_checklists
+    from .sales_launch import list_sales_launch_checklists, list_sales_launch_confirmations
     from .sales_review import list_sales_review_reports
     from .selftest import list_self_test_reports
     from .support import (
@@ -949,6 +949,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
     sales_materials = list_sales_materials(project_dir)
     sales_plan_reports = list_sales_plan_reports(project_dir)
     sales_launch_checklists = list_sales_launch_checklists(project_dir)
+    sales_launch_confirmations = list_sales_launch_confirmations(project_dir)
     sales_review_reports = list_sales_review_reports(project_dir)
     sales_finalize_reports = list_sales_finalize_reports(project_dir)
     seller_send_checklists = list_seller_send_checklists(project_dir)
@@ -978,6 +979,7 @@ def _build_maintenance_summary(project_dir: Path) -> str:
         f"sales_materials: {len(sales_materials)}",
         f"sales_plan_reports: {len(sales_plan_reports)}",
         f"sales_launch_checklists: {len(sales_launch_checklists)}",
+        f"sales_launch_confirmations: {len(sales_launch_confirmations)}",
         f"sales_review_reports: {len(sales_review_reports)}",
         f"sales_finalize_reports: {len(sales_finalize_reports)}",
         f"seller_send_checklists: {len(seller_send_checklists)}",
@@ -1077,6 +1079,8 @@ def _build_maintenance_summary(project_dir: Path) -> str:
         lines.append(f"latest_sales_plan_report: {sales_plan_reports[0].name}")
     if sales_launch_checklists:
         lines.append(f"latest_sales_launch_checklist: {sales_launch_checklists[0].name}")
+    if sales_launch_confirmations:
+        lines.append(f"latest_sales_launch_confirmation: {sales_launch_confirmations[0].name}")
     if sales_review_reports:
         lines.append(f"latest_sales_review_report: {sales_review_reports[0].name}")
     if sales_finalize_reports:

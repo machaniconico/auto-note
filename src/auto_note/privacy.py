@@ -85,6 +85,7 @@ def run_privacy_audit(
     items.extend(_sales_plan_report_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_sales_review_report_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_sales_launch_checklist_items(project_dir, sensitive, all_artifacts=all_artifacts))
+    items.extend(_sales_launch_confirmation_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_sales_finalize_report_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_seller_send_checklist_items(project_dir, sensitive, all_artifacts=all_artifacts))
     items.extend(_buyer_delivery_message_items(project_dir, sensitive, all_artifacts=all_artifacts))
@@ -434,6 +435,34 @@ def _sales_launch_checklist_items(
             path,
             sensitive,
             name=f"sales launch checklist privacy: {path.name}",
+            action=action,
+        )
+        for path in selected
+    ]
+
+
+def _sales_launch_confirmation_items(
+    project_dir: Path,
+    sensitive: list[SensitiveValue],
+    *,
+    all_artifacts: bool,
+) -> list[PrivacyAuditItem]:
+    from .sales_launch import list_sales_launch_confirmations
+
+    confirmations = list_sales_launch_confirmations(project_dir)
+    if not confirmations:
+        return [PrivacyAuditItem("sales launch confirmation privacy", "info", "no sales launch confirmations found")]
+    selected = confirmations if all_artifacts else confirmations[:1]
+    action = (
+        "`auto-note cleanup --project-dir . --privacy-failed` でプライバシー監査NGの整理候補を確認してください。"
+        if all_artifacts
+        else "`auto-note sales-launch --project-dir . --confirm-preview --note \"checked\"` で販売確認記録を作り直してください。"
+    )
+    return [
+        _file_privacy_item(
+            path,
+            sensitive,
+            name=f"sales launch confirmation privacy: {path.name}",
             action=action,
         )
         for path in selected

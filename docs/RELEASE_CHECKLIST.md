@@ -19,6 +19,7 @@ $env:PYTHONPATH='src'; python -m auto_note troubleshoot --project-dir .
 $env:PYTHONPATH='src'; python -m auto_note first-run --project-dir . --create --gui-smoke
 $env:PYTHONPATH='src'; python -m auto_note acceptance --project-dir . --create --gui-smoke --smoke-helper --report
 $env:PYTHONPATH='src'; python -m auto_note commercial-readiness --project-dir . --report
+$env:PYTHONPATH='src'; python -m auto_note sales-launch --project-dir . --confirm-preview --note "checked"
 $env:PYTHONPATH='src'; python -m auto_note quickstart --project-dir .
 $starter = Join-Path $env:TEMP "auto-note-starter-check"; New-Item -ItemType Directory -Force $starter | Out-Null; $env:PYTHONPATH='src'; python -m auto_note starter-pack --project-dir $starter --no-calendar
 $env:PYTHONPATH='src'; python -m auto_note starter-clean --project-dir $starter
@@ -70,6 +71,7 @@ $env:PYTHONPATH='src'; python -m auto_note preflight --project-dir . --create-re
 - ホーム、初回タブ、診断、コマンド検索から初回チェックを表示できる
 - ホーム、初回タブ、診断、ヘルプ、コマンド検索から `受入チェック` と `受入保存` を実行できる
 - ホーム、初回タブ、診断、ヘルプ、コマンド検索から `販売準備` と `販売準備保存` を実行できる
+- ホーム、診断、ヘルプ、コマンド検索から `販売確認記録` を作成できる
 - ホーム、初回タブ、診断、ヘルプ、コマンド検索の `スターター一式` で、サンプル記事、予定、アイデアを作成できる
 - ホーム、診断、ヘルプ、コマンド検索の `スターター整理` で、スターター由来の記事と未使用アイデアの削除候補を確認できる
 - ホームの優先アクション一覧で状態、項目、次の操作を確認でき、`選択を実行` と `CLIコピー` が使える
