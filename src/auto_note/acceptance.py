@@ -282,7 +282,7 @@ def _gui_smoke_item(self_test, *, gui_smoke: bool) -> AcceptanceItem:
             "auto-note acceptance --project-dir . --gui-smoke",
         )
     if item and item.status == "pass":
-        return AcceptanceItem("GUI初期化", "pass", item.detail)
+        return AcceptanceItem("GUI初期化", "pass", _gui_smoke_summary(item.detail))
     return AcceptanceItem(
         "GUI初期化",
         "info",
@@ -417,12 +417,44 @@ def _issue_action(issue, fallback: str) -> str:
     return fallback
 
 
+def _gui_smoke_summary(detail: str) -> str:
+    metrics = _gui_smoke_metrics(detail)
+    parts = ["startup OK"]
+    if metrics.get("tabs"):
+        parts.append(f"tabs {metrics['tabs']}")
+    if metrics.get("articles"):
+        parts.append(f"articles {metrics['articles']}")
+    if metrics.get("home_quick_action_items"):
+        parts.append(f"quick actions {metrics['home_quick_action_items']}")
+    readability = metrics.get("display_readability_status")
+    button_fit = metrics.get("display_button_label_fit_status")
+    if readability:
+        parts.append(f"readability {readability}")
+    if button_fit:
+        parts.append(f"button labels {button_fit}")
+    font = metrics.get("display_actual_font_family") or metrics.get("display_font_family")
+    if font:
+        parts.append(f"font {font}")
+    return ", ".join(parts)
+
+
 def _gui_smoke_metric(detail: str, name: str) -> str:
-    marker = f"{name}="
+    return _gui_smoke_metrics(detail).get(name, "")
+
+
+def _gui_smoke_metrics(detail: str) -> dict[str, str]:
+    metrics: dict[str, str] = {}
     for part in detail.split(", "):
-        if part.startswith(marker):
-            return part.split("=", 1)[1].strip()
-    return ""
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        key = key.strip()
+        if key.startswith("GUI smoke OK:"):
+            key = key.split(":", 1)[1].strip()
+        if " " in key:
+            key = key.rsplit(" ", 1)[-1]
+        metrics[key] = value.strip()
+    return metrics
 
 
 def _overall_status(items: list[AcceptanceItem]) -> str:

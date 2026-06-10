@@ -1680,6 +1680,10 @@ tags: note
         self.assertIn("acceptance report created:", full_output)
         self.assertIn("投稿ヘルパー", full_output)
         self.assertIn("GUI初期化", full_output)
+        self.assertIn("startup OK", full_output)
+        self.assertIn("quick actions", full_output)
+        self.assertNotIn("home_quick_action_items", full_output)
+        self.assertNotIn("GUI smoke OK:", full_output)
         self.assertIn("表示の読みやすさ", full_output)
         self.assertIn("readability OK", full_output)
         self.assertIn("button labels OK", full_output)
@@ -3869,7 +3873,8 @@ tags:
                 "is_support_bundle_stale\n"
                 "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n"
                 "_score_issue_detail\n"
-                "_format_next_actions\n",
+                "_format_next_actions\n"
+                "_gui_smoke_summary\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
@@ -4390,6 +4395,7 @@ tags:
         self.assertIn("acceptance display safe display action:fail", product_details)
         self.assertIn("acceptance nested NG detail:fail", product_details)
         self.assertIn("acceptance deduplicated next actions:fail", product_details)
+        self.assertIn("acceptance GUI smoke summary:fail", product_details)
         self.assertIn("self-test privacy first NG detail:fail", product_details)
         self.assertIn("self-test privacy specific action:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
@@ -5935,6 +5941,7 @@ tags:
         self.assertIn("acceptance display safe display action:pass", launcher_details)
         self.assertIn("acceptance nested NG detail:pass", launcher_details)
         self.assertIn("acceptance deduplicated next actions:pass", launcher_details)
+        self.assertIn("acceptance GUI smoke summary:pass", launcher_details)
         self.assertIn("self-test privacy first NG detail:pass", launcher_details)
         self.assertIn("self-test privacy specific action:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
