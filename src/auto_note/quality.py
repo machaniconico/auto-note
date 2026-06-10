@@ -4990,6 +4990,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home release check freshness warning",
+            "RELEASE_CHECK_FRESHNESS_WARNING_HOURS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home release check timeline freshness",
+            "_home_release_check_timeline_detail",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home commercial setup dynamic action",
             "run_home_commercial_focus_action",
         )

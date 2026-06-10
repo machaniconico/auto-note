@@ -225,6 +225,7 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
+RELEASE_CHECK_FRESHNESS_WARNING_HOURS = 24
 # Prefer Windows-native Japanese UI faces first. Noto stays as a fallback,
 # but Tk on Windows can render it with tall metrics and cramped glyphs.
 UI_FONT_CANDIDATES = (
@@ -6212,13 +6213,7 @@ class AutoNoteApp(tk.Tk):
             launch_detail = "未保存"
         put("launch", "販売直前", launch_state, launch_detail)
 
-        if release_checks:
-            full_status = _home_report_status("一括チェック", release_checks[0])
-            full_state = _home_report_status_state(full_status)
-            full_detail = f"{full_status} / {_format_mtime(release_checks[0])}"
-        else:
-            full_state = "warn"
-            full_detail = "未実行"
+        full_state, full_detail = _home_release_check_timeline_detail(release_checks)
         put("full", "一括チェック", full_state, full_detail)
 
         done = sum(1 for _key, _title, state, _detail in timeline if state == "ok")
@@ -10150,18 +10145,59 @@ def _home_release_check_summary(reports: list[Path]) -> tuple[str, str]:
         )
     latest = reports[0]
     status = _home_report_status("一括チェック", latest)
-    state = _home_report_status_state(status)
+    state = _home_release_check_state(status, latest)
+    freshness = _home_release_check_freshness_label(latest)
     if status == "OK":
-        action = "販売直前の証跡として利用できます。"
+        if freshness == "24h超":
+            action = f"{RELEASE_CHECK_FRESHNESS_WARNING_HOURS}h超のため再実行推奨です。"
+        elif freshness == "更新確認不可":
+            action = "更新時刻を確認できないため再実行推奨です。"
+        else:
+            action = "販売直前の証跡として利用できます。"
     elif status == "NG":
         action = "表示で失敗箇所を確認します。"
+    elif freshness == "24h超":
+        action = f"{RELEASE_CHECK_FRESHNESS_WARNING_HOURS}h超です。再実行して最新化します。"
+    elif freshness == "更新確認不可":
+        action = "更新時刻を確認できません。内容を確認します。"
     else:
         action = "表示で内容を確認します。"
-    return state, f"販売前一括: {status} / {_format_mtime(latest)} / {action}"
+    freshness_text = f" / {freshness}" if freshness else ""
+    return state, f"販売前一括: {status} / {_format_mtime(latest)}{freshness_text} / {action}"
 
 
 def _home_release_check_button_label(reports: list[Path]) -> str:
     return "結果表示" if reports else "一括実行"
+
+
+def _home_release_check_timeline_detail(reports: list[Path]) -> tuple[str, str]:
+    if not reports:
+        return ("warn", "未実行")
+    latest = reports[0]
+    status = _home_report_status("一括チェック", latest)
+    state = _home_release_check_state(status, latest)
+    freshness = _home_release_check_freshness_label(latest)
+    detail = f"{status} / {_format_mtime(latest)}"
+    if freshness:
+        detail += f" / {freshness}"
+    return state, detail
+
+
+def _home_release_check_state(status: str, path: Path) -> str:
+    state = _home_report_status_state(status)
+    if status != "NG" and _home_release_check_freshness_label(path):
+        return "warn"
+    return state
+
+
+def _home_release_check_freshness_label(path: Path) -> str:
+    timestamp = _safe_mtime(path)
+    if timestamp <= 0:
+        return "更新確認不可"
+    age_hours = max(0.0, (datetime.now().timestamp() - timestamp) / 3600)
+    if age_hours > RELEASE_CHECK_FRESHNESS_WARNING_HOURS:
+        return "24h超"
+    return ""
 
 
 def _home_buyer_send_summary(

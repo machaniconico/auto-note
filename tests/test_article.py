@@ -100,6 +100,7 @@ from auto_note.gui import (
     _home_report_summary,
     _home_release_check_button_label,
     _home_release_check_summary,
+    _home_release_check_timeline_detail,
     _home_snapshot_brief,
     _home_snapshot_next_state,
     _home_snapshot_readiness_state,
@@ -548,6 +549,18 @@ class ArticleTests(unittest.TestCase):
             self.assertIn("販売前一括: OK", summary_text)
             self.assertIn("販売直前の証跡", summary_text)
             self.assertEqual(_home_release_check_button_label([first]), "結果表示")
+            timeline_state, timeline_text = _home_release_check_timeline_detail([first])
+            self.assertEqual(timeline_state, "ok")
+            self.assertIn("OK", timeline_text)
+            old_time = (datetime.now() - timedelta(hours=25)).timestamp()
+            os.utime(first, (old_time, old_time))
+            summary_state, summary_text = _home_release_check_summary([first])
+            self.assertEqual(summary_state, "warn")
+            self.assertIn("24h超", summary_text)
+            self.assertIn("再実行推奨", summary_text)
+            timeline_state, timeline_text = _home_release_check_timeline_detail([first])
+            self.assertEqual(timeline_state, "warn")
+            self.assertIn("24h超", timeline_text)
             write_text_atomic(first, "status: NG\n")
             self.assertEqual(_home_report_status("一括チェック", first), "NG")
             summary_state, summary_text = _home_release_check_summary([first])
@@ -4287,6 +4300,8 @@ tags:
                 + "_home_commercial_focus_button_label\n"
                 + "_home_release_check_button_label\n"
                 + "_home_release_check_summary\n"
+                + "_home_release_check_timeline_detail\n"
+                + "RELEASE_CHECK_FRESHNESS_WARNING_HOURS\n"
                 + "_set_home_release_check_status\n"
                 + "run_home_release_check_action\n"
                 + "show_latest_release_check_report_action\n"
@@ -5103,6 +5118,8 @@ tags:
         self.assertIn("GUI home release check status pill:fail", product_details)
         self.assertIn("GUI home release check dynamic action:fail", product_details)
         self.assertIn("GUI home release check latest result action:fail", product_details)
+        self.assertIn("GUI home release check freshness warning:fail", product_details)
+        self.assertIn("GUI home release check timeline freshness:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic action:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic button:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
@@ -5866,6 +5883,8 @@ tags:
         self.assertIn("GUI home release check status pill:pass", launcher_details)
         self.assertIn("GUI home release check dynamic action:pass", launcher_details)
         self.assertIn("GUI home release check latest result action:pass", launcher_details)
+        self.assertIn("GUI home release check freshness warning:pass", launcher_details)
+        self.assertIn("GUI home release check timeline freshness:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic action:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic button:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
