@@ -3468,6 +3468,7 @@ tags:
                 + "購入者送付文\n"
                 + "送付記録\n"
                 + "home_report_items=\n"
+                + "home_scroll_canvas\n"
                 + "self.copy_support_send_message_action()\n"
                 + '"送付文コピー": "次: 送付文"\n'
                 + '"送付文コピー": "サポート: 送付文"\n'
@@ -4101,6 +4102,7 @@ tags:
         self.assertIn("GUI home recent reports buyer delivery message:fail", product_details)
         self.assertIn("GUI home recent reports seller receipt:fail", product_details)
         self.assertIn("GUI smoke recent reports count:fail", product_details)
+        self.assertIn("GUI home scrollable workspace:fail", product_details)
         self.assertIn("README home progress lane guidance:fail", product_details)
         self.assertIn("README home compact snapshot guidance:fail", product_details)
         self.assertIn("README home progress direct open guidance:fail", product_details)
@@ -4709,6 +4711,7 @@ tags:
         self.assertIn("GUI home recent reports buyer delivery message:pass", launcher_details)
         self.assertIn("GUI home recent reports seller receipt:pass", launcher_details)
         self.assertIn("GUI smoke recent reports count:pass", launcher_details)
+        self.assertIn("GUI home scrollable workspace:pass", launcher_details)
         self.assertIn("README home progress lane guidance:pass", launcher_details)
         self.assertIn("README home compact snapshot guidance:pass", launcher_details)
         self.assertIn("README home progress direct open guidance:pass", launcher_details)

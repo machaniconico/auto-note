@@ -528,6 +528,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home scrollable workspace",
+            "home_scroll_canvas",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "README.md",
             "README recovery kit guidance",
             "復旧セット",

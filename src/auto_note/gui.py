@@ -643,6 +643,12 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         home_progress_action_items = (
             len(app.home_progress_buttons) if hasattr(app, "home_progress_buttons") else 0
         )
+        home_scrollable = hasattr(app, "home_scroll_canvas")
+        home_scrollregion_chars = (
+            len(str(app.home_scroll_canvas.cget("scrollregion")))
+            if hasattr(app, "home_scroll_canvas")
+            else 0
+        )
         home_status_badge_chars = (
             len(str(app.home_status_badge.cget("text"))) if hasattr(app, "home_status_badge") else 0
         )
@@ -707,6 +713,8 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
+            f"home_scrollable={home_scrollable}, "
+            f"home_scrollregion_chars={home_scrollregion_chars}, "
             f"home_status_badge_chars={home_status_badge_chars}, "
             f"home_updated_chars={home_updated_chars}, "
             f"home_primary_button_chars={home_primary_button_chars}, "
@@ -741,6 +749,56 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
 def _clean_path(path: Path) -> Path:
     value = str(path).strip().strip('"').strip("'")
     return Path(value)
+
+
+class _VerticalScrollFrame(ttk.Frame):
+    def __init__(self, parent: tk.Misc) -> None:
+        super().__init__(parent)
+        self.canvas = tk.Canvas(
+            self,
+            background=UI_COLORS["bg"],
+            borderwidth=0,
+            highlightthickness=0,
+        )
+        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.body = ttk.Frame(self.canvas)
+        self.window_id = self.canvas.create_window((0, 0), window=self.body, anchor=tk.NW)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.body.bind("<Configure>", self._on_body_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.canvas.bind("<Enter>", self._bind_mousewheel)
+        self.canvas.bind("<Leave>", self._unbind_mousewheel)
+
+    def _on_body_configure(self, _event: tk.Event) -> None:
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event: tk.Event) -> None:
+        self.canvas.itemconfigure(self.window_id, width=event.width)
+
+    def _bind_mousewheel(self, _event: tk.Event) -> None:
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
+
+    def _unbind_mousewheel(self, _event: tk.Event) -> None:
+        self.canvas.unbind_all("<MouseWheel>")
+        self.canvas.unbind_all("<Button-4>")
+        self.canvas.unbind_all("<Button-5>")
+
+    def _on_mousewheel(self, event: tk.Event) -> str:
+        bbox = self.canvas.bbox("all")
+        if not bbox or bbox[3] <= self.canvas.winfo_height():
+            return "break"
+        if getattr(event, "num", None) == 4:
+            delta = -1
+        elif getattr(event, "num", None) == 5:
+            delta = 1
+        else:
+            delta = -1 if getattr(event, "delta", 0) > 0 else 1
+        self.canvas.yview_scroll(delta, "units")
+        return "break"
 
 
 class AutoNoteApp(tk.Tk):
@@ -1243,7 +1301,13 @@ class AutoNoteApp(tk.Tk):
         self.bind_all("<Control-Shift-C>", lambda _event: self.copy_selected("body"))
 
     def _build_home_tab(self) -> None:
-        top = ttk.Frame(self.home_tab, style="HomeLead.TFrame", padding=(16, 14))
+        home_scroll = _VerticalScrollFrame(self.home_tab)
+        home_scroll.pack(fill=tk.BOTH, expand=True)
+        self.home_scroll_frame = home_scroll
+        self.home_scroll_canvas = home_scroll.canvas
+        home = home_scroll.body
+
+        top = ttk.Frame(home, style="HomeLead.TFrame", padding=(16, 14))
         top.pack(fill=tk.X, pady=(0, 10))
         tk.Frame(top, bg=UI_COLORS["accent"], width=4).pack(side=tk.LEFT, fill=tk.Y, padx=(0, 12))
         title_group = ttk.Frame(top, style="HomeLead.TFrame")
@@ -1285,7 +1349,7 @@ class AutoNoteApp(tk.Tk):
             command=lambda: self.notebook.select(self.diagnostics_tab),
         ).pack(side=tk.RIGHT, padx=6)
 
-        snapshot = ttk.Frame(self.home_tab, style="HomeSnapshot.TFrame")
+        snapshot = ttk.Frame(home, style="HomeSnapshot.TFrame")
         snapshot.pack(fill=tk.X, pady=(0, 10))
         self.home_snapshot_vars: dict[str, tk.StringVar] = {}
         self.home_snapshot_pills: dict[str, tk.Label] = {}
@@ -1328,7 +1392,7 @@ class AutoNoteApp(tk.Tk):
                 wraplength=250,
             ).pack(anchor=tk.W, fill=tk.X, pady=(5, 0))
 
-        self.kpi_frame = ttk.Frame(self.home_tab)
+        self.kpi_frame = ttk.Frame(home)
         self.kpi_frame.pack(fill=tk.X, pady=(0, 10))
         self.kpi_vars: dict[str, tk.StringVar] = {}
         for index, key in enumerate(("準備度", "記事", "下書き", "準備OK", "予定", "公開済み")):
@@ -1344,7 +1408,7 @@ class AutoNoteApp(tk.Tk):
             ttk.Label(box, textvariable=value, style="KpiValue.TLabel").pack(anchor=tk.W, pady=(4, 0))
             self.kpi_frame.columnconfigure(index, weight=1)
 
-        progress = ttk.LabelFrame(self.home_tab, text="作業進行", padding=10)
+        progress = ttk.LabelFrame(home, text="作業進行", padding=10)
         progress.pack(fill=tk.X, pady=(0, 10))
         progress_header = ttk.Frame(progress, style="Surface.TFrame")
         progress_header.pack(fill=tk.X, pady=(0, 8))
@@ -1420,7 +1484,7 @@ class AutoNoteApp(tk.Tk):
             button.pack(anchor=tk.W, pady=(5, 0))
             self.home_progress_buttons[key] = button
 
-        first_run_box = ttk.LabelFrame(self.home_tab, text="初回セットアップ", padding=10)
+        first_run_box = ttk.LabelFrame(home, text="初回セットアップ", padding=10)
         first_run_box.pack(fill=tk.X, pady=(0, 10))
         first_run_text = ttk.Frame(first_run_box, style="Surface.TFrame")
         first_run_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1464,7 +1528,7 @@ class AutoNoteApp(tk.Tk):
             columns=2,
         )
 
-        focus = ttk.Frame(self.home_tab, style="Surface.TFrame", padding=12)
+        focus = ttk.Frame(home, style="Surface.TFrame", padding=12)
         focus.pack(fill=tk.X, pady=(0, 10))
         focus_text = ttk.Frame(focus, style="Surface.TFrame")
         focus_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1485,7 +1549,7 @@ class AutoNoteApp(tk.Tk):
         )
         ttk.Button(focus, text="詳細", command=self.run_action_plan_to_tab).pack(side=tk.RIGHT)
 
-        recovery_box = ttk.LabelFrame(self.home_tab, text="復旧ステータス", padding=10)
+        recovery_box = ttk.LabelFrame(home, text="復旧ステータス", padding=10)
         recovery_box.pack(fill=tk.X, pady=(0, 10))
         recovery_text = ttk.Frame(recovery_box, style="Surface.TFrame")
         recovery_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1528,7 +1592,7 @@ class AutoNoteApp(tk.Tk):
             columns=2,
         )
 
-        sales_box = ttk.LabelFrame(self.home_tab, text="販売準備", padding=10)
+        sales_box = ttk.LabelFrame(home, text="販売準備", padding=10)
         sales_box.pack(fill=tk.X, pady=(0, 10))
         sales_text = ttk.Frame(sales_box, style="Surface.TFrame")
         sales_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1673,7 +1737,7 @@ class AutoNoteApp(tk.Tk):
             button.grid(row=row_index, column=0, sticky=tk.EW, pady=(0 if row_index == 0 else 6, 0))
         sales_actions.columnconfigure(0, weight=1)
 
-        action_box = ttk.LabelFrame(self.home_tab, text="優先アクション", padding=10)
+        action_box = ttk.LabelFrame(home, text="優先アクション", padding=10)
         action_box.pack(fill=tk.X, pady=(0, 10))
         columns = ("severity", "title", "action")
         self.home_action_tree = ttk.Treeview(
@@ -1713,7 +1777,7 @@ class AutoNoteApp(tk.Tk):
         )
         ttk.Button(action_buttons, text="詳細", command=self.run_action_plan_to_tab).pack(side=tk.LEFT, padx=6)
 
-        reports_box = ttk.LabelFrame(self.home_tab, text="直近レポート", padding=10)
+        reports_box = ttk.LabelFrame(home, text="直近レポート", padding=10)
         reports_box.pack(fill=tk.X, pady=(0, 10))
         reports_header = ttk.Frame(reports_box, style="Surface.TFrame")
         reports_header.pack(fill=tk.X, pady=(0, 6))
@@ -1766,7 +1830,7 @@ class AutoNoteApp(tk.Tk):
         self.home_reports_tree.bind("<<TreeviewSelect>>", lambda _event: self.on_select_home_report())
         self.home_reports_tree.bind("<Double-1>", lambda _event: self.show_selected_home_report_action())
 
-        quick = ttk.LabelFrame(self.home_tab, text="次の作業", padding=10)
+        quick = ttk.LabelFrame(home, text="次の作業", padding=10)
         quick.pack(fill=tk.X, pady=(0, 10))
         self._build_button_bar(
             quick,
@@ -1819,7 +1883,7 @@ class AutoNoteApp(tk.Tk):
             columns=5,
         )
 
-        self.home_text = ScrolledText(self.home_tab, wrap=tk.WORD, height=8, borderwidth=0)
+        self.home_text = ScrolledText(home, wrap=tk.WORD, height=8, borderwidth=0)
         _style_text_widget(self.home_text, code=True)
         self.home_text.pack(fill=tk.BOTH, expand=True)
         self.home_text.configure(state=tk.DISABLED)
