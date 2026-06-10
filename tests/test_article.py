@@ -117,7 +117,7 @@ from auto_note.improvement_plan import (
     write_improvement_plan_report,
 )
 from auto_note.licenses import collect_dependency_notices, format_dependency_notices, write_dependency_notices
-from auto_note.maintenance import cleanup_generated_files, format_cleanup_report
+from auto_note.maintenance import cleanup_generated_files, format_cleanup_confirmation, format_cleanup_report
 from auto_note.manual import write_manual_post_helper
 from auto_note.overview import (
     build_overview,
@@ -3291,7 +3291,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
-                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n_cleanup_summary_reason\n",
+                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n_cleanup_summary_reason\nformat_cleanup_confirmation\n元に戻せません\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_plan.py").write_text(
@@ -3354,6 +3354,7 @@ tags:
                 + "表示リセット\n"
                 + "表示診断\n"
                 + "表示診断コピー\n"
+                + "format_cleanup_confirmation(preview\n"
                 + "set_ui_density_action\n"
                 + "focus_ui_density_setting_action\n"
                 + "reset_display_action\n"
@@ -3850,6 +3851,9 @@ tags:
         self.assertIn("cleanup report reason breakdown:fail", product_details)
         self.assertIn("cleanup report dry-run safety guidance:fail", product_details)
         self.assertIn("cleanup privacy summary grouping:fail", product_details)
+        self.assertIn("cleanup confirmation formatter:fail", product_details)
+        self.assertIn("cleanup confirmation irreversible warning:fail", product_details)
+        self.assertIn("GUI cleanup confirmation summary:fail", product_details)
         self.assertIn("GUI starter pack action:fail", product_details)
         self.assertIn("GUI starter cleanup action:fail", product_details)
         self.assertIn("GUI repair action:fail", product_details)
@@ -4447,6 +4451,9 @@ tags:
         self.assertIn("cleanup report reason breakdown:pass", launcher_details)
         self.assertIn("cleanup report dry-run safety guidance:pass", launcher_details)
         self.assertIn("cleanup privacy summary grouping:pass", launcher_details)
+        self.assertIn("cleanup confirmation formatter:pass", launcher_details)
+        self.assertIn("cleanup confirmation irreversible warning:pass", launcher_details)
+        self.assertIn("GUI cleanup confirmation summary:pass", launcher_details)
         self.assertIn("GUI starter pack action:pass", launcher_details)
         self.assertIn("GUI starter cleanup action:pass", launcher_details)
         self.assertIn("GUI repair action:pass", launcher_details)
@@ -4988,6 +4995,7 @@ tags:
 
             preview = cleanup_generated_files(project, older_than_days=7, dry_run=True)
             report = format_cleanup_report(preview, dry_run=True)
+            confirmation = format_cleanup_confirmation(preview)
             result = cleanup_generated_files(project, older_than_days=7, dry_run=False)
 
             self.assertEqual(len(preview.items), 2)
@@ -4996,6 +5004,10 @@ tags:
             self.assertIn("種類別:", report)
             self.assertIn("generated helper HTML: 2件", report)
             self.assertIn("削除はまだ実行していません", report)
+            self.assertIn("2件の古い生成物を削除します。", confirmation)
+            self.assertIn("見込み解放容量:", confirmation)
+            self.assertIn("generated helper HTML: 2件", confirmation)
+            self.assertIn("この操作は元に戻せません", confirmation)
             self.assertEqual(result.deleted, 2)
             self.assertFalse(old_file.exists())
             self.assertFalse(nested_old_file.exists())
@@ -5156,6 +5168,7 @@ tags:
                 privacy_failed=True,
                 include_releases=True,
             )
+            release_confirmation = format_cleanup_confirmation(release_preview, privacy_failed=True)
             cli_output = io.StringIO()
             with redirect_stdout(cli_output):
                 code = cli_main(
@@ -5181,6 +5194,9 @@ tags:
         self.assertNotIn(release.name, preview_paths)
         self.assertIn(release.name, release_preview_paths)
         self.assertTrue(all("privacy audit NG" in item.reason for item in release_preview.items))
+        self.assertIn("プライバシー監査NG生成物を削除します。", release_confirmation)
+        self.assertIn("privacy audit NG", release_confirmation)
+        self.assertIn("この操作は元に戻せません", release_confirmation)
         self.assertEqual(code, 0)
         self.assertIn("privacy audit NG", cli_output.getvalue())
         self.assertIn("見込み解放容量:", cli_output.getvalue())

@@ -1608,6 +1608,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup confirmation formatter",
+            "format_cleanup_confirmation",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup confirmation irreversible warning",
+            "元に戻せません",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI cleanup confirmation summary",
+            "format_cleanup_confirmation(preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "sales finalize delivery verification SHA-256",
             "_delivery_verification_lines",

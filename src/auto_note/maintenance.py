@@ -343,6 +343,37 @@ def format_cleanup_report(result: CleanupResult, *, dry_run: bool = True) -> str
     return "\n".join(lines)
 
 
+def format_cleanup_confirmation(
+    result: CleanupResult,
+    *,
+    privacy_failed: bool = False,
+    max_breakdown_items: int = 5,
+) -> str:
+    target = "プライバシー監査NG生成物" if privacy_failed else "古い生成物"
+    total_bytes = sum(item.size_bytes for item in result.items)
+    lines = [
+        f"{len(result.items)}件の{target}を削除します。",
+        f"見込み解放容量: {_format_bytes(total_bytes)}",
+        "",
+        "種類別:",
+    ]
+    summary = _cleanup_reason_summary(result.items)
+    visible_summary = summary[: max(0, max_breakdown_items)]
+    for reason, count, size_bytes in visible_summary:
+        lines.append(f"- {reason}: {count}件 / {_format_bytes(size_bytes)}")
+    hidden = len(summary) - len(visible_summary)
+    if hidden > 0:
+        lines.append(f"- ほか {hidden}種類")
+    lines.extend(
+        [
+            "",
+            "対象は .auto-note 内の生成物だけです。",
+            "この操作は元に戻せません。続行しますか？",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _cleanup_reason_summary(items: list[CleanupItem]) -> list[tuple[str, int, int]]:
     summary: dict[str, tuple[int, int]] = {}
     for item in items:

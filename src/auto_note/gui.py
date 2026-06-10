@@ -76,7 +76,7 @@ from .improvement_plan import (
     has_improvement_plan_blockers,
 )
 from .licenses import collect_dependency_notices, format_dependency_notices, write_dependency_notices
-from .maintenance import cleanup_generated_files, format_cleanup_report
+from .maintenance import cleanup_generated_files, format_cleanup_confirmation, format_cleanup_report
 from .manual import NOTE_LOGIN_URL, open_manual_dashboard, open_manual_post_helper
 from .overview import build_overview, format_overview_report, list_overview_reports, write_overview_report
 from .preflight import format_preflight_report, run_preflight
@@ -8115,7 +8115,7 @@ class AutoNoteApp(tk.Tk):
             self.notebook.select(self.diagnostics_tab)
             self.notify("整理対象はありません", level="success")
             return
-        if not messagebox.askyesno("生成物整理", f"{len(preview.items)}件の古い生成物を削除しますか？"):
+        if not messagebox.askyesno("生成物整理", format_cleanup_confirmation(preview)):
             return
         result = cleanup_generated_files(self.project_dir, dry_run=False)
         self._set_text(self.diagnostics_text, format_cleanup_report(result, dry_run=False))
@@ -8136,8 +8136,7 @@ class AutoNoteApp(tk.Tk):
             return
         if not messagebox.askyesno(
             "危険生成物整理",
-            f"{len(preview.items)}件のプライバシー監査NG生成物を削除しますか？\n\n"
-            "対象は .auto-note 内の診断ZIP、問い合わせMarkdown/ZIP、配布ZIPだけです。",
+            format_cleanup_confirmation(preview, privacy_failed=True),
         ):
             return
         result = cleanup_generated_files(
