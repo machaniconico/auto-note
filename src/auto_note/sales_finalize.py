@@ -45,6 +45,11 @@ from .sales_materials import (
     format_sales_materials_verification,
     verify_sales_materials,
 )
+from .sales_screenshots import (
+    create_sales_screenshot_pack,
+    format_sales_screenshot_verification,
+    verify_sales_screenshot_pack,
+)
 from .sales_plan import write_sales_plan_report
 from .settings import AppSettings, load_settings
 
@@ -65,6 +70,7 @@ class SalesFinalizeReport:
     release_path: Path | None = None
     commercial_template_path: Path | None = None
     sales_materials_path: Path | None = None
+    sales_screenshot_pack_path: Path | None = None
     sales_handoff_path: Path | None = None
     buyer_delivery_dir: Path | None = None
     buyer_delivery_package_path: Path | None = None
@@ -128,6 +134,7 @@ def create_sales_finalize(
     release_path: Path | None = None
     commercial_template_path: Path | None = None
     sales_materials_path: Path | None = None
+    sales_screenshot_pack_path: Path | None = None
     sales_handoff_path: Path | None = None
     buyer_delivery_dir: Path | None = None
     buyer_delivery_package_path: Path | None = None
@@ -146,6 +153,7 @@ def create_sales_finalize(
             release_path=release_path,
             commercial_template_path=commercial_template_path,
             sales_materials_path=sales_materials_path,
+            sales_screenshot_pack_path=sales_screenshot_pack_path,
             sales_handoff_path=sales_handoff_path,
             buyer_delivery_dir=buyer_delivery_dir,
             buyer_delivery_package_path=buyer_delivery_package_path,
@@ -296,6 +304,33 @@ def create_sales_finalize(
         )
     )
     if material_status == "fail":
+        return finish()
+
+    try:
+        screenshot_pack = create_sales_screenshot_pack(project_dir)
+    except OSError as exc:
+        steps.append(
+            SalesFinalizeStep(
+                "sales screenshots",
+                "fail",
+                str(exc),
+                "販売ページ掲載画像の保存先を確認してください。",
+            )
+        )
+        return finish()
+    sales_screenshot_pack_path = screenshot_pack.directory
+    screenshot_errors = verify_sales_screenshot_pack(screenshot_pack.directory)
+    steps.append(
+        SalesFinalizeStep(
+            "sales screenshots",
+            "fail" if screenshot_errors else "pass",
+            f"{screenshot_pack.directory.name}, assets {len(screenshot_pack.assets)}, verify errors {len(screenshot_errors)}",
+            "掲載画像パックを確認し、`auto-note sales-screenshots --project-dir .` を再実行してください。"
+            if screenshot_errors
+            else "",
+        )
+    )
+    if screenshot_errors:
         return finish()
 
     try:
@@ -474,6 +509,7 @@ def create_sales_finalize(
             buyer_message_path=buyer_delivery_message_path,
             sales_handoff_path=sales_handoff_path,
             release_path=release_path,
+            sales_screenshot_pack_path=sales_screenshot_pack_path,
             acceptance_report_path=acceptance_report_path,
             sales_plan_report_path=sales_plan_report_path,
             sales_evidence_manifest_path=planned_sales_evidence_manifest_path,
@@ -913,6 +949,7 @@ def format_sales_finalize_report(report: SalesFinalizeReport) -> str:
         f"- release package: {_name_or_none(report.release_path)}",
         f"- commercial setup template: {_name_or_none(report.commercial_template_path)}",
         f"- sales materials: {_name_or_none(report.sales_materials_path)}",
+        f"- sales screenshot pack: {_name_or_none(report.sales_screenshot_pack_path)}",
         f"- sales handoff: {_name_or_none(report.sales_handoff_path)}",
         f"- buyer delivery: {_name_or_none(report.buyer_delivery_dir)}",
         f"- buyer delivery zip: {_name_or_none(report.buyer_delivery_package_path)}",
@@ -955,6 +992,10 @@ def format_sales_finalize_report(report: SalesFinalizeReport) -> str:
                     next_actions.append(
                         f"- delivery message: {report.buyer_delivery_message_path.name} の文面を販売サイトの納品メッセージに貼り付けてください。"
                     )
+                if report.sales_screenshot_pack_path:
+                    next_actions.append(
+                        f"- listing images: {report.sales_screenshot_pack_path.name} の index.html と SCREENSHOT_CAPTIONS.md を掲載前に確認してください。"
+                    )
                 if report.sales_plan_report_path:
                     next_actions.append(
                         f"- sales plan: {report.sales_plan_report_path.name} で販売者入力残件とアップロード判断を保管してください。"
@@ -989,6 +1030,18 @@ def format_sales_finalize_details(report: SalesFinalizeReport) -> str:
     if report.sales_materials_path:
         material_errors = verify_sales_materials(report.sales_materials_path, strict=True, project_dir=report.project_dir)
         parts.append(format_sales_materials_verification(report.sales_materials_path, material_errors, strict=True))
+    if report.sales_screenshot_pack_path:
+        parts.append(
+            format_sales_screenshot_verification(
+                report.sales_screenshot_pack_path,
+                verify_sales_screenshot_pack(report.sales_screenshot_pack_path),
+            )
+        )
+        for filename in ("README.txt", "SCREENSHOT_CAPTIONS.md"):
+            try:
+                parts.append((report.sales_screenshot_pack_path / filename).read_text(encoding="utf-8", errors="replace").strip())
+            except OSError:
+                pass
     if report.sales_handoff_path:
         parts.append(format_sales_handoff_verification(report.sales_handoff_path, verify_sales_handoff(report.sales_handoff_path)))
     if report.buyer_delivery_dir:
@@ -1207,6 +1260,9 @@ def _delivery_verification_lines(report: SalesFinalizeReport) -> list[str]:
         evidence = _file_evidence(path)
         if evidence:
             lines.append(f"- {label}: {evidence}")
+    screenshot_evidence = _directory_evidence(report.sales_screenshot_pack_path)
+    if screenshot_evidence:
+        lines.append(f"- sales screenshot pack: {screenshot_evidence}")
     return lines
 
 
@@ -1236,6 +1292,7 @@ def _write_seller_send_checklist(
     buyer_message_path: Path | None,
     sales_handoff_path: Path | None,
     release_path: Path | None,
+    sales_screenshot_pack_path: Path | None,
     acceptance_report_path: Path | None,
     sales_plan_report_path: Path | None,
     sales_evidence_manifest_path: Path | None,
@@ -1252,6 +1309,7 @@ def _write_seller_send_checklist(
             buyer_message_path=buyer_message_path,
             sales_handoff_path=sales_handoff_path,
             release_path=release_path,
+            sales_screenshot_pack_path=sales_screenshot_pack_path,
             acceptance_report_path=acceptance_report_path,
             sales_plan_report_path=sales_plan_report_path,
             sales_evidence_manifest_path=sales_evidence_manifest_path,
@@ -1299,6 +1357,7 @@ def _build_seller_send_checklist(
     buyer_message_path: Path | None,
     sales_handoff_path: Path | None,
     release_path: Path | None,
+    sales_screenshot_pack_path: Path | None,
     acceptance_report_path: Path | None,
     sales_plan_report_path: Path | None,
     sales_evidence_manifest_path: Path | None,
@@ -1335,6 +1394,8 @@ def _build_seller_send_checklist(
         f"    {_file_evidence(sales_handoff_path) or 'not available'}\n"
         f"[ ] Source release: {_name_or_none(release_path)}\n"
         f"    {_file_evidence(release_path) or 'not available'}\n"
+        f"[ ] Sales screenshot pack: {_name_or_none(sales_screenshot_pack_path)}\n"
+        f"    {_directory_evidence(sales_screenshot_pack_path) or 'not available'}\n"
         f"[ ] Acceptance evidence: {_name_or_none(acceptance_report_path)}\n"
         f"[ ] Sales plan evidence: {_name_or_none(sales_plan_report_path)}\n"
         f"[ ] Sales evidence manifest: {_name_or_none(sales_evidence_manifest_path)}\n"
@@ -1367,6 +1428,7 @@ def _write_sales_evidence_manifest(report: SalesFinalizeReport) -> Path:
             "sales_handoff_zip": _manifest_file(report.sales_handoff_path),
             "release_package": _manifest_file(report.release_path),
             "sales_materials": _manifest_file(report.sales_materials_path),
+            "sales_screenshot_pack": _manifest_directory(report.sales_screenshot_pack_path),
             "sales_plan_report": _manifest_file(report.sales_plan_report_path),
             "seller_send_checklist": _manifest_file(report.seller_send_checklist_path),
             "acceptance_report": _manifest_file(report.acceptance_report_path),
@@ -1434,3 +1496,13 @@ def _file_evidence(path: Path | None) -> str:
     except OSError:
         return ""
     return f"{path.name}, {len(data)} bytes, SHA-256 {hashlib.sha256(data).hexdigest()}"
+
+
+def _directory_evidence(path: Path | None) -> str:
+    if path is None or not path.exists() or not path.is_dir():
+        return ""
+    try:
+        entries = sorted(child.name for child in path.iterdir() if child.is_file())
+    except OSError:
+        return ""
+    return f"{path.name}, {len(entries)} file(s)"

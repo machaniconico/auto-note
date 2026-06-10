@@ -1602,6 +1602,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize creates sales screenshots",
+            "create_sales_screenshot_pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize verifies sales screenshots",
+            "verify_sales_screenshot_pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize details sales screenshots",
+            "format_sales_screenshot_verification",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
             "buyer send readiness runner",
             "run_buyer_send_readiness",
         )
@@ -2241,6 +2262,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "sales finalize artifacts sales evidence manifest",
             "sales evidence manifest",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize artifacts sales screenshot pack",
+            "sales_screenshot_pack_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales evidence manifest sales screenshot pack",
+            '"sales_screenshot_pack"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller checklist sales screenshot pack",
+            "Sales screenshot pack",
         )
     )
     checks.append(
@@ -4719,6 +4761,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales finalize opens sales evidence manifest",
             "sales_evidence_manifest_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales finalize opens sales screenshots",
+            "sales_screenshot_pack_path",
         )
     )
     checks.append(

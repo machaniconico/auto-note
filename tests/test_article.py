@@ -2258,6 +2258,30 @@ tags: note
                 report.sales_evidence_manifest_path and report.sales_evidence_manifest_path.exists()
             )
             sales_evidence_manifest_count = len(list_sales_evidence_manifests(project))
+            sales_screenshot_pack_exists = bool(
+                report.sales_screenshot_pack_path and report.sales_screenshot_pack_path.exists()
+            )
+            sales_screenshot_pack_errors = (
+                verify_sales_screenshot_pack(report.sales_screenshot_pack_path)
+                if report.sales_screenshot_pack_path
+                else ["missing sales screenshot pack"]
+            )
+            sales_screenshot_pack_entries = (
+                {path.name for path in report.sales_screenshot_pack_path.iterdir()}
+                if report.sales_screenshot_pack_path
+                else set()
+            )
+            sales_screenshot_pack_count = len(list_sales_screenshot_packs(project))
+            sales_screenshot_caption_text = (
+                (report.sales_screenshot_pack_path / "SCREENSHOT_CAPTIONS.md").read_text(encoding="utf-8")
+                if report.sales_screenshot_pack_path
+                else ""
+            )
+            sales_screenshot_readme_text = (
+                (report.sales_screenshot_pack_path / "README.txt").read_text(encoding="utf-8")
+                if report.sales_screenshot_pack_path
+                else ""
+            )
             buyer_delivery_messages = list_buyer_delivery_messages(project)
             buyer_delivery_message_names = [path.name for path in buyer_delivery_messages]
             buyer_send_readiness = run_buyer_send_readiness(project)
@@ -2384,6 +2408,10 @@ tags: note
         self.assertIsNotNone(report.sales_evidence_manifest_path)
         self.assertTrue(sales_evidence_manifest_exists)
         self.assertGreaterEqual(sales_evidence_manifest_count, 1)
+        self.assertIsNotNone(report.sales_screenshot_pack_path)
+        self.assertTrue(sales_screenshot_pack_exists)
+        self.assertEqual(sales_screenshot_pack_errors, [])
+        self.assertGreaterEqual(sales_screenshot_pack_count, 1)
         self.assertIsNotNone(report.acceptance_report_path)
         self.assertTrue(acceptance_report_exists)
         self.assertEqual(buyer_delivery_errors, [])
@@ -2405,16 +2433,19 @@ tags: note
         self.assertIn("buyer delivery:", text)
         self.assertIn("buyer delivery zip:", text)
         self.assertIn("buyer delivery message:", text)
+        self.assertIn("sales screenshot pack:", text)
         self.assertIn("sales plan report:", text)
         self.assertIn("seller send checklist:", text)
         self.assertIn("sales evidence manifest:", text)
         self.assertIn("acceptance report:", text)
         self.assertIn("buyer acceptance", text)
         self.assertIn("[OK] sales plan report", text)
+        self.assertIn("[OK] sales screenshots", text)
         self.assertIn("[OK] sales evidence manifest", text)
         self.assertIn("Buyer delivery contents", text)
         self.assertIn("Delivery verification", text)
         self.assertIn("SHA-256", text)
+        self.assertIn("listing images:", text)
         self.assertIn("START_HERE_FOR_BUYER.txt", text)
         self.assertIn("BUYER_DELIVERY_MANIFEST.json", text)
         self.assertIn("購入者には", text)
@@ -2430,9 +2461,25 @@ tags: note
         self.assertIn("auto-note seller send checklist", seller_send_checklist_text)
         self.assertIn("Attach exactly this ZIP", seller_send_checklist_text)
         self.assertIn("Sales plan evidence", seller_send_checklist_text)
+        self.assertIn("Sales screenshot pack", seller_send_checklist_text)
         self.assertIn("Sales evidence manifest", seller_send_checklist_text)
         self.assertIn("Do not attach auto-note-sales-handoff-*.zip", seller_send_checklist_text)
         self.assertIn("Remaining seller actions", seller_send_checklist_text)
+        self.assertEqual(
+            sales_screenshot_pack_entries,
+            {
+                "01-home-readiness.svg",
+                "02-article-polish.svg",
+                "03-safe-posting.svg",
+                "04-sales-delivery.svg",
+                "05-support-diagnostics.svg",
+                "SCREENSHOT_CAPTIONS.md",
+                "index.html",
+                "README.txt",
+            },
+        )
+        self.assertIn("marketplace listing pages", sales_screenshot_readme_text)
+        self.assertIn("ホームで準備度", sales_screenshot_caption_text)
         self.assertIn("Sales plan / 販売ナビ", sales_plan_report_text)
         self.assertIn("Buyer delivery readiness", sales_plan_report_text)
         self.assertNotIn(str(project), sales_plan_report_text)
@@ -2445,6 +2492,11 @@ tags: note
             sales_evidence_manifest["artifacts"]["sales_plan_report"]["file_name"],
             report.sales_plan_report_path.name,
         )
+        self.assertEqual(
+            sales_evidence_manifest["artifacts"]["sales_screenshot_pack"]["directory_name"],
+            report.sales_screenshot_pack_path.name,
+        )
+        self.assertIn("index.html", sales_evidence_manifest["artifacts"]["sales_screenshot_pack"]["entries"])
         self.assertIn("sha256", sales_evidence_manifest["artifacts"]["buyer_delivery_zip"])
         self.assertIn("BUYER_DELIVERY_MANIFEST.json", sales_evidence_manifest["buyer_delivery_contents"])
         self.assertIn("buyer delivery zip", {item["name"] for item in sales_evidence_manifest["checks"]})
@@ -2464,6 +2516,8 @@ tags: note
         self.assertIn("[OK] buyer delivery verified", details)
         self.assertIn("[OK] buyer delivery zip verified", details)
         self.assertIn("auto-note buyer delivery message", details)
+        self.assertIn("[OK] sales screenshot pack verified", details)
+        self.assertIn("SCREENSHOT_CAPTIONS.md", details)
         self.assertIn("Sales plan / 販売ナビ", details)
         self.assertIn("auto-note seller send checklist", details)
         self.assertIn("auto-note.sales-evidence-manifest.v1", details)
@@ -3529,7 +3583,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_finalize.py").write_text(
-                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\nrun_buyer_send_readiness\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n",
+                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\nrun_buyer_send_readiness\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nSales screenshot pack\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "privacy.py").write_text(
@@ -3590,7 +3644,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
-                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\nhome_sales_timeline_vars\nhome_sales_timeline_summary_var\n販売準備タイムライン\n_set_home_sales_timeline_step\n_refresh_home_sales_timeline\nhome_sales_timeline_items=\nhome_sales_timeline_chars=\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n問い合わせ票\nopen_latest_buyer_support_request_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\n掲載画像作成\n掲載画像検証\ncreate_sales_screenshots_action\nverify_latest_sales_screenshots_action\nlist_sales_screenshot_packs\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\n_buyer_support_request_for\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nrun_release_check_full_action\nthreading.Thread\nrelease-check-\n販売前一括チェック\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
+                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\nhome_sales_timeline_vars\nhome_sales_timeline_summary_var\n販売準備タイムライン\n_set_home_sales_timeline_step\n_refresh_home_sales_timeline\nhome_sales_timeline_items=\nhome_sales_timeline_chars=\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n問い合わせ票\nopen_latest_buyer_support_request_action\n送付文コピー\ncopy_latest_buyer_delivery_message_action\n販売素材作成\n販売素材検証\n掲載画像作成\n掲載画像検証\ncreate_sales_screenshots_action\nverify_latest_sales_screenshots_action\nlist_sales_screenshot_packs\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\n_buyer_support_request_for\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\nsales_screenshot_pack_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nrun_release_check_full_action\nthreading.Thread\nrelease-check-\n販売前一括チェック\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
                 encoding="utf-8",
             )
             gui_fixture = project / "src" / "auto_note" / "gui.py"
