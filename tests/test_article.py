@@ -3291,7 +3291,11 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
-                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n_cleanup_summary_reason\nformat_cleanup_confirmation\n元に戻せません\n",
+                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n_cleanup_summary_reason\nformat_cleanup_confirmation\n元に戻せません\ndef format_bytes\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "readiness.py").write_text(
+                "estimated reclaim\nプレビューでは削除しません\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_plan.py").write_text(
@@ -3857,6 +3861,9 @@ tags:
         self.assertIn("cleanup privacy summary grouping:fail", product_details)
         self.assertIn("cleanup confirmation formatter:fail", product_details)
         self.assertIn("cleanup confirmation irreversible warning:fail", product_details)
+        self.assertIn("cleanup shared byte formatter:fail", product_details)
+        self.assertIn("readiness privacy cleanup estimated reclaim:fail", product_details)
+        self.assertIn("readiness privacy cleanup preview safety:fail", product_details)
         self.assertIn("GUI cleanup confirmation summary:fail", product_details)
         self.assertIn("GUI starter pack action:fail", product_details)
         self.assertIn("GUI starter cleanup action:fail", product_details)
@@ -4460,6 +4467,9 @@ tags:
         self.assertIn("cleanup privacy summary grouping:pass", launcher_details)
         self.assertIn("cleanup confirmation formatter:pass", launcher_details)
         self.assertIn("cleanup confirmation irreversible warning:pass", launcher_details)
+        self.assertIn("cleanup shared byte formatter:pass", launcher_details)
+        self.assertIn("readiness privacy cleanup estimated reclaim:pass", launcher_details)
+        self.assertIn("readiness privacy cleanup preview safety:pass", launcher_details)
         self.assertIn("GUI cleanup confirmation summary:pass", launcher_details)
         self.assertIn("GUI starter pack action:pass", launcher_details)
         self.assertIn("GUI starter cleanup action:pass", launcher_details)
@@ -5214,6 +5224,9 @@ tags:
         self.assertIn("削除はまだ実行していません", cli_output.getvalue())
         self.assertTrue(any(item.name == "privacy cleanup" and item.status == "info" for item in readiness.items))
         self.assertIn("privacy cleanup", readiness_text)
+        self.assertIn("2 generated artifact(s), 1 release package(s)", readiness_text)
+        self.assertIn("estimated reclaim", readiness_text)
+        self.assertIn("プレビューでは削除しません", readiness_text)
         self.assertEqual(result.deleted, 3)
         self.assertTrue(diagnostic_deleted)
         self.assertTrue(request_deleted)

@@ -433,9 +433,13 @@ def _is_release_artifact(project_dir: Path, path: Path) -> bool:
         return False
 
 
-def _format_bytes(value: int) -> str:
+def format_bytes(value: int) -> str:
     if value >= 1024 * 1024:
         return f"{value / (1024 * 1024):.1f} MB"
     if value >= 1024:
         return f"{value / 1024:.1f} KB"
     return f"{value} B"
+
+
+def _format_bytes(value: int) -> str:
+    return format_bytes(value)

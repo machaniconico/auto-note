@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .backup import inspect_backup, list_backups
-from .maintenance import collect_privacy_failed_artifacts
+from .maintenance import collect_privacy_failed_artifacts, format_bytes
 from .quality import run_quality_checks
 from .review import review_path
 from .release import list_releases, verify_release_package
@@ -203,18 +203,31 @@ def _privacy_cleanup_item(project_dir: Path) -> ReadinessItem:
         return ReadinessItem("privacy cleanup", "pass", "no privacy audit cleanup candidates")
     release_dir = (project_dir / ".auto-note" / "releases").resolve()
     release_count = 0
+    release_bytes = 0
+    generated_count = 0
+    generated_bytes = 0
     for item in items:
         try:
             item.path.resolve().relative_to(release_dir)
         except ValueError:
+            generated_count += 1
+            generated_bytes += item.size_bytes
             continue
         release_count += 1
-    generated_count = len(items) - release_count
+        release_bytes += item.size_bytes
+    total_bytes = generated_bytes + release_bytes
     return ReadinessItem(
         "privacy cleanup",
         "info",
-        f"{generated_count} generated artifact(s), {release_count} release package(s)",
-        "`auto-note cleanup --project-dir . --privacy-failed --include-releases` で候補を確認できます。",
+        (
+            f"{generated_count} generated artifact(s), {release_count} release package(s), "
+            f"estimated reclaim {format_bytes(total_bytes)} "
+            f"(generated {format_bytes(generated_bytes)}, releases {format_bytes(release_bytes)})"
+        ),
+        (
+            "`auto-note cleanup --project-dir . --privacy-failed --include-releases` "
+            "で候補と見込み解放容量を確認できます（プレビューでは削除しません）。"
+        ),
     )
 
 

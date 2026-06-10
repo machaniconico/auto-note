@@ -1622,6 +1622,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup shared byte formatter",
+            "def format_bytes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness privacy cleanup estimated reclaim",
+            "estimated reclaim",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness privacy cleanup preview safety",
+            "プレビューでは削除しません",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI cleanup confirmation summary",
             "format_cleanup_confirmation(preview",
