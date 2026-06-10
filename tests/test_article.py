@@ -515,25 +515,25 @@ class ArticleTests(unittest.TestCase):
         self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
     def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
-        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Yu Gothic UI", "Yu Gothic", "Meiryo UI", "Meiryo"))
+        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Yu Gothic", "Meiryo UI", "Meiryo", "メイリオ"))
         self.assertIn("Noto Sans JP", UI_FONT_CANDIDATES)
-        self.assertGreaterEqual(UI_TEXT_SIZE, 16)
-        self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 15)
-        self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 15)
+        self.assertGreaterEqual(UI_TEXT_SIZE, 12)
+        self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 11)
+        self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 11)
         self.assertLessEqual(UI_MIN_FONT_LINESPACE_RATIO, 1.3)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["text_size"], 17)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 16)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 16)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 30)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 18)
-        self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 20)
+        self.assertEqual(UI_DENSITY_VALUES["standard"]["text_size"], 12)
+        self.assertEqual(UI_DENSITY_VALUES["standard"]["small_text_size"], 11)
+        self.assertEqual(UI_DENSITY_VALUES["standard"]["badge_font_size"], 11)
+        self.assertLessEqual(UI_DENSITY_VALUES["standard"]["button_padding"][1], 12)
+        self.assertEqual(UI_DENSITY_VALUES["comfortable"]["text_size"], 14)
+        self.assertEqual(UI_DENSITY_VALUES["large"]["text_size"], 16)
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
         self.assertEqual(UI_CONTROL_FONT_WEIGHT, "normal")
         self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
         self.assertFalse(_is_crush_prone_font_family("メイリオ"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo"))
-        self.assertFalse(_is_crush_prone_font_family("Yu Gothic UI"))
+        self.assertFalse(_is_crush_prone_font_family("Yu Gothic"))
         self.assertTrue(_is_crush_prone_font_family("Noto Sans JP"))
         self.assertTrue(_is_crush_prone_font_family("Noto Sans CJK JP"))
         self.assertTrue(_is_crush_prone_font_family("BIZ UDPゴシック"))
@@ -1092,7 +1092,7 @@ tags: note
 
         self.assertEqual(loaded.image_max_width, 4000)
         self.assertEqual(loaded.image_quality, 30)
-        self.assertEqual(loaded.ui_density, "comfortable")
+        self.assertEqual(loaded.ui_density, "standard")
         self.assertEqual(loaded.seller_name, "")
         self.assertFalse(loaded.commercial_terms_reviewed)
 
@@ -4092,7 +4092,7 @@ tags:
                 "ui_density: str\n"
                 "UI_DENSITY_OPTIONS\n"
                 "_normalise_ui_density\n"
-                'ui_density="comfortable"\n',
+                'ui_density="standard"\n',
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "selftest.py").write_text(
@@ -4229,23 +4229,23 @@ tags:
                 + "list_sales_launch_confirmations\n"
                 + "販売確認記録\n"
                 + "販売確認\n"
-                + '"Yu Gothic UI"\n'
+                + '"Yu Gothic"\n'
                 + '"Noto Sans JP"\n'
-                + '"Yu Gothic UI",\n    "Yu Gothic",\n    "Meiryo UI"\n'
+                + '"Yu Gothic",\n    "Meiryo UI",\n    "Meiryo"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
                 + 'UI_CONTROL_FONT_WEIGHT = "normal"\n'
-                + "UI_TEXT_SIZE = 16\n"
-                + "UI_BADGE_FONT_SIZE = 15\n"
-                + "UI_TREE_ROW_HEIGHT = 76\n"
-                + "UI_NOTEBOOK_TAB_PADDING = (26, 22)\n"
-                + "UI_BUTTON_PADDING = (25, 21)\n"
+                + "UI_TEXT_SIZE = 12\n"
+                + "UI_BADGE_FONT_SIZE = 11\n"
+                + "UI_TREE_ROW_HEIGHT = 54\n"
+                + "UI_NOTEBOOK_TAB_PADDING = (18, 12)\n"
+                + "UI_BUTTON_PADDING = (18, 10)\n"
                 + "UI_ACTION_BUTTON_MIN_WIDTH = 208\n"
                 + "UI_ACTION_BUTTON_MAX_COLUMNS = 4\n"
-                + "UI_TEXT_SPACING_BOTTOM = 8\n"
-                + '"standard": {\n        "text_size": 17,\n'
-                + '"small_text_size": 16,\n        "badge_font_size": 16,\n'
-                + '"large": {\n        "text_size": 20,\n'
+                + "UI_TEXT_SPACING_BOTTOM = 6\n"
+                + '"standard": {\n        "text_size": 12,\n'
+                + '"small_text_size": 11,\n        "badge_font_size": 11,\n'
+                + '"large": {\n        "text_size": 16,\n'
                 + "_font_linespace\n"
                 + "_horizontal_padding\n"
                 + "_button_label_fit_status\n"
@@ -4601,7 +4601,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic UI` / `Yu Gothic` / `Meiryo UI\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             readme_fixture = project / "README.md"
@@ -4624,7 +4624,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "CHANGELOG.md").write_text(
-                "Yu Gothic UI` / `Yu Gothic\n",
+                "Yu Gothic` / `Meiryo UI\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RELEASE_CHECKLIST.md").write_text(

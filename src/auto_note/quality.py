@@ -3444,14 +3444,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable Japanese font",
-            '"Yu Gothic UI"',
+            '"Yu Gothic"',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI native Japanese preferred font",
-            '"Yu Gothic UI",\n    "Yu Gothic",\n    "Meiryo UI"',
+            '"Yu Gothic",\n    "Meiryo UI",\n    "Meiryo"',
         )
     )
     checks.append(
@@ -3479,14 +3479,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text size tokens",
-            "UI_TEXT_SIZE = 16",
+            "UI_TEXT_SIZE = 12",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable badge font size",
-            "UI_BADGE_FONT_SIZE = 15",
+            "UI_BADGE_FONT_SIZE = 11",
         )
     )
     checks.append(
@@ -3500,21 +3500,21 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tree row height",
-            "UI_TREE_ROW_HEIGHT = 76",
+            "UI_TREE_ROW_HEIGHT = 54",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable tab padding",
-            "UI_NOTEBOOK_TAB_PADDING = (26, 22)",
+            "UI_NOTEBOOK_TAB_PADDING = (18, 12)",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable button padding",
-            "UI_BUTTON_PADDING = (25, 21)",
+            "UI_BUTTON_PADDING = (18, 10)",
         )
     )
     checks.append(
@@ -3535,28 +3535,28 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI readable text line spacing",
-            "UI_TEXT_SPACING_BOTTOM = 8",
+            "UI_TEXT_SPACING_BOTTOM = 6",
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable text",
-            '"standard": {\n        "text_size": 17,',
+            '"standard": {\n        "text_size": 12,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI standard density readable small text",
-            '"small_text_size": 16,\n        "badge_font_size": 16,',
+            '"small_text_size": 11,\n        "badge_font_size": 11,',
         )
     )
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI large density safe-display text",
-            '"large": {\n        "text_size": 20,',
+            '"large": {\n        "text_size": 16,',
         )
     )
     checks.append(
@@ -4172,7 +4172,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "README.md",
             "README current readable Japanese font guidance",
-            "Yu Gothic UI` / `Yu Gothic` / `Meiryo UI",
+            "Yu Gothic` / `Meiryo UI` / `Meiryo",
         )
     )
     checks.append(
@@ -4186,7 +4186,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "docs" / "CHANGELOG.md",
             "changelog current readable Japanese font guidance",
-            "Yu Gothic UI` / `Yu Gothic",
+            "Yu Gothic` / `Meiryo UI",
         )
     )
     checks.append(

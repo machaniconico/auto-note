@@ -230,11 +230,11 @@ RELEASE_CHECK_FRESHNESS_WARNING_HOURS = 24
 # Prefer Windows-native Japanese UI faces first. Noto stays as a fallback,
 # but Tk on Windows can render it with tall metrics and cramped glyphs.
 UI_FONT_CANDIDATES = (
-    "Yu Gothic UI",
     "Yu Gothic",
     "Meiryo UI",
     "Meiryo",
     "メイリオ",
+    "Yu Gothic UI",
     "Noto Sans JP",
     "Noto Sans CJK JP",
     "BIZ UDPゴシック",
@@ -254,17 +254,17 @@ UI_CRUSH_PRONE_FONT_KEYWORDS = (
 UI_FONT = UI_FONT_CANDIDATES[0]
 CODE_FONT = "Consolas"
 UI_MIN_FONT_LINESPACE_RATIO = 1.25
-UI_TEXT_SIZE = 16
-UI_SMALL_TEXT_SIZE = 15
-UI_BADGE_FONT_SIZE = 15
+UI_TEXT_SIZE = 12
+UI_SMALL_TEXT_SIZE = 11
+UI_BADGE_FONT_SIZE = 11
 UI_HEADING_FONT_WEIGHT = "normal"
 UI_BADGE_FONT_WEIGHT = "normal"
 UI_CONTROL_FONT_WEIGHT = "normal"
-UI_TREE_ROW_HEIGHT = 76
-UI_NOTEBOOK_TAB_PADDING = (26, 22)
-UI_BUTTON_PADDING = (25, 21)
-UI_PRIMARY_BUTTON_PADDING = (27, 21)
-UI_DANGER_BUTTON_PADDING = (23, 20)
+UI_TREE_ROW_HEIGHT = 54
+UI_NOTEBOOK_TAB_PADDING = (18, 12)
+UI_BUTTON_PADDING = (18, 10)
+UI_PRIMARY_BUTTON_PADDING = (20, 10)
+UI_DANGER_BUTTON_PADDING = (18, 10)
 UI_ACTION_BUTTON_MIN_WIDTH = 208
 UI_ACTION_BUTTON_MAX_COLUMNS = 4
 UI_BUTTON_LABEL_FIT_MARGIN = 8
@@ -280,8 +280,8 @@ UI_BUTTON_LABEL_FIT_SAMPLES = (
     "テンプレ取込一括",
     "品質チェックへ",
 )
-UI_TEXT_SPACING_TOP = 6
-UI_TEXT_SPACING_BOTTOM = 8
+UI_TEXT_SPACING_TOP = 4
+UI_TEXT_SPACING_BOTTOM = 6
 UI_DENSITY_LABELS = {
     "standard": "標準",
     "comfortable": "ゆったり",
@@ -290,40 +290,40 @@ UI_DENSITY_LABELS = {
 UI_DENSITY_LABEL_TO_VALUE = {label: value for value, label in UI_DENSITY_LABELS.items()}
 UI_DENSITY_VALUES = {
     "standard": {
-        "text_size": 17,
-        "small_text_size": 16,
-        "badge_font_size": 16,
-        "tree_row_height": 94,
-        "notebook_tab_padding": (30, 30),
-        "button_padding": (30, 30),
-        "primary_button_padding": (32, 30),
-        "danger_button_padding": (28, 29),
-        "text_spacing_top": 9,
-        "text_spacing_bottom": 11,
+        "text_size": 12,
+        "small_text_size": 11,
+        "badge_font_size": 11,
+        "tree_row_height": 54,
+        "notebook_tab_padding": (18, 12),
+        "button_padding": (18, 10),
+        "primary_button_padding": (20, 10),
+        "danger_button_padding": (18, 10),
+        "text_spacing_top": 4,
+        "text_spacing_bottom": 6,
     },
     "comfortable": {
-        "text_size": 18,
-        "small_text_size": 17,
-        "badge_font_size": 17,
-        "tree_row_height": 104,
-        "notebook_tab_padding": (32, 32),
-        "button_padding": (33, 32),
-        "primary_button_padding": (35, 32),
-        "danger_button_padding": (31, 31),
-        "text_spacing_top": 10,
-        "text_spacing_bottom": 12,
+        "text_size": 14,
+        "small_text_size": 13,
+        "badge_font_size": 13,
+        "tree_row_height": 68,
+        "notebook_tab_padding": (22, 16),
+        "button_padding": (22, 15),
+        "primary_button_padding": (24, 15),
+        "danger_button_padding": (22, 14),
+        "text_spacing_top": 6,
+        "text_spacing_bottom": 8,
     },
     "large": {
-        "text_size": 20,
-        "small_text_size": 18,
-        "badge_font_size": 18,
-        "tree_row_height": 118,
-        "notebook_tab_padding": (36, 36),
-        "button_padding": (37, 36),
-        "primary_button_padding": (39, 36),
-        "danger_button_padding": (35, 35),
-        "text_spacing_top": 11,
-        "text_spacing_bottom": 14,
+        "text_size": 16,
+        "small_text_size": 15,
+        "badge_font_size": 15,
+        "tree_row_height": 84,
+        "notebook_tab_padding": (26, 22),
+        "button_padding": (26, 20),
+        "primary_button_padding": (28, 20),
+        "danger_button_padding": (26, 19),
+        "text_spacing_top": 8,
+        "text_spacing_bottom": 10,
     },
 }
 _DPI_AWARENESS_ENABLED = False
@@ -563,33 +563,33 @@ def _guard_ui_readability_metrics(root: tk.Misc, ui_font: str) -> None:
     button_vertical = _readable_vertical_padding(
         UI_BUTTON_PADDING,
         main_linespace,
-        minimum=19,
-        ratio=0.62,
+        minimum=11,
+        ratio=0.42,
     )
     primary_vertical = _readable_vertical_padding(
         UI_PRIMARY_BUTTON_PADDING,
         main_linespace,
-        minimum=19,
-        ratio=0.62,
+        minimum=11,
+        ratio=0.42,
     )
     danger_vertical = _readable_vertical_padding(
         UI_DANGER_BUTTON_PADDING,
         main_linespace,
-        minimum=18,
-        ratio=0.58,
+        minimum=10,
+        ratio=0.40,
     )
     tab_vertical = _readable_vertical_padding(
         UI_NOTEBOOK_TAB_PADDING,
         main_linespace,
-        minimum=20,
-        ratio=0.58,
+        minimum=12,
+        ratio=0.38,
     )
 
     UI_BUTTON_PADDING = _padding_with_vertical(UI_BUTTON_PADDING, button_vertical)
     UI_PRIMARY_BUTTON_PADDING = _padding_with_vertical(UI_PRIMARY_BUTTON_PADDING, primary_vertical)
     UI_DANGER_BUTTON_PADDING = _padding_with_vertical(UI_DANGER_BUTTON_PADDING, danger_vertical)
     UI_NOTEBOOK_TAB_PADDING = _padding_with_vertical(UI_NOTEBOOK_TAB_PADDING, tab_vertical)
-    UI_TREE_ROW_HEIGHT = max(UI_TREE_ROW_HEIGHT, int(math.ceil(main_linespace * 2.05)), main_linespace + 24)
+    UI_TREE_ROW_HEIGHT = max(UI_TREE_ROW_HEIGHT, int(math.ceil(main_linespace * 1.55)), main_linespace + 14)
 
 
 def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
@@ -7683,21 +7683,21 @@ class AutoNoteApp(tk.Tk):
         minimum_small_linespace = _minimum_readable_linespace(UI_SMALL_TEXT_SIZE)
         minimum_badge_linespace = _minimum_readable_linespace(UI_BADGE_FONT_SIZE)
         line_target = main_linespace or (UI_TEXT_SIZE + 9)
-        tree_target = max(60, int(math.ceil(line_target * 2.05)), line_target + 24)
-        tab_target = _readable_vertical_padding((0, 0), main_linespace, minimum=20, ratio=0.58)
-        button_target = _readable_vertical_padding((0, 0), main_linespace, minimum=19, ratio=0.62)
-        text_room_target = math.ceil((main_linespace or UI_TEXT_SIZE) * 1.2)
+        tree_target = max(48, int(math.ceil(line_target * 1.55)), line_target + 14)
+        tab_target = _readable_vertical_padding((0, 0), main_linespace, minimum=12, ratio=0.38)
+        button_target = _readable_vertical_padding((0, 0), main_linespace, minimum=11, ratio=0.42)
+        text_room_target = math.ceil((main_linespace or UI_TEXT_SIZE) * 0.75)
 
         add(
             "main text",
-            UI_TEXT_SIZE >= 14,
-            f"{UI_TEXT_SIZE}pt (target 14+)",
+            UI_TEXT_SIZE >= 12,
+            f"{UI_TEXT_SIZE}pt (target 12+)",
             "ヘッダーの 表示 で ゆったり または 大きめ を選ぶ",
         )
         add(
             "small text",
-            UI_SMALL_TEXT_SIZE >= 13,
-            f"{UI_SMALL_TEXT_SIZE}pt (target 13+)",
+            UI_SMALL_TEXT_SIZE >= 11,
+            f"{UI_SMALL_TEXT_SIZE}pt (target 11+)",
             "表示サイズを ゆったり または 大きめ にする",
         )
         add(
@@ -7718,7 +7718,7 @@ class AutoNoteApp(tk.Tk):
         add(
             "Japanese font family",
             not _is_crush_prone_font_family(UI_FONT) and not _is_crush_prone_font_family(actual_font_family),
-            f"{UI_FONT} -> actual {actual_font_family} (preferred: Yu Gothic UI / Yu Gothic / Meiryo UI)",
+            f"{UI_FONT} -> actual {actual_font_family} (preferred: Yu Gothic / Meiryo UI / Meiryo)",
             "表示リセット後、ヘッダーの 表示 で 大きめ を選ぶ",
         )
         add(
