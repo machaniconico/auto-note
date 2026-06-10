@@ -4194,7 +4194,8 @@ tags:
             )
             (project / "src" / "auto_note" / "release.py").write_text(
                 "FIRST_RUN_CHECKLIST.txt\nBUYER_ACCEPTANCE_CHECKLIST.txt\n"
-                "ログイン安全ガイド\nauto-note safe display\nauto-note-gui.bat --safe-display\n"
+                "ログイン安全ガイド\nauto-note safe display\nauto-note safe display.lnk\n"
+                "auto-note-gui.bat --safe-display\n最初の3分\n表示診断コピー\n"
                 "starter-pack\nauto-note repair\nauto-note troubleshoot\n"
                 "auto-note acceptance\nauto-note acceptance --project-dir . --full\n",
                 encoding="utf-8",
@@ -4214,6 +4215,13 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
+            (project / "docs" / "QUICKSTART.md").write_text(
+                "購入/納品後の最初の3分\n"
+                "auto-note safe display.lnk\n"
+                "受入チェック\n"
+                "表示診断コピー\n",
+                encoding="utf-8",
+            )
             (project / "docs" / "CHANGELOG.md").write_text(
                 "Noto Sans JP` / `Yu Gothic UI\n",
                 encoding="utf-8",
@@ -4277,6 +4285,10 @@ tags:
         self.assertIn("workflow status:fail", details)
         self.assertIn("schedule format:fail", details)
         self.assertTrue(any(check.name == "article review" for check in checks))
+        self.assertIn("quickstart buyer first 3 minutes:fail", product_details)
+        self.assertIn("quickstart safe display shortcut guidance:fail", product_details)
+        self.assertIn("quickstart acceptance guidance:fail", product_details)
+        self.assertIn("quickstart display diagnostics guidance:fail", product_details)
         self.assertIn("install guide safe display shortcut guidance:fail", product_details)
         self.assertIn("install guide safe display CLI guidance:fail", product_details)
         self.assertIn("update guide safe display shortcut guidance:fail", product_details)
@@ -4374,6 +4386,8 @@ tags:
         self.assertIn("release first-run note login safety guidance:fail", product_details)
         self.assertIn("release safe display shortcut guidance:fail", product_details)
         self.assertIn("release safe display CLI guidance:fail", product_details)
+        self.assertIn("release buyer first 3 minutes guidance:fail", product_details)
+        self.assertIn("release display diagnostics copy guidance:fail", product_details)
         self.assertIn("CLI starter pack command:fail", product_details)
         self.assertIn("CLI starter cleanup command:fail", product_details)
         self.assertIn("CLI repair command:fail", product_details)
@@ -5105,10 +5119,16 @@ tags:
         self.assertIn("RC handoff stop conditions:pass", launcher_details)
         self.assertIn("release checklist safe display smoke guidance:pass", launcher_details)
         self.assertIn("release checklist sales launch confirmation guidance:pass", launcher_details)
+        self.assertIn("quickstart buyer first 3 minutes:pass", launcher_details)
+        self.assertIn("quickstart safe display shortcut guidance:pass", launcher_details)
+        self.assertIn("quickstart acceptance guidance:pass", launcher_details)
+        self.assertIn("quickstart display diagnostics guidance:pass", launcher_details)
         self.assertIn("release first-run checklist:pass", launcher_details)
         self.assertIn("release first-run note login safety guidance:pass", launcher_details)
         self.assertIn("release safe display shortcut guidance:pass", launcher_details)
         self.assertIn("release safe display CLI guidance:pass", launcher_details)
+        self.assertIn("release buyer first 3 minutes guidance:pass", launcher_details)
+        self.assertIn("release display diagnostics copy guidance:pass", launcher_details)
         self.assertIn("CLI starter pack command:pass", launcher_details)
         self.assertIn("CLI starter cleanup command:pass", launcher_details)
         self.assertIn("CLI repair command:pass", launcher_details)
@@ -6875,23 +6895,32 @@ publish: false
             self.assertIn("auto-note troubleshoot --project-dir .", start_here)
             self.assertIn("auto-note acceptance --project-dir . --full", start_here)
             self.assertIn("auto-note safe display", start_here)
+            self.assertIn("auto-note safe display.lnk", start_here)
             self.assertIn("auto-note-gui.bat --safe-display", start_here)
+            self.assertIn("最初の3分", start_here)
+            self.assertIn("表示診断コピー", start_here)
             self.assertIn("auto-note acceptance --project-dir . --full", first_run)
             self.assertIn("auto-note first-run --project-dir . --create --gui-smoke --smoke-helper", first_run)
             self.assertIn("auto-note self-test --project-dir . --create --gui-smoke --report", first_run)
             self.assertIn("auto-note troubleshoot --project-dir .", first_run)
             self.assertIn("auto-note gui --project-dir . --safe-display", first_run)
             self.assertIn("auto-note-gui.bat --safe-display", first_run)
+            self.assertIn("auto-note safe display.lnk", first_run)
+            self.assertIn("表示診断コピー", first_run)
             self.assertIn("ログイン安全ガイド", first_run)
             self.assertIn("auto-note acceptance --project-dir . --full", buyer_acceptance)
             self.assertIn("受入チェック", buyer_acceptance)
             self.assertIn("ログイン安全ガイド", buyer_acceptance)
+            self.assertIn("最初の3分", buyer_acceptance)
+            self.assertIn("auto-note safe display.lnk", buyer_acceptance)
+            self.assertIn("表示診断コピー", buyer_acceptance)
             self.assertIn("初回チェック", first_run)
             self.assertIn("セルフテスト保存", first_run)
             self.assertIn("auto-note action-plan --project-dir .", first_run)
             self.assertIn("問い合わせ一式", first_run)
             self.assertIn("User articles are not included.", release_summary)
             self.assertIn("auto-note safe display", release_summary)
+            self.assertIn("auto-note safe display.lnk", release_summary)
             self.assertIn("FIRST_RUN_CHECKLIST.txt", release_summary)
             self.assertIn("BUYER_ACCEPTANCE_CHECKLIST.txt", release_summary)
             self.assertIn("CHECKSUMS.txt", release_summary)

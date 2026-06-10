@@ -33,6 +33,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
 
     checks.append(_path_check(project_dir / "README.md", "README"))
     checks.append(_path_check(project_dir / "docs" / "QUICKSTART.md", "quickstart guide"))
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "QUICKSTART.md",
+            "quickstart buyer first 3 minutes",
+            "購入/納品後の最初の3分",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "QUICKSTART.md",
+            "quickstart safe display shortcut guidance",
+            "auto-note safe display.lnk",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "QUICKSTART.md",
+            "quickstart acceptance guidance",
+            "受入チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "QUICKSTART.md",
+            "quickstart display diagnostics guidance",
+            "表示診断コピー",
+        )
+    )
     checks.append(_path_check(project_dir / "docs" / "PRODUCT_READINESS.md", "product readiness memo"))
     checks.append(_path_check(project_dir / "docs" / "INSTALL.md", "install guide"))
     checks.append(
@@ -1121,6 +1149,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "release.py",
             "release safe display CLI guidance",
             "auto-note-gui.bat --safe-display",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release buyer first 3 minutes guidance",
+            "最初の3分",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release display diagnostics copy guidance",
+            "表示診断コピー",
         )
     )
     checks.append(
