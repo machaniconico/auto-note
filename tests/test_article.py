@@ -3797,6 +3797,10 @@ tags:
                 "seller send checklist privacy\nlist_seller_send_checklists\nbuyer delivery message privacy\nlist_buyer_delivery_messages\nbuyer send readiness report privacy\nseller delivery receipt privacy\nlist_seller_delivery_receipts\nsales plan report privacy\nsales review report privacy\nsales launch checklist privacy\nsales launch confirmation privacy\nlist_sales_launch_confirmations\ncommercial policy review privacy\nsales evidence manifest privacy\n",
                 encoding="utf-8",
             )
+            (project / "src" / "auto_note" / "troubleshoot.py").write_text(
+                "first NG:\n_privacy_failure_action\n",
+                encoding="utf-8",
+            )
             (project / "src" / "auto_note" / "diagnostics.py").write_text(
                 "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\nsales_launch_confirmations\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\nlatest_support_bundle_age_hours:\nlatest_support_bundle_freshness:\n",
                 encoding="utf-8",
@@ -4418,6 +4422,8 @@ tags:
         self.assertIn("self-test hidden launcher syntax check:fail", product_details)
         self.assertIn("self-test direct launcher fallback:fail", product_details)
         self.assertIn("CLI troubleshoot command:fail", product_details)
+        self.assertIn("troubleshoot privacy first NG detail:fail", product_details)
+        self.assertIn("troubleshoot privacy specific action:fail", product_details)
         self.assertIn("CLI support open option:fail", product_details)
         self.assertIn("CLI GUI safe display option:fail", product_details)
         self.assertIn("CLI acceptance command:fail", product_details)
@@ -5864,6 +5870,8 @@ tags:
         self.assertIn("support bundle GUI log verification detail:pass", launcher_details)
         self.assertIn("support bundle GUI log summary reader:pass", launcher_details)
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
+        self.assertIn("troubleshoot privacy first NG detail:pass", launcher_details)
+        self.assertIn("troubleshoot privacy specific action:pass", launcher_details)
         self.assertIn("support bundle freshness threshold:pass", launcher_details)
         self.assertIn("support bundle stale helper:pass", launcher_details)
         self.assertIn("support bundle verification freshness detail:pass", launcher_details)
@@ -6456,6 +6464,28 @@ tags:
         self.assertIn("auto-note login --default-browser", text)
         self.assertNotIn(str(project), text)
         self.assertIn("Troubleshooting report / トラブル診断", cli_output.getvalue())
+
+    def test_troubleshoot_surfaces_specific_privacy_failure_action(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            run_setup_check(project, create=True)
+            sales_dir = project / ".auto-note" / "sales"
+            sales_dir.mkdir(parents=True)
+            package = sales_dir / "auto-note-sales-handoff-20990101-010000.zip"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("README.md", "incomplete")
+
+            report = run_troubleshoot(project)
+            text = format_troubleshoot_report(report)
+
+        item = next(item for item in report.items if item.name == "privacy audit")
+        self.assertEqual(report.status, "fail")
+        self.assertTrue(has_troubleshoot_blockers(report))
+        self.assertIn("first NG: sales handoff privacy", item.detail)
+        self.assertIn("verification error", item.detail)
+        self.assertIn("auto-note sales-handoff --project-dir .", item.action)
+        self.assertIn("first NG: sales handoff privacy", text)
+        self.assertIn("auto-note sales-handoff --project-dir .", text)
 
     def test_article_review_scores_and_suggests_next_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

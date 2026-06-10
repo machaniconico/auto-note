@@ -151,13 +151,29 @@ def _privacy_audit_item(project_dir: Path, *, include_sales_handoffs: bool = Tru
     }
     detail = f"latest artifacts: {counts['pass']} OK, {counts['info']} INFO, {counts['warn']} WARN, {counts['fail']} NG"
     if has_privacy_audit_blockers(report):
+        failure = _first_privacy_failure(report)
+        if failure is not None:
+            detail = f"{detail}; first NG: {failure.name}: {_sanitize(failure.detail, project_dir)}"
         return TroubleshootItem(
             "privacy audit",
             "fail",
             detail,
-            "`auto-note privacy-audit --project-dir .` を確認し、NG生成物は `auto-note repair --project-dir . --cleanup-privacy` で候補確認してください。",
+            _privacy_failure_action(failure),
         )
     return TroubleshootItem("privacy audit", "pass" if report.status == "pass" else "warn", detail)
+
+
+def _first_privacy_failure(report):
+    for item in report.items:
+        if item.status == "fail":
+            return item
+    return None
+
+
+def _privacy_failure_action(item) -> str:
+    if item is not None and item.action:
+        return item.action
+    return "`auto-note privacy-audit --project-dir .` を確認し、NG生成物は `auto-note repair --project-dir . --cleanup-privacy` で候補確認してください。"
 
 
 def _privacy_cleanup_item(project_dir: Path, *, include_releases: bool) -> TroubleshootItem:

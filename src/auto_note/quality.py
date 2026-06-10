@@ -1272,6 +1272,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot privacy first NG detail",
+            "first NG:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot privacy specific action",
+            "_privacy_failure_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "__main__.py",
             "CLI support open option",
             "Open the generated support request or bundle.",
