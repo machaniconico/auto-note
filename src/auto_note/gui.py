@@ -857,6 +857,11 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         home_release_check_chars = (
             len(app.home_release_check_var.get()) if hasattr(app, "home_release_check_var") else 0
         )
+        home_release_check_pill_chars = (
+            len(str(app.home_release_check_status_pill.cget("text")))
+            if hasattr(app, "home_release_check_status_pill")
+            else 0
+        )
         home_sales_chars = (
             len(
                 app.home_sales_status_var.get()
@@ -1001,6 +1006,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_commercial_focus_chars={home_commercial_focus_chars}, "
             f"home_commercial_focus_button_chars={home_commercial_focus_button_chars}, "
             f"home_release_check_chars={home_release_check_chars}, "
+            f"home_release_check_pill_chars={home_release_check_pill_chars}, "
             f"home_sales_chars={home_sales_chars}, "
             f"home_sales_stage_chars={home_sales_stage_chars}, "
             f"home_sales_timeline_items={home_sales_timeline_items}, "
@@ -1510,6 +1516,7 @@ class AutoNoteApp(tk.Tk):
             "home_gui_log_status_pill",
             "home_sales_status_pill",
             "home_buyer_send_status_pill",
+            "home_release_check_status_pill",
             "first_run_status_pill",
             "status_pill",
             "article_focus_status_pill",
@@ -2089,15 +2096,30 @@ class AutoNoteApp(tk.Tk):
             fill=tk.X,
             pady=(3, 0),
         )
+        release_check_row = ttk.Frame(sales_text, style="Surface.TFrame")
+        release_check_row.pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(release_check_row, text="一括チェック", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.home_release_check_status_pill = tk.Label(
+            release_check_row,
+            text="CHECK",
+            bg="#8a4f00",
+            fg="#ffffff",
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
+            padx=8,
+            pady=4,
+            width=8,
+        )
+        self.home_release_check_status_pill.pack(side=tk.LEFT, padx=(10, 0))
         ttk.Label(
-            sales_text,
+            release_check_row,
             textvariable=self.home_release_check_var,
             style="Surface.TLabel",
-            wraplength=820,
+            wraplength=720,
         ).pack(
-            anchor=tk.W,
+            side=tk.LEFT,
             fill=tk.X,
-            pady=(4, 0),
+            expand=True,
+            padx=(8, 0),
         )
         sales_timeline = ttk.Frame(sales_text, style="Surface.TFrame")
         sales_timeline.pack(fill=tk.X, pady=(10, 0))
@@ -5963,8 +5985,8 @@ class AutoNoteApp(tk.Tk):
         if hasattr(self, "home_commercial_focus_button_var"):
             self.home_commercial_focus_button_var.set(_home_commercial_focus_button_label(focus.status))
         if hasattr(self, "home_release_check_var"):
-            _release_check_state, release_check_text = _home_release_check_summary(release_checks)
-            self.home_release_check_var.set(release_check_text)
+            release_check_state, release_check_text = _home_release_check_summary(release_checks)
+            self._set_home_release_check_status(release_check_state, release_check_text)
         self._set_home_buyer_send_status(buyer_state, buyer_summary)
         self._set_home_buyer_send_action(buyer_action)
         self.home_buyer_send_next_var.set(buyer_next)
@@ -6203,6 +6225,15 @@ class AutoNoteApp(tk.Tk):
         pill_text, bg, fg = _home_sales_indicator_style(state)
         self.home_buyer_send_status_pill.configure(text=pill_text, bg=bg, fg=fg)
         self.home_buyer_send_var.set(text)
+
+    def _set_home_release_check_status(self, state: str, text: str) -> None:
+        if not hasattr(self, "home_release_check_var"):
+            return
+        pill = getattr(self, "home_release_check_status_pill", None)
+        if pill is not None:
+            pill_text, bg, fg = _home_sales_indicator_style(state)
+            pill.configure(text=pill_text, bg=bg, fg=fg)
+        self.home_release_check_var.set(text)
 
     def _set_home_buyer_send_action(self, action: str) -> None:
         action_var = getattr(self, "home_buyer_send_action_var", None)

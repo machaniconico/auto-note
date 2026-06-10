@@ -3602,6 +3602,7 @@ tags: note
         self.assertIn("home_commercial_focus_chars=", text)
         self.assertIn("home_commercial_focus_button_chars=", text)
         self.assertIn("home_release_check_chars=", text)
+        self.assertIn("home_release_check_pill_chars=", text)
         self.assertIn("home_sales_stage_chars=", text)
         self.assertIn("home_sales_timeline_items=", text)
         self.assertIn("home_sales_timeline_chars=", text)
@@ -4272,11 +4273,14 @@ tags:
                 + "home_commercial_focus_chars=\n"
                 + "home_commercial_focus_button_chars=\n"
                 + "home_release_check_chars=\n"
+                + "home_release_check_pill_chars=\n"
                 + "home_commercial_focus_var\n"
                 + "home_commercial_focus_button_var\n"
                 + "home_release_check_var\n"
+                + "home_release_check_status_pill\n"
                 + "_home_commercial_focus_button_label\n"
                 + "_home_release_check_summary\n"
+                + "_set_home_release_check_status\n"
                 + "run_home_commercial_focus_action\n"
                 + "_home_commercial_focus_text\n"
                 + "home_buyer_send_var\n"
@@ -5079,12 +5083,14 @@ tags:
         self.assertIn("GUI smoke home commercial focus:fail", product_details)
         self.assertIn("GUI smoke home commercial focus button:fail", product_details)
         self.assertIn("GUI smoke home release check summary:fail", product_details)
+        self.assertIn("GUI smoke home release check status pill:fail", product_details)
         self.assertIn("GUI smoke home sales timeline count:fail", product_details)
         self.assertIn("GUI smoke home sales timeline chars:fail", product_details)
         self.assertIn("GUI home sales next action:fail", product_details)
         self.assertIn("GUI home sales lightweight summary:fail", product_details)
         self.assertIn("GUI home commercial setup focus summary:fail", product_details)
         self.assertIn("GUI home release check summary:fail", product_details)
+        self.assertIn("GUI home release check status pill:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic action:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic button:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
@@ -5837,12 +5843,14 @@ tags:
         self.assertIn("GUI smoke home commercial focus:pass", launcher_details)
         self.assertIn("GUI smoke home commercial focus button:pass", launcher_details)
         self.assertIn("GUI smoke home release check summary:pass", launcher_details)
+        self.assertIn("GUI smoke home release check status pill:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline count:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline chars:pass", launcher_details)
         self.assertIn("GUI home sales next action:pass", launcher_details)
         self.assertIn("GUI home sales lightweight summary:pass", launcher_details)
         self.assertIn("GUI home commercial setup focus summary:pass", launcher_details)
         self.assertIn("GUI home release check summary:pass", launcher_details)
+        self.assertIn("GUI home release check status pill:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic action:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic button:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
