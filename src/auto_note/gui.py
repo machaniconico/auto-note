@@ -7,7 +7,9 @@ import hashlib
 import math
 from pathlib import Path
 import os
+import subprocess
 import sys
+import threading
 import tkinter as tk
 import tkinter.font as tkfont
 import traceback
@@ -52,6 +54,7 @@ from .diagnostics import (
     format_diagnostic_report_verification,
     format_diagnostics,
     list_diagnostic_reports,
+    mask_text,
     preview_diagnostic_report,
     run_diagnostics,
     verify_diagnostic_report,
@@ -79,6 +82,7 @@ from .licenses import collect_dependency_notices, format_dependency_notices, wri
 from .maintenance import cleanup_generated_files, format_cleanup_confirmation, format_cleanup_report
 from .manual import NOTE_LOGIN_URL, open_manual_dashboard, open_manual_post_helper
 from .overview import build_overview, format_overview_report, list_overview_reports, write_overview_report
+from .paths import unique_path
 from .preflight import format_preflight_report, run_preflight
 from .privacy import format_privacy_audit_report, has_privacy_audit_blockers, run_privacy_audit
 from .publish_ready import PublishReadyItem, PublishReadyReport, format_publish_ready_report, run_publish_ready
@@ -552,6 +556,62 @@ def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
     )
 
 
+def _release_check_reports_dir(project_dir: Path) -> Path:
+    return project_dir / ".auto-note" / "reports"
+
+
+def _release_check_report_path(project_dir: Path) -> Path:
+    reports_dir = _release_check_reports_dir(project_dir)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    return unique_path(reports_dir / f"release-check-{datetime.now():%Y%m%d-%H%M%S}.txt")
+
+
+def _list_release_check_reports(project_dir: Path) -> list[Path]:
+    reports_dir = _release_check_reports_dir(project_dir)
+    if not reports_dir.exists():
+        return []
+    return sorted(reports_dir.glob("release-check-*.txt"), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def _format_release_check_output(
+    *,
+    status: str,
+    exit_code: int | None,
+    started_at: datetime,
+    finished_at: datetime | None,
+    command: str,
+    stdout: str,
+    stderr: str,
+) -> str:
+    lines = [
+        "Release check / 販売前一括チェック",
+        "",
+        f"status: {status}",
+        f"exit_code: {exit_code if exit_code is not None else 'not-started'}",
+        f"started_at: {started_at:%Y-%m-%d %H:%M:%S}",
+    ]
+    if finished_at is not None:
+        seconds = max(0.0, (finished_at - started_at).total_seconds())
+        lines.extend(
+            [
+                f"finished_at: {finished_at:%Y-%m-%d %H:%M:%S}",
+                f"duration_seconds: {seconds:.1f}",
+            ]
+        )
+    lines.extend(
+        [
+            f"command: {command}",
+            "",
+            "stdout:",
+            stdout.rstrip() or "(empty)",
+            "",
+            "stderr:",
+            stderr.rstrip() or "(empty)",
+        ]
+    )
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _numeric_tokens(value: object) -> list[float]:
     tokens = str(value).replace("(", " ").replace(")", " ").replace(",", " ").split()
     numbers: list[float] = []
@@ -974,6 +1034,7 @@ class AutoNoteApp(tk.Tk):
         self._last_publish_queue_report: PublishQueueReport | None = None
         self._last_improvement_plan: ImprovementPlan | None = None
         self._last_article_focus_plan: ImprovementPlan | None = None
+        self._release_check_thread: threading.Thread | None = None
         self.editor_dirty = False
         self._restoring_selection = False
         self._home_sales_next_step = None
@@ -1915,6 +1976,7 @@ class AutoNoteApp(tk.Tk):
             ("レビュー保存", self.create_sales_review_report_action, None),
             ("販売直前", self.run_sales_launch_to_tab, None),
             ("直前保存", self.create_sales_launch_checklist_action, None),
+            ("一括チェック", self.run_release_check_full_action, None),
             (self.home_support_next_button_var, self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
         )
@@ -2057,6 +2119,7 @@ class AutoNoteApp(tk.Tk):
             ("レビュー保存", self.create_sales_review_report_action),
             ("販売直前", self.run_sales_launch_to_tab),
             ("直前保存", self.create_sales_launch_checklist_action),
+            ("販売前一括チェック", self.run_release_check_full_action),
             ("アクションプラン", self.run_action_plan_to_tab),
             ("クイック確認", self.run_quickstart_to_tab),
             ("スターター一式", self.create_starter_pack_action),
@@ -3117,6 +3180,7 @@ class AutoNoteApp(tk.Tk):
                 ("レビュー保存", self.create_sales_review_report_action),
                 ("販売直前", self.run_sales_launch_to_tab),
                 ("直前保存", self.create_sales_launch_checklist_action),
+                ("販売前一括チェック", self.run_release_check_full_action),
                 ("セルフテスト", self.run_self_test_to_tab),
                 ("セルフテスト保存", self.create_self_test_report_action),
                 ("運用サマリー", self.run_overview_to_tab),
@@ -5413,7 +5477,7 @@ class AutoNoteApp(tk.Tk):
         items = self._latest_home_report_items()
         if not items:
             self.home_reports_var.set(
-                "まだ保存レポートがありません。診断レポート、問い合わせ一式、復旧セット、投稿キューを実行するとここに並びます。"
+                "まだ保存レポートがありません。診断レポート、問い合わせ一式、復旧セット、販売前一括チェックを実行するとここに並びます。"
             )
             return
 
@@ -5470,6 +5534,7 @@ class AutoNoteApp(tk.Tk):
             ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
             ("送付記録", list_seller_delivery_receipts(self.project_dir)),
             ("販売直前", list_sales_launch_checklists(self.project_dir)),
+            ("一括チェック", _list_release_check_reports(self.project_dir)),
             ("投稿キュー", list_publish_queue_reports(self.project_dir)),
             ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
             ("運用サマリー", list_overview_reports(self.project_dir)),
@@ -6360,6 +6425,11 @@ class AutoNoteApp(tk.Tk):
             ("レビュー保存", "販売ページ・納品最終レビューを時刻付きレポートとして保存", self.create_sales_review_report_action),
             ("販売直前", "販売ページ公開前に決済後メッセージ、添付ZIP、返金/サポート表示を確認", self.run_sales_launch_to_tab),
             ("直前保存", "販売ページ公開前の最終目視チェックリストを保存", self.create_sales_launch_checklist_action),
+            (
+                "販売前一括チェック",
+                "check-release.ps1 -Full をバックグラウンドで実行し、証跡レポートを保存",
+                self.run_release_check_full_action,
+            ),
             ("アクションプラン", "いま優先すべき操作を表示", self.run_action_plan_to_tab),
             ("セルフテスト", "インストール後の基本動作を確認", self.run_self_test_to_tab),
             ("セルフテスト保存", "セルフテスト結果をテキスト保存", self.create_self_test_report_action),
@@ -7658,6 +7728,128 @@ class AutoNoteApp(tk.Tk):
         if report.has_warnings:
             return "warning"
         return "success"
+
+    def run_release_check_full_action(self) -> None:
+        running_thread = self._release_check_thread
+        if running_thread is not None and running_thread.is_alive():
+            self.notify("販売前一括チェックは実行中です。完了まで待ってください。", level="warning")
+            return
+        script_path = self.project_dir / "scripts" / "check-release.ps1"
+        if not script_path.exists():
+            message = f"販売前一括チェックのスクリプトが見つかりません: {script_path}"
+            self._set_text(self.diagnostics_text, message)
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("販売前一括チェックを開始できませんでした", level="error")
+            return
+        if not messagebox.askyesno(
+            "販売前一括チェック",
+            "ユニットテスト、品質ゲート、GUIスモーク、プライバシー監査、インストール/販売納品スモークをまとめて実行します。\n\n"
+            "時間がかかるため、バックグラウンドで実行して結果を .auto-note\\reports に保存します。開始しますか？",
+        ):
+            self.notify("販売前一括チェックをキャンセルしました", level="info")
+            return
+
+        started_at = datetime.now()
+        report_path = _release_check_report_path(self.project_dir)
+        display_command = (
+            "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\check-release.ps1 "
+            "-ProjectDir <PROJECT_DIR> -Full"
+        )
+        initial_text = _format_release_check_output(
+            status="RUNNING",
+            exit_code=None,
+            started_at=started_at,
+            finished_at=None,
+            command=display_command,
+            stdout="販売前一括チェックを実行中です。完了後、この画面と直近レポートを更新します。",
+            stderr="",
+        )
+        safe_initial_text = mask_text(initial_text, self.project_dir)
+        try:
+            write_text_atomic(report_path, safe_initial_text)
+        except OSError as exc:
+            self.notify("販売前一括チェックのレポート作成に失敗しました", level="error")
+            messagebox.showerror("販売前一括チェック", str(exc))
+            return
+        self._set_text(self.diagnostics_text, safe_initial_text + f"\nsaved: {report_path}\n")
+        self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_reports()
+        self.notify(f"販売前一括チェックを開始しました: {report_path.name}", level="info")
+
+        thread = threading.Thread(
+            target=self._run_release_check_full_worker,
+            args=(script_path, report_path, started_at, display_command),
+            daemon=True,
+        )
+        self._release_check_thread = thread
+        thread.start()
+
+    def _run_release_check_full_worker(
+        self,
+        script_path: Path,
+        report_path: Path,
+        started_at: datetime,
+        display_command: str,
+    ) -> None:
+        command = [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+            "-ProjectDir",
+            str(self.project_dir),
+            "-Full",
+        ]
+        exit_code: int | None = None
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=str(self.project_dir),
+                capture_output=True,
+                text=True,
+                errors="replace",
+            )
+            exit_code = int(completed.returncode)
+            stdout = completed.stdout
+            stderr = completed.stderr
+            status = "OK" if exit_code == 0 else "NG"
+        except Exception:
+            stdout = ""
+            stderr = traceback.format_exc()
+            status = "NG"
+        finished_at = datetime.now()
+        text = _format_release_check_output(
+            status=status,
+            exit_code=exit_code,
+            started_at=started_at,
+            finished_at=finished_at,
+            command=display_command,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        safe_text = mask_text(text, self.project_dir)
+        try:
+            write_text_atomic(report_path, safe_text)
+        except OSError as exc:
+            safe_text += f"\n[NG] レポート保存に失敗しました: {exc}\n"
+            status = "NG"
+
+        try:
+            self.after(0, lambda: self._finish_release_check_full(report_path, safe_text, status))
+        except tk.TclError:
+            pass
+
+    def _finish_release_check_full(self, report_path: Path, text: str, status: str) -> None:
+        self._release_check_thread = None
+        self._set_text(self.diagnostics_text, text + f"\nsaved: {report_path}\n")
+        self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_reports()
+        if status == "OK":
+            self.notify(f"販売前一括チェックが完了しました: {report_path.name}", level="success")
+        else:
+            self.notify(f"販売前一括チェックで確認が必要です: {report_path.name}", level="error")
 
     def run_preflight_to_tab(self) -> None:
         report = run_preflight(self.project_dir, gui_smoke=True)
@@ -9472,6 +9664,16 @@ def _home_report_status(label: str, path: Path) -> str:
         if "Verdict: NEEDS REVIEW" in text:
             return "確認"
         return "OK"
+    if label == "一括チェック":
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "NG"
+        if "status: OK" in text:
+            return "OK"
+        if "status: NG" in text or "Traceback" in text:
+            return "NG"
+        return "確認"
     if path.suffix.lower() == ".zip":
         try:
             with zipfile.ZipFile(path) as archive:

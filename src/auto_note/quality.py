@@ -75,6 +75,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "RC_HANDOFF.md",
+            "RC handoff GUI full release check",
+            "販売前一括チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "RC_HANDOFF.md",
             "RC handoff sales evidence",
             "sales-finalize --project-dir . --strict --gui-smoke",
         )
@@ -4640,6 +4647,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI full release check action",
+            "run_release_check_full_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI full release check background thread",
+            "threading.Thread",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI full release check report",
+            "release-check-",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI full release check command palette",
+            "販売前一括チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI RC handoff help action",
             "RC引き渡し",
         )
@@ -4927,6 +4962,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README GUI full release check guidance",
+            "販売前一括チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README release check report guidance",
+            "release-check-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README sales evidence manifest guidance",
             "sales-evidence-manifest",
         )
@@ -5188,6 +5237,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness release check safe display smoke guidance",
             "GUI smoke、GUI safe display smokeを一括確認でき",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness GUI full release check guidance",
+            "販売前一括チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness release check report artifact",
+            "release-check-*.txt",
         )
     )
     checks.append(
