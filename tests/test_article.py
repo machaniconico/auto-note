@@ -3020,7 +3020,25 @@ tags: note
         self.assertIn("display_font_linespace=", text)
         self.assertIn("display_badge_linespace=", text)
         self.assertIn("active_ui_density_chars=", text)
-        self.assertIn("display_safe_mode=False", text)
+        self.assertIn("display_safe_mode=", text)
+        self.assertIn("display_safe_mode_reason=", text)
+        self.assertIn("display_safe_mode_warnings=", text)
+        self.assertIn("header_safe_display_visible=", text)
+
+    def test_gui_safe_display_smoke_reports_requested_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            create_article("GUIセーフ表示記事", articles_dir=project / "articles", tags=["note"])
+            try:
+                text = smoke_gui(project, safe_display=True)
+            except RuntimeError as exc:
+                self.skipTest(f"GUI smoke unavailable: {exc}")
+
+        self.assertIn("GUI smoke OK", text)
+        self.assertIn("display_safe_mode=True", text)
+        self.assertIn("display_safe_mode_reason=requested", text)
+        self.assertIn("header_safe_display_visible=True", text)
+        self.assertIn("display_readability_status=OK", text)
 
     def test_dependency_notices_include_known_packages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3352,19 +3370,26 @@ tags:
                 + "ui_density_var\n"
                 + "_apply_ui_density\n"
                 + "ui_density_override\n"
+                + "_auto_enable_safe_display_if_needed\n"
+                + "auto-readability\n"
                 + "_configure_tk_font_defaults\n"
                 + "_refresh_text_widget_readability\n"
                 + "readability_style_chars=\n"
                 + "ui_density_chars=\n"
                 + "active_ui_density_chars=\n"
                 + "display_safe_mode=\n"
+                + "display_safe_mode_reason=\n"
+                + "display_safe_mode_warnings=\n"
                 + "header_ui_density_var\n"
                 + "header_ui_density_combo\n"
                 + "header_display_reset_button\n"
+                + "header_safe_display_chip\n"
+                + "_sync_header_display_state\n"
                 + "<<ComboboxSelected>>\n"
                 + "on_header_ui_density_selected\n"
                 + "header_ui_density_chars=\n"
                 + "header_display_reset_chars=\n"
+                + "header_safe_display_visible=\n"
                 + "表示サイズ: 大きめ\n"
                 + "表示サイズ: ゆったり\n"
                 + "表示サイズ設定へ\n"
@@ -3385,6 +3410,7 @@ tags:
                 + "display_font_family=\n"
                 + "display_font_linespace=\n"
                 + "display_diagnostics_chars=\n"
+                + "safe display reason:\n"
                 + "Chrome.TCombobox\n"
                 + "_resolve_font_family\n"
                 + "_enable_windows_dpi_awareness\n"
@@ -4016,17 +4042,24 @@ tags:
         self.assertIn("GUI header UI density selector:fail", product_details)
         self.assertIn("GUI header UI density combobox:fail", product_details)
         self.assertIn("GUI header display reset button:fail", product_details)
+        self.assertIn("GUI header safe display badge:fail", product_details)
+        self.assertIn("GUI header display state sync:fail", product_details)
         self.assertIn("GUI header UI density binding:fail", product_details)
         self.assertIn("GUI header UI density action:fail", product_details)
         self.assertIn("GUI UI density style apply:fail", product_details)
         self.assertIn("GUI safe display launch override:fail", product_details)
+        self.assertIn("GUI auto safe display readability guard:fail", product_details)
+        self.assertIn("GUI auto safe display trigger reason:fail", product_details)
         self.assertIn("GUI UI density text refresh:fail", product_details)
         self.assertIn("GUI smoke readable style metrics:fail", product_details)
         self.assertIn("GUI smoke UI density metrics:fail", product_details)
         self.assertIn("GUI smoke active UI density metrics:fail", product_details)
         self.assertIn("GUI smoke safe display metric:fail", product_details)
+        self.assertIn("GUI smoke safe display reason metric:fail", product_details)
+        self.assertIn("GUI smoke safe display warning metric:fail", product_details)
         self.assertIn("GUI smoke header UI density metrics:fail", product_details)
         self.assertIn("GUI smoke header display reset metrics:fail", product_details)
+        self.assertIn("GUI smoke header safe display badge metric:fail", product_details)
         self.assertIn("GUI smoke UI density command metrics:fail", product_details)
         self.assertIn("GUI smoke display reset command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics command metrics:fail", product_details)
@@ -4070,6 +4103,7 @@ tags:
         self.assertIn("GUI display diagnostics copy action:fail", product_details)
         self.assertIn("GUI display diagnostics report:fail", product_details)
         self.assertIn("GUI display diagnostics safe display mode:fail", product_details)
+        self.assertIn("GUI display diagnostics safe display reason:fail", product_details)
         self.assertIn("GUI display readability checks:fail", product_details)
         self.assertIn("GUI display readability status line:fail", product_details)
         self.assertIn("GUI display readability warning actions:fail", product_details)
@@ -4636,17 +4670,24 @@ tags:
         self.assertIn("GUI header UI density selector:pass", launcher_details)
         self.assertIn("GUI header UI density combobox:pass", launcher_details)
         self.assertIn("GUI header display reset button:pass", launcher_details)
+        self.assertIn("GUI header safe display badge:pass", launcher_details)
+        self.assertIn("GUI header display state sync:pass", launcher_details)
         self.assertIn("GUI header UI density binding:pass", launcher_details)
         self.assertIn("GUI header UI density action:pass", launcher_details)
         self.assertIn("GUI UI density style apply:pass", launcher_details)
         self.assertIn("GUI safe display launch override:pass", launcher_details)
+        self.assertIn("GUI auto safe display readability guard:pass", launcher_details)
+        self.assertIn("GUI auto safe display trigger reason:pass", launcher_details)
         self.assertIn("GUI UI density text refresh:pass", launcher_details)
         self.assertIn("GUI smoke readable style metrics:pass", launcher_details)
         self.assertIn("GUI smoke UI density metrics:pass", launcher_details)
         self.assertIn("GUI smoke active UI density metrics:pass", launcher_details)
         self.assertIn("GUI smoke safe display metric:pass", launcher_details)
+        self.assertIn("GUI smoke safe display reason metric:pass", launcher_details)
+        self.assertIn("GUI smoke safe display warning metric:pass", launcher_details)
         self.assertIn("GUI smoke header UI density metrics:pass", launcher_details)
         self.assertIn("GUI smoke header display reset metrics:pass", launcher_details)
+        self.assertIn("GUI smoke header safe display badge metric:pass", launcher_details)
         self.assertIn("GUI smoke UI density command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display reset command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics command metrics:pass", launcher_details)
@@ -4690,6 +4731,7 @@ tags:
         self.assertIn("GUI display diagnostics copy action:pass", launcher_details)
         self.assertIn("GUI display diagnostics report:pass", launcher_details)
         self.assertIn("GUI display diagnostics safe display mode:pass", launcher_details)
+        self.assertIn("GUI display diagnostics safe display reason:pass", launcher_details)
         self.assertIn("GUI display readability checks:pass", launcher_details)
         self.assertIn("GUI display readability status line:pass", launcher_details)
         self.assertIn("GUI display readability warning actions:pass", launcher_details)

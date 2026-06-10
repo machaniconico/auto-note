@@ -686,11 +686,21 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         ui_density_chars = len(getattr(app.settings, "ui_density", ""))
         active_ui_density_chars = len(app._active_ui_density()) if hasattr(app, "_active_ui_density") else 0
         display_safe_mode = getattr(app, "display_safe_mode", False)
+        display_safe_mode_reason = getattr(app, "display_safe_mode_reason", "")
+        display_safe_mode_warnings = len(getattr(app, "display_safe_mode_warnings", []))
         header_ui_density_chars = len(app.header_ui_density_var.get()) if hasattr(app, "header_ui_density_var") else 0
         header_display_reset_chars = (
             len(str(app.header_display_reset_button.cget("text")))
             if hasattr(app, "header_display_reset_button")
             else 0
+        )
+        header_safe_display_chars = (
+            len(app.header_safe_display_var.get()) if hasattr(app, "header_safe_display_var") else 0
+        )
+        header_safe_display_visible = (
+            bool(app.header_safe_display_chip.winfo_manager())
+            if hasattr(app, "header_safe_display_chip")
+            else False
         )
         command_palette_ui_density_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label.startswith("表示サイズ")
@@ -746,8 +756,12 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"ui_density_chars={ui_density_chars}, "
             f"active_ui_density_chars={active_ui_density_chars}, "
             f"display_safe_mode={display_safe_mode}, "
+            f"display_safe_mode_reason={display_safe_mode_reason}, "
+            f"display_safe_mode_warnings={display_safe_mode_warnings}, "
             f"header_ui_density_chars={header_ui_density_chars}, "
             f"header_display_reset_chars={header_display_reset_chars}, "
+            f"header_safe_display_chars={header_safe_display_chars}, "
+            f"header_safe_display_visible={header_safe_display_visible}, "
             f"command_palette_ui_density_actions={command_palette_ui_density_actions}, "
             f"command_palette_display_reset_actions={command_palette_display_reset_actions}, "
             f"command_palette_display_diagnostics_actions={command_palette_display_diagnostics_actions}, "
@@ -833,6 +847,8 @@ class AutoNoteApp(tk.Tk):
         self.settings = load_settings(self.project_dir)
         self.display_density_override = _normalise_ui_density(ui_density_override) if ui_density_override else ""
         self.display_safe_mode = bool(self.display_density_override)
+        self.display_safe_mode_reason = "requested" if self.display_safe_mode else ""
+        self.display_safe_mode_warnings: list[str] = []
         self.article_paths: list[Path] = []
         self.selected_article: Article | None = None
         self.idea_ids: list[int] = []
@@ -859,6 +875,7 @@ class AutoNoteApp(tk.Tk):
         self.configure(bg=UI_COLORS["bg"])
 
         self._configure_style()
+        self._auto_enable_safe_display_if_needed()
         self._build_ui()
         self._bind_shortcuts()
         self.report_callback_exception = self.handle_callback_exception
@@ -873,9 +890,13 @@ class AutoNoteApp(tk.Tk):
         self.run_check_all(show_popup=False)
         self.run_diagnostics_to_tab()
         if self.display_safe_mode:
+            if self.display_safe_mode_reason == "auto-readability":
+                message = "表示を自動補正: 文字が潰れそうなため大きめ表示で起動しました"
+            else:
+                message = "表示セーフモード: 大きめ表示で起動しました"
             self.after(
                 500,
-                lambda: self.notify("表示セーフモード: 大きめ表示で起動しました", level="warning"),
+                lambda: self.notify(message, level="warning"),
             )
         self.after(350, self.show_onboarding_if_needed)
         self.schedule_autosave()
@@ -1162,6 +1183,39 @@ class AutoNoteApp(tk.Tk):
         style.configure("TLabelframe", background=surface, padding=14, relief="flat", borderwidth=0)
         style.configure("TLabelframe.Label", background=surface, foreground=primary, font=(font, UI_TEXT_SIZE))
 
+    def _auto_enable_safe_display_if_needed(self) -> None:
+        if self.display_safe_mode:
+            return
+        status, lines = self._display_readability_checks()
+        if status == "OK":
+            return
+        self.display_density_override = "large"
+        self.display_safe_mode = True
+        self.display_safe_mode_reason = "auto-readability"
+        self.display_safe_mode_warnings = [line for line in lines if "[WARN]" in line]
+        self._configure_style()
+
+    def _safe_display_badge_label(self) -> str:
+        return "AUTO SAFE" if self.display_safe_mode_reason == "auto-readability" else "SAFE DISPLAY"
+
+    def _sync_header_display_state(self) -> None:
+        if hasattr(self, "header_ui_density_var"):
+            self.header_ui_density_var.set(_ui_density_label(self._active_ui_density()))
+        badge = getattr(self, "header_safe_display_chip", None)
+        badge_var = getattr(self, "header_safe_display_var", None)
+        if badge is None or badge_var is None:
+            return
+        badge_var.set(self._safe_display_badge_label())
+        if self.display_safe_mode:
+            if not badge.winfo_manager():
+                project_label = getattr(self, "header_project_name_label", None)
+                pack_options = {"side": tk.LEFT, "padx": (6, 0)}
+                if project_label is not None:
+                    pack_options["before"] = project_label
+                badge.pack(**pack_options)
+        elif badge.winfo_manager():
+            badge.pack_forget()
+
     def _manual_status_widgets(self) -> list[tk.Label]:
         widgets: list[tk.Label] = []
         for name in (
@@ -1236,9 +1290,12 @@ class AutoNoteApp(tk.Tk):
         meta.pack(anchor=tk.W, pady=(4, 0))
         ttk.Label(meta, text="LOCAL WORKSPACE", style="ChromeChip.TLabel").pack(side=tk.LEFT)
         ttk.Label(meta, text=f"v{__version__}", style="ChromeChip.TLabel").pack(side=tk.LEFT, padx=(6, 0))
+        self.header_safe_display_var = tk.StringVar(value=self._safe_display_badge_label())
+        self.header_safe_display_chip = ttk.Label(meta, textvariable=self.header_safe_display_var, style="ChromeChip.TLabel")
         if self.display_safe_mode:
-            ttk.Label(meta, text="SAFE DISPLAY", style="ChromeChip.TLabel").pack(side=tk.LEFT, padx=(6, 0))
-        ttk.Label(meta, text=self.project_dir.name, style="ChromeMuted.TLabel").pack(side=tk.LEFT, padx=(8, 0))
+            self.header_safe_display_chip.pack(side=tk.LEFT, padx=(6, 0))
+        self.header_project_name_label = ttk.Label(meta, text=self.project_dir.name, style="ChromeMuted.TLabel")
+        self.header_project_name_label.pack(side=tk.LEFT, padx=(8, 0))
         ttk.Label(
             brand,
             text=str(self.project_dir),
@@ -6056,9 +6113,12 @@ class AutoNoteApp(tk.Tk):
             return
         self.display_density_override = ""
         self.display_safe_mode = False
+        self.display_safe_mode_reason = ""
+        self.display_safe_mode_warnings = []
         self.settings = replace(self.settings, ui_density=density)
         save_settings(self.project_dir, self.settings)
         self._configure_style()
+        self._sync_header_display_state()
         self._refresh_manual_readability_widgets()
         self._refresh_text_widget_readability()
         self.sync_settings_tab()
@@ -6075,9 +6135,12 @@ class AutoNoteApp(tk.Tk):
         density = _normalise_ui_density(DEFAULT_SETTINGS.ui_density)
         self.display_density_override = ""
         self.display_safe_mode = False
+        self.display_safe_mode_reason = ""
+        self.display_safe_mode_warnings = []
         self.settings = replace(self.settings, ui_density=density)
         save_settings(self.project_dir, self.settings)
         self._configure_style()
+        self._sync_header_display_state()
         self._refresh_manual_readability_widgets()
         self._refresh_text_widget_readability()
         self.sync_settings_tab()
@@ -6510,9 +6573,12 @@ class AutoNoteApp(tk.Tk):
         )
         self.display_density_override = ""
         self.display_safe_mode = False
+        self.display_safe_mode_reason = ""
+        self.display_safe_mode_warnings = []
         save_settings(self.project_dir, settings)
         self.settings = settings
         self._configure_style()
+        self._sync_header_display_state()
         self._refresh_manual_readability_widgets()
         self._refresh_text_widget_readability()
         self.refresh_all()
@@ -6754,6 +6820,7 @@ class AutoNoteApp(tk.Tk):
         saved_density = _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
         density = self._active_ui_density()
         safe_display = "on" if self.display_safe_mode else "off"
+        safe_reason = self.display_safe_mode_reason or "none"
         scaling = _safe(lambda: self.tk.call("tk", "scaling"))
         fpixels = _safe(lambda: round(float(self.winfo_fpixels("1i")), 2))
         tree_height = _safe(lambda: style.lookup("Treeview", "rowheight"))
@@ -6774,6 +6841,8 @@ class AutoNoteApp(tk.Tk):
             "",
             "Current display settings",
             f"- safe display mode: {safe_display}",
+            f"- safe display reason: {safe_reason}",
+            f"- safe display warnings: {len(self.display_safe_mode_warnings)}",
             f"- saved display density: {saved_density} / {_ui_density_label(saved_density)}",
             f"- display density: {density} / {_ui_density_label(density)}",
             f"- UI font: {UI_FONT}",

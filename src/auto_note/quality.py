@@ -2813,6 +2813,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header safe display badge",
+            "header_safe_display_chip",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI header display state sync",
+            "_sync_header_display_state",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI header UI density binding",
             "<<ComboboxSelected>>",
         )
@@ -2836,6 +2850,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI safe display launch override",
             "ui_density_override",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI auto safe display readability guard",
+            "_auto_enable_safe_display_if_needed",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI auto safe display trigger reason",
+            "auto-readability",
         )
     )
     checks.append(
@@ -2876,6 +2904,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke safe display reason metric",
+            "display_safe_mode_reason=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke safe display warning metric",
+            "display_safe_mode_warnings=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke header UI density metrics",
             "header_ui_density_chars=",
         )
@@ -2885,6 +2927,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke header display reset metrics",
             "header_display_reset_chars=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke header safe display badge metric",
+            "header_safe_display_visible=",
         )
     )
     checks.append(
@@ -3326,6 +3375,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI display diagnostics safe display mode",
             "safe display mode:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI display diagnostics safe display reason",
+            "safe display reason:",
         )
     )
     checks.append(
