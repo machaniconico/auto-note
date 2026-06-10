@@ -1643,6 +1643,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness article content next focus",
+            "next focus",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness article content anonymous focus",
+            "_article_content_next_focus",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI cleanup confirmation summary",
             "format_cleanup_confirmation(preview",

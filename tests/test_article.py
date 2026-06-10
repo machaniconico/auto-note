@@ -3295,7 +3295,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "readiness.py").write_text(
-                "estimated reclaim\nプレビューでは削除しません\n",
+                "estimated reclaim\nプレビューでは削除しません\nnext focus\n_article_content_next_focus\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_plan.py").write_text(
@@ -3864,6 +3864,8 @@ tags:
         self.assertIn("cleanup shared byte formatter:fail", product_details)
         self.assertIn("readiness privacy cleanup estimated reclaim:fail", product_details)
         self.assertIn("readiness privacy cleanup preview safety:fail", product_details)
+        self.assertIn("readiness article content next focus:fail", product_details)
+        self.assertIn("readiness article content anonymous focus:fail", product_details)
         self.assertIn("GUI cleanup confirmation summary:fail", product_details)
         self.assertIn("GUI starter pack action:fail", product_details)
         self.assertIn("GUI starter cleanup action:fail", product_details)
@@ -4470,6 +4472,8 @@ tags:
         self.assertIn("cleanup shared byte formatter:pass", launcher_details)
         self.assertIn("readiness privacy cleanup estimated reclaim:pass", launcher_details)
         self.assertIn("readiness privacy cleanup preview safety:pass", launcher_details)
+        self.assertIn("readiness article content next focus:pass", launcher_details)
+        self.assertIn("readiness article content anonymous focus:pass", launcher_details)
         self.assertIn("GUI cleanup confirmation summary:pass", launcher_details)
         self.assertIn("GUI starter pack action:pass", launcher_details)
         self.assertIn("GUI starter cleanup action:pass", launcher_details)
@@ -5366,6 +5370,9 @@ tags:
             self.assertTrue(any(item.name == "privacy cleanup" and item.status == "pass" for item in report.items))
             self.assertIn(backup.name, text)
             self.assertIn("privacy cleanup", text)
+            self.assertIn("next focus: score", text)
+            self.assertIn("FIX", text)
+            self.assertNotIn("準備度記事", text)
         self.assertIn("Readiness report", text)
         self.assertIn("Score:", text)
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from .backup import inspect_backup, list_backups
 from .maintenance import collect_privacy_failed_artifacts, format_bytes
 from .quality import run_quality_checks
-from .review import review_path
+from .review import ArticleReview, review_path
 from .release import list_releases, verify_release_package
 from .setup_check import run_setup_check
 from .settings import load_settings
@@ -122,16 +122,46 @@ def _article_content_item(project_dir: Path) -> ReadinessItem:
     average = round(sum(review.score for review in reviews) / len(reviews)) if reviews else 0
     ready = sum(1 for review in reviews if review.ready)
     blockers = sum(1 for review in reviews if review.needs_fix)
+    next_focus = _article_content_next_focus(reviews)
     if blockers:
-        detail = f"average {average}/100, {blockers} article(s) need fixes, {ready}/{len(reviews)} ready"
-        action = "`auto-note review .\\articles` で記事ごとの改善項目を確認してください。"
+        detail = (
+            f"average {average}/100, {blockers} article(s) need fixes, {ready}/{len(reviews)} ready"
+            f"{next_focus}"
+        )
+        action = "`auto-note review .\\articles` で next focus の記事とFIX項目を確認してください。"
     elif ready == len(reviews):
         detail = f"average {average}/100, all {len(reviews)} article(s) ready"
         action = ""
     else:
-        detail = f"average {average}/100, no blockers, {ready}/{len(reviews)} ready"
-        action = "`auto-note review .\\articles` で仕上げ項目を確認できます。"
+        detail = f"average {average}/100, no blockers, {ready}/{len(reviews)} ready{next_focus}"
+        action = "`auto-note review .\\articles` で next focus の記事と仕上げ項目を確認できます。"
     return ReadinessItem("article content", "info", detail, action)
+
+
+def _article_content_next_focus(reviews: list[ArticleReview]) -> str:
+    pending = [review for review in reviews if not review.ready]
+    if not pending:
+        return ""
+
+    def priority(review: ArticleReview) -> tuple[int, int, int, int]:
+        fix_count = sum(1 for item in review.items if item.level == "fix")
+        improve_count = sum(1 for item in review.items if item.level == "improve")
+        return (0 if review.needs_fix else 1, review.score, -fix_count, -improve_count)
+
+    target = min(pending, key=priority)
+    fix_count = sum(1 for item in target.items if item.level == "fix")
+    improve_count = sum(1 for item in target.items if item.level == "improve")
+    focus_item = next(
+        (item for item in target.items if item.level in {"fix", "improve"}),
+        None,
+    )
+    if focus_item is None:
+        return f", next focus: score {target.score}/100, FIX {fix_count}, IMPROVE {improve_count}"
+    level = "FIX" if focus_item.level == "fix" else "IMPROVE"
+    return (
+        f", next focus: score {target.score}/100, FIX {fix_count}, IMPROVE {improve_count}, "
+        f"first {level} {focus_item.category}"
+    )
 
 
 def _backup_item(project_dir: Path) -> ReadinessItem:
