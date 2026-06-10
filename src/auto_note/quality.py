@@ -3114,6 +3114,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README current readable Japanese font guidance",
+            "Yu Gothic UI` / `Meiryo UI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README actual display font diagnostics guidance",
+            "実際の表示フォント",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "CHANGELOG.md",
+            "changelog current readable Japanese font guidance",
+            "Yu Gothic UI` / `Meiryo UI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README UI density command guidance",
             "表示サイズ: 大きめ",
         )
