@@ -111,6 +111,7 @@ from auto_note.gui import (
     UI_ACTION_BUTTON_MIN_WIDTH,
     UI_BADGE_FONT_WEIGHT,
     UI_BADGE_FONT_SIZE,
+    UI_CONTROL_FONT_WEIGHT,
     UI_DENSITY_VALUES,
     UI_FONT_CANDIDATES,
     UI_HEADING_FONT_WEIGHT,
@@ -220,6 +221,14 @@ from auto_note.sales_materials import (
     format_sales_materials_verification,
     list_sales_materials,
     verify_sales_materials,
+)
+from auto_note.sales_listing import (
+    create_sales_listing_kit,
+    format_sales_listing_kit,
+    format_sales_listing_verification,
+    list_sales_listing_kits,
+    list_sales_listing_packages,
+    verify_sales_listing_kit,
 )
 from auto_note.sales_screenshots import (
     create_sales_screenshot_pack,
@@ -457,7 +466,7 @@ class ArticleTests(unittest.TestCase):
         self.assertFalse(_button_label_fit_status([("長いボタン名", 120)], 80)[0])
 
     def test_ui_readability_prefers_modern_japanese_fonts_and_flags_dense_fonts(self) -> None:
-        self.assertEqual(UI_FONT_CANDIDATES[:4], ("Meiryo UI", "メイリオ", "Meiryo", "Yu Gothic UI"))
+        self.assertEqual(UI_FONT_CANDIDATES[:4], ("メイリオ", "Meiryo", "Noto Sans JP", "Yu Gothic UI"))
         self.assertGreaterEqual(UI_TEXT_SIZE, 16)
         self.assertGreaterEqual(UI_SMALL_TEXT_SIZE, 15)
         self.assertGreaterEqual(UI_BADGE_FONT_SIZE, 15)
@@ -470,6 +479,7 @@ class ArticleTests(unittest.TestCase):
         self.assertGreaterEqual(UI_DENSITY_VALUES["large"]["text_size"], 20)
         self.assertEqual(UI_HEADING_FONT_WEIGHT, "normal")
         self.assertEqual(UI_BADGE_FONT_WEIGHT, "normal")
+        self.assertEqual(UI_CONTROL_FONT_WEIGHT, "normal")
         self.assertFalse(_is_crush_prone_font_family("Noto Sans JP"))
         self.assertFalse(_is_crush_prone_font_family("Meiryo UI"))
         self.assertFalse(_is_crush_prone_font_family("メイリオ"))
@@ -1159,6 +1169,65 @@ tags: note
         self.assertIn("Sales screenshot pack", create_output.getvalue())
         self.assertIn(str(created_pack), list_output.getvalue())
         self.assertIn("[OK] sales screenshot pack verified", verify_output.getvalue())
+
+    def test_sales_listing_kit_packages_seller_listing_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            kit = create_sales_listing_kit(project)
+            directory_errors = verify_sales_listing_kit(kit.directory, project_dir=project)
+            package_errors = verify_sales_listing_kit(kit.package_path, project_dir=project)
+            formatted = format_sales_listing_kit(kit)
+            verification = format_sales_listing_verification(kit.package_path, package_errors)
+            listed_kits = list_sales_listing_kits(project)
+            listed_packages = list_sales_listing_packages(project)
+            manifest = json.loads(kit.manifest_path.read_text(encoding="utf-8"))
+            readme_text = kit.readme_path.read_text(encoding="utf-8")
+            checklist_text = kit.checklist_path.read_text(encoding="utf-8")
+            package_exists = kit.package_path.exists()
+            expected_names = {
+                "SALES_MATERIALS.md",
+                "SCREENSHOT_CAPTIONS.md",
+                "index.html",
+                "LISTING_UPLOAD_CHECKLIST.txt",
+                "LISTING_KIT_README.txt",
+                "SALES_LISTING_MANIFEST.json",
+                "CHECKSUMS.txt",
+                "images/01-home-readiness.svg",
+            }
+            with zipfile.ZipFile(kit.package_path) as archive:
+                package_names = set(archive.namelist())
+                package_manifest = archive.read("SALES_LISTING_MANIFEST.json").decode("utf-8")
+            create_output = io.StringIO()
+            with redirect_stdout(create_output):
+                create_code = cli_main(["sales-listing", "--project-dir", str(project)])
+            created_package = list_sales_listing_packages(project)[0]
+            list_output = io.StringIO()
+            with redirect_stdout(list_output):
+                list_code = cli_main(["sales-listing", "--project-dir", str(project), "--list-package"])
+            verify_output = io.StringIO()
+            with redirect_stdout(verify_output):
+                verify_code = cli_main(["sales-listing", "--project-dir", str(project), "--verify", str(created_package)])
+
+        self.assertEqual(directory_errors, [])
+        self.assertEqual(package_errors, [])
+        self.assertTrue(package_exists)
+        self.assertIn("Sales listing kit", formatted)
+        self.assertIn("[OK] sales listing kit verified", verification)
+        self.assertIn("Buyer delivery package: no", readme_text)
+        self.assertIn("Do not send this ZIP to buyers", checklist_text)
+        self.assertTrue(expected_names.issubset(package_names))
+        self.assertTrue(manifest["seller_listing_only"])
+        self.assertFalse(manifest["buyer_delivery"])
+        self.assertTrue(manifest["do_not_send_to_buyer"])
+        self.assertNotIn(str(project), package_manifest)
+        self.assertEqual(listed_kits, [kit.directory])
+        self.assertEqual(listed_packages, [kit.package_path])
+        self.assertEqual(create_code, 0)
+        self.assertEqual(list_code, 0)
+        self.assertEqual(verify_code, 0)
+        self.assertIn("Sales listing kit", create_output.getvalue())
+        self.assertIn(str(created_package), list_output.getvalue())
+        self.assertIn("[OK] sales listing kit verified", verify_output.getvalue())
 
     def test_corrupt_settings_fall_back_and_are_reported(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3562,7 +3631,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-screenshots\nVerify a generated sales screenshot pack directory.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-screenshots\nVerify a generated sales screenshot pack directory.\nsales-listing\nVerify a sales listing kit folder or zip.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "settings.py").write_text(
@@ -3597,6 +3666,10 @@ tags:
             )
             (project / "src" / "auto_note" / "sales_screenshots.py").write_text(
                 "create_sales_screenshot_pack\nSCREENSHOT_ASSETS\nSCREENSHOT_CAPTIONS.md\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "sales_listing.py").write_text(
+                "create_sales_listing_kit\nSALES_LISTING_MANIFEST.json\nCHECKSUMS.txt\nBuyer delivery package: no\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_handoff.py").write_text(
@@ -3672,10 +3745,14 @@ tags:
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
                 + "_style_text_widget\n"
+                + "掲載キット作成\n"
+                + "掲載キット検証\n"
+                + "list_sales_listing_packages\n"
                 + '"Noto Sans JP"\n'
-                + 'UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP"\n'
+                + '"メイリオ",\n    "Meiryo",\n    "Noto Sans JP"\n'
                 + "UI_FONT_CANDIDATES\n"
                 + "UI_MIN_FONT_LINESPACE_RATIO\n"
+                + 'UI_CONTROL_FONT_WEIGHT = "normal"\n'
                 + "UI_TEXT_SIZE = 16\n"
                 + "UI_BADGE_FONT_SIZE = 15\n"
                 + "UI_TREE_ROW_HEIGHT = 76\n"
@@ -4019,6 +4096,13 @@ tags:
                 "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nメイリオ` / `Noto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
+            readme_fixture = project / "README.md"
+            readme_fixture.write_text(
+                readme_fixture.read_text(encoding="utf-8")
+                + "auto-note sales-listing\n"
+                + "sales-listing --project-dir . --verify\n",
+                encoding="utf-8",
+            )
             (project / "docs").mkdir(exist_ok=True)
             (project / "docs" / "CHANGELOG.md").write_text(
                 "メイリオ` / `Noto Sans JP\n",
@@ -4048,6 +4132,13 @@ tags:
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
                 "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n販売準備タイムライン\n軽量判定\n送付文有無\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
+                encoding="utf-8",
+            )
+            product_readiness_fixture = project / "docs" / "PRODUCT_READINESS.md"
+            product_readiness_fixture.write_text(
+                product_readiness_fixture.read_text(encoding="utf-8")
+                + "sales-listing\n"
+                + "sales-listing --project-dir . --verify\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
@@ -4202,11 +4293,17 @@ tags:
         self.assertIn("CLI sales materials verify command:fail", product_details)
         self.assertIn("CLI sales screenshots command:fail", product_details)
         self.assertIn("CLI sales screenshots verify command:fail", product_details)
+        self.assertIn("CLI sales listing command:fail", product_details)
+        self.assertIn("CLI sales listing verify command:fail", product_details)
         self.assertIn("sales materials commercial setup warnings:fail", product_details)
         self.assertIn("sales materials buyer first 10 minutes:fail", product_details)
         self.assertIn("sales screenshots generator:fail", product_details)
         self.assertIn("sales screenshots SVG assets:fail", product_details)
         self.assertIn("sales screenshots captions:fail", product_details)
+        self.assertIn("sales listing kit generator:fail", product_details)
+        self.assertIn("sales listing kit manifest:fail", product_details)
+        self.assertIn("sales listing kit checksum:fail", product_details)
+        self.assertIn("sales listing kit buyer guard:fail", product_details)
         self.assertIn("sales handoff buyer first 10 minutes:fail", product_details)
         self.assertIn("sales handoff delivery checklist:fail", product_details)
         self.assertIn("sales handoff creates sales screenshots:fail", product_details)
@@ -4422,6 +4519,7 @@ tags:
         self.assertIn("GUI modern text area styling:fail", product_details)
         self.assertIn("GUI readable Japanese font:fail", product_details)
         self.assertIn("GUI native Japanese preferred font:fail", product_details)
+        self.assertIn("GUI normal control font weight:fail", product_details)
         self.assertIn("GUI readable font line-space guard:fail", product_details)
         self.assertIn("GUI readable font resolver threshold:fail", product_details)
         self.assertIn("GUI readable text size tokens:fail", product_details)
@@ -4668,6 +4766,9 @@ tags:
         self.assertIn("GUI sales screenshots action:fail", product_details)
         self.assertIn("GUI sales screenshots verify action:fail", product_details)
         self.assertIn("GUI sales screenshots report status:fail", product_details)
+        self.assertIn("GUI sales listing kit action:fail", product_details)
+        self.assertIn("GUI sales listing kit verify action:fail", product_details)
+        self.assertIn("GUI sales listing kit report status:fail", product_details)
         self.assertIn("GUI sales finalize action:fail", product_details)
         self.assertIn("GUI sales finalize template apply action:fail", product_details)
         self.assertIn("GUI sales finalize opens buyer delivery:fail", product_details)
@@ -4736,6 +4837,8 @@ tags:
         self.assertIn("README sales materials verify guidance:fail", product_details)
         self.assertIn("README sales screenshots guidance:fail", product_details)
         self.assertIn("README sales screenshots verify guidance:fail", product_details)
+        self.assertIn("README sales listing guidance:fail", product_details)
+        self.assertIn("README sales listing verify guidance:fail", product_details)
         self.assertIn("README sales finalize guidance:fail", product_details)
         self.assertIn("README sales finalize template apply guidance:fail", product_details)
         self.assertIn("README sales plan guidance:fail", product_details)
@@ -4809,6 +4912,8 @@ tags:
         self.assertIn("product readiness sales materials verify command:fail", product_details)
         self.assertIn("product readiness sales screenshots command:fail", product_details)
         self.assertIn("product readiness sales screenshots verify command:fail", product_details)
+        self.assertIn("product readiness sales listing command:fail", product_details)
+        self.assertIn("product readiness sales listing verify command:fail", product_details)
         self.assertIn("product readiness sales finalize command:fail", product_details)
         self.assertIn("product readiness sales finalize template apply command:fail", product_details)
         self.assertIn("product readiness sales plan command:fail", product_details)
@@ -4908,11 +5013,17 @@ tags:
         self.assertIn("CLI sales materials verify command:pass", launcher_details)
         self.assertIn("CLI sales screenshots command:pass", launcher_details)
         self.assertIn("CLI sales screenshots verify command:pass", launcher_details)
+        self.assertIn("CLI sales listing command:pass", launcher_details)
+        self.assertIn("CLI sales listing verify command:pass", launcher_details)
         self.assertIn("sales materials commercial setup warnings:pass", launcher_details)
         self.assertIn("sales materials buyer first 10 minutes:pass", launcher_details)
         self.assertIn("sales screenshots generator:pass", launcher_details)
         self.assertIn("sales screenshots SVG assets:pass", launcher_details)
         self.assertIn("sales screenshots captions:pass", launcher_details)
+        self.assertIn("sales listing kit generator:pass", launcher_details)
+        self.assertIn("sales listing kit manifest:pass", launcher_details)
+        self.assertIn("sales listing kit checksum:pass", launcher_details)
+        self.assertIn("sales listing kit buyer guard:pass", launcher_details)
         self.assertIn("sales handoff buyer first 10 minutes:pass", launcher_details)
         self.assertIn("sales handoff delivery checklist:pass", launcher_details)
         self.assertIn("sales handoff creates sales screenshots:pass", launcher_details)
@@ -5128,6 +5239,7 @@ tags:
         self.assertIn("GUI modern text area styling:pass", launcher_details)
         self.assertIn("GUI readable Japanese font:pass", launcher_details)
         self.assertIn("GUI native Japanese preferred font:pass", launcher_details)
+        self.assertIn("GUI normal control font weight:pass", launcher_details)
         self.assertIn("GUI readable font line-space guard:pass", launcher_details)
         self.assertIn("GUI readable font resolver threshold:pass", launcher_details)
         self.assertIn("GUI readable text size tokens:pass", launcher_details)
@@ -5374,6 +5486,9 @@ tags:
         self.assertIn("GUI sales screenshots action:pass", launcher_details)
         self.assertIn("GUI sales screenshots verify action:pass", launcher_details)
         self.assertIn("GUI sales screenshots report status:pass", launcher_details)
+        self.assertIn("GUI sales listing kit action:pass", launcher_details)
+        self.assertIn("GUI sales listing kit verify action:pass", launcher_details)
+        self.assertIn("GUI sales listing kit report status:pass", launcher_details)
         self.assertIn("GUI sales finalize action:pass", launcher_details)
         self.assertIn("GUI sales finalize template apply action:pass", launcher_details)
         self.assertIn("GUI sales finalize opens buyer delivery:pass", launcher_details)
@@ -5443,6 +5558,8 @@ tags:
         self.assertIn("README sales materials verify guidance:pass", launcher_details)
         self.assertIn("README sales screenshots guidance:pass", launcher_details)
         self.assertIn("README sales screenshots verify guidance:pass", launcher_details)
+        self.assertIn("README sales listing guidance:pass", launcher_details)
+        self.assertIn("README sales listing verify guidance:pass", launcher_details)
         self.assertIn("README sales finalize guidance:pass", launcher_details)
         self.assertIn("README sales finalize template apply guidance:pass", launcher_details)
         self.assertIn("README sales plan guidance:pass", launcher_details)
@@ -5516,6 +5633,8 @@ tags:
         self.assertIn("product readiness sales materials verify command:pass", launcher_details)
         self.assertIn("product readiness sales screenshots command:pass", launcher_details)
         self.assertIn("product readiness sales screenshots verify command:pass", launcher_details)
+        self.assertIn("product readiness sales listing command:pass", launcher_details)
+        self.assertIn("product readiness sales listing verify command:pass", launcher_details)
         self.assertIn("product readiness sales finalize command:pass", launcher_details)
         self.assertIn("product readiness sales finalize template apply command:pass", launcher_details)
         self.assertIn("product readiness sales plan command:pass", launcher_details)

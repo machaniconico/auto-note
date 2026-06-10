@@ -650,6 +650,39 @@ def main(argv: list[str] | None = None) -> int:
                 _open_path(pack.html_path)
             return 1 if errors else 0
 
+        if args.command == "sales-listing":
+            from .sales_listing import (
+                create_sales_listing_kit,
+                format_sales_listing_kit,
+                format_sales_listing_verification,
+                list_sales_listing_kits,
+                list_sales_listing_packages,
+                verify_sales_listing_kit,
+            )
+
+            project_dir = args.project_dir.resolve()
+            if args.verify:
+                errors = verify_sales_listing_kit(args.verify, strict=args.strict, project_dir=project_dir)
+                print(format_sales_listing_verification(args.verify, errors, strict=args.strict))
+                return 1 if errors else 0
+            if args.list:
+                kits = list_sales_listing_kits(project_dir)
+                print("\n".join(str(path) for path in kits) if kits else "No sales listing kits.")
+                return 0
+            if args.list_package:
+                packages = list_sales_listing_packages(project_dir)
+                print("\n".join(str(path) for path in packages) if packages else "No sales listing kit zips.")
+                return 0
+            kit = create_sales_listing_kit(project_dir, strict=args.strict)
+            print(format_sales_listing_kit(kit))
+            errors = verify_sales_listing_kit(kit.directory, strict=args.strict, project_dir=project_dir)
+            print(format_sales_listing_verification(kit.directory, errors, strict=args.strict))
+            package_errors = verify_sales_listing_kit(kit.package_path, strict=args.strict, project_dir=project_dir)
+            print(format_sales_listing_verification(kit.package_path, package_errors, strict=args.strict))
+            if args.open:
+                _open_path(kit.directory / "index.html")
+            return 1 if errors or package_errors else 0
+
         if args.command == "sales-finalize":
             from .sales_finalize import (
                 create_sales_finalize,
@@ -1449,6 +1482,21 @@ def build_parser() -> argparse.ArgumentParser:
     sales_screenshots.add_argument("--list", action="store_true", help="List existing sales screenshot packs.")
     sales_screenshots.add_argument("--verify", type=Path, help="Verify a generated sales screenshot pack directory.")
     sales_screenshots.add_argument("--open", action="store_true", help="Open the generated HTML preview.")
+
+    sales_listing = subparsers.add_parser(
+        "sales-listing",
+        help="Create or verify a seller-only marketplace listing upload kit.",
+    )
+    sales_listing.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
+    sales_listing.add_argument("--list", action="store_true", help="List existing sales listing kit folders.")
+    sales_listing.add_argument("--list-package", action="store_true", help="List existing sales listing kit zips.")
+    sales_listing.add_argument("--verify", type=Path, help="Verify a sales listing kit folder or zip.")
+    sales_listing.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail while unresolved sales-material placeholders, raw emails, or stale release names remain.",
+    )
+    sales_listing.add_argument("--open", action="store_true", help="Open the generated HTML image preview.")
 
     sales_finalize = subparsers.add_parser(
         "sales-finalize",

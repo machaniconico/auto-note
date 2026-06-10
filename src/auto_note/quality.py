@@ -1342,6 +1342,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales listing command",
+            "sales-listing",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales listing verify command",
+            "Verify a sales listing kit folder or zip.",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_materials.py",
             "sales materials commercial setup warnings",
             "commercial setup warning:",
@@ -1373,6 +1387,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_screenshots.py",
             "sales screenshots captions",
             "SCREENSHOT_CAPTIONS.md",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_listing.py",
+            "sales listing kit generator",
+            "create_sales_listing_kit",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_listing.py",
+            "sales listing kit manifest",
+            "SALES_LISTING_MANIFEST.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_listing.py",
+            "sales listing kit checksum",
+            "CHECKSUMS.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_listing.py",
+            "sales listing kit buyer guard",
+            "Buyer delivery package: no",
         )
     )
     checks.append(
@@ -3010,7 +3052,14 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI native Japanese preferred font",
-            'UI_FONT_CANDIDATES = ("メイリオ", "Meiryo", "Meiryo UI", "Noto Sans JP"',
+            '"メイリオ",\n    "Meiryo",\n    "Noto Sans JP"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI normal control font weight",
+            "UI_CONTROL_FONT_WEIGHT = \"normal\"",
         )
     )
     checks.append(
@@ -4710,6 +4759,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales listing kit action",
+            "掲載キット作成",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales listing kit verify action",
+            "掲載キット検証",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales listing kit report status",
+            "list_sales_listing_packages",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales finalize action",
             "販売一括作成",
         )
@@ -5083,6 +5153,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README sales screenshots verify guidance",
             "sales-screenshots --project-dir . --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales listing guidance",
+            "auto-note sales-listing",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales listing verify guidance",
+            "sales-listing --project-dir . --verify",
         )
     )
     checks.append(
@@ -5573,6 +5657,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness sales screenshots verify command",
             "sales-screenshots --project-dir . --verify",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales listing command",
+            "sales-listing",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales listing verify command",
+            "sales-listing --project-dir . --verify",
         )
     )
     checks.append(

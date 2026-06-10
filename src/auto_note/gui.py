@@ -141,6 +141,14 @@ from .sales_materials import (
     list_sales_materials,
     verify_sales_materials,
 )
+from .sales_listing import (
+    create_sales_listing_kit,
+    format_sales_listing_kit,
+    format_sales_listing_verification,
+    list_sales_listing_kits,
+    list_sales_listing_packages,
+    verify_sales_listing_kit,
+)
 from .sales_screenshots import (
     create_sales_screenshot_pack,
     format_sales_screenshot_pack,
@@ -214,15 +222,15 @@ STATUS_LABELS = {
     "published": "公開済み",
 }
 SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS = 24
-# Prefer UI-specific Japanese faces first. They keep button labels narrower
-# than full Meiryo while still rendering Japanese cleanly on high-DPI Windows.
+# Prefer full Japanese UI faces first. Meiryo UI is narrower, but on some
+# Windows/Tk combinations it renders Japanese controls with cramped strokes.
 UI_FONT_CANDIDATES = (
-    "Meiryo UI",
     "メイリオ",
     "Meiryo",
-    "Yu Gothic UI",
-    "Yu Gothic",
     "Noto Sans JP",
+    "Yu Gothic UI",
+    "Meiryo UI",
+    "Yu Gothic",
     "Noto Sans CJK JP",
     "BIZ UDPゴシック",
     "BIZ UDゴシック",
@@ -239,6 +247,7 @@ UI_SMALL_TEXT_SIZE = 15
 UI_BADGE_FONT_SIZE = 15
 UI_HEADING_FONT_WEIGHT = "normal"
 UI_BADGE_FONT_WEIGHT = "normal"
+UI_CONTROL_FONT_WEIGHT = "normal"
 UI_TREE_ROW_HEIGHT = 76
 UI_NOTEBOOK_TAB_PADDING = (26, 22)
 UI_BUTTON_PADDING = (25, 21)
@@ -1287,7 +1296,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "TNotebook.Tab",
             padding=UI_NOTEBOOK_TAB_PADDING,
-            font=(font, UI_TEXT_SIZE),
+            font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=surface_alt,
             foreground=muted,
             borderwidth=0,
@@ -1376,7 +1385,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "TButton",
             padding=UI_BUTTON_PADDING,
-            font=(font, UI_TEXT_SIZE),
+            font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=surface_alt,
             foreground=primary,
             bordercolor=line,
@@ -1387,7 +1396,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "Secondary.TButton",
             padding=UI_BUTTON_PADDING,
-            font=(font, UI_TEXT_SIZE),
+            font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=surface,
             foreground=primary,
             bordercolor=line,
@@ -1401,7 +1410,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "Primary.TButton",
             padding=UI_PRIMARY_BUTTON_PADDING,
-            font=(font, UI_TEXT_SIZE),
+            font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=accent,
             foreground="#ffffff",
             borderwidth=0,
@@ -1418,7 +1427,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "Quiet.TButton",
             padding=UI_BUTTON_PADDING,
-            font=(font, UI_TEXT_SIZE),
+            font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=chrome_alt,
             foreground="#ffffff",
         )
@@ -1426,7 +1435,7 @@ class AutoNoteApp(tk.Tk):
         style.configure(
             "Danger.TButton",
             padding=UI_DANGER_BUTTON_PADDING,
-            font=(font, UI_TEXT_SIZE),
+            font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=UI_COLORS["danger_soft"],
             foreground="#991b1b",
         )
@@ -2061,6 +2070,7 @@ class AutoNoteApp(tk.Tk):
             ("seller", "販売者情報", self.focus_next_commercial_missing_field),
             ("release", "配布ZIP", self.run_preflight_create_release_to_tab),
             ("materials", "販売素材", self.create_sales_materials_action),
+            ("listing", "掲載キット", self.create_sales_listing_kit_action),
             ("handoff", "販売一式", self.create_sales_handoff_action),
             ("buyer", "購入者ZIP/送付文", self.run_home_buyer_send_next_action),
             ("send", "送付前照合", self.run_buyer_send_readiness_to_tab),
@@ -2116,6 +2126,7 @@ class AutoNoteApp(tk.Tk):
             ("販売ナビ", self.run_sales_plan_to_tab, None),
             ("販売素材", self.create_sales_materials_action, None),
             ("掲載画像", self.create_sales_screenshots_action, None),
+            ("掲載キット", self.create_sales_listing_kit_action, None),
             ("送付前チェック", self.run_buyer_send_readiness_to_tab, None),
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
@@ -2254,6 +2265,8 @@ class AutoNoteApp(tk.Tk):
             ("販売素材検証", self.verify_latest_sales_materials_action),
             ("掲載画像作成", self.create_sales_screenshots_action),
             ("掲載画像検証", self.verify_latest_sales_screenshots_action),
+            ("掲載キット作成", self.create_sales_listing_kit_action),
+            ("掲載キット検証", self.verify_latest_sales_listing_kit_action),
             ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
             ("販売一括作成", self.create_sales_finalize_action),
             ("販売準備", self.run_commercial_readiness_to_tab),
@@ -2362,6 +2375,11 @@ class AutoNoteApp(tk.Tk):
             padx=6,
         )
         ttk.Button(top, text="掲載画像検証", command=self.verify_latest_sales_screenshots_action).pack(
+            side=tk.RIGHT,
+            padx=6,
+        )
+        ttk.Button(top, text="掲載キット作成", command=self.create_sales_listing_kit_action).pack(side=tk.RIGHT, padx=6)
+        ttk.Button(top, text="掲載キット検証", command=self.verify_latest_sales_listing_kit_action).pack(
             side=tk.RIGHT,
             padx=6,
         )
@@ -3323,6 +3341,8 @@ class AutoNoteApp(tk.Tk):
                 ("販売素材検証", self.verify_latest_sales_materials_action),
                 ("掲載画像作成", self.create_sales_screenshots_action),
                 ("掲載画像検証", self.verify_latest_sales_screenshots_action),
+                ("掲載キット作成", self.create_sales_listing_kit_action),
+                ("掲載キット検証", self.verify_latest_sales_listing_kit_action),
                 ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
                 ("販売一括作成", self.create_sales_finalize_action),
                 ("販売準備", self.run_commercial_readiness_to_tab),
@@ -3582,6 +3602,8 @@ class AutoNoteApp(tk.Tk):
                 ("販売者情報確認", self.show_commercial_setup_status_action),
                 ("販売素材作成", self.create_sales_materials_action),
                 ("掲載画像作成", self.create_sales_screenshots_action),
+                ("掲載キット作成", self.create_sales_listing_kit_action),
+                ("掲載キット検証", self.verify_latest_sales_listing_kit_action),
                 ("テンプレ取込一括", self.create_sales_finalize_with_template_action),
                 ("販売一括作成", self.create_sales_finalize_action),
                 ("販売準備", self.run_commercial_readiness_to_tab),
@@ -3824,6 +3846,8 @@ class AutoNoteApp(tk.Tk):
             "販売素材作成": self.create_sales_materials_action,
             "掲載画像作成": self.create_sales_screenshots_action,
             "掲載画像検証": self.verify_latest_sales_screenshots_action,
+            "掲載キット作成": self.create_sales_listing_kit_action,
+            "掲載キット検証": self.verify_latest_sales_listing_kit_action,
             "テンプレ適用": self.apply_latest_commercial_setup_template_action,
             "テンプレ取込一括": self.create_sales_finalize_with_template_action,
             "販売一括作成": self.create_sales_finalize_action,
@@ -5695,6 +5719,7 @@ class AutoNoteApp(tk.Tk):
             ("診断ZIP", list_diagnostic_reports(self.project_dir)),
             ("配布ZIP", list_releases(self.project_dir)),
             ("掲載画像", list_sales_screenshot_packs(self.project_dir)),
+            ("掲載キット", list_sales_listing_packages(self.project_dir)),
             ("購入者ZIP", list_buyer_delivery_packages(self.project_dir)),
             ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
             ("送付記録", list_seller_delivery_receipts(self.project_dir)),
@@ -5790,6 +5815,8 @@ class AutoNoteApp(tk.Tk):
             return "\n".join(
                 [*header, format_buyer_delivery_package_verification(path, verify_buyer_delivery_package(path))]
             )
+        if label == "掲載キット":
+            return "\n".join([*header, format_sales_listing_verification(path, verify_sales_listing_kit(path))])
         if path.suffix.lower() == ".zip":
             return "\n".join([*header, *_format_zip_report_summary(path)])
         try:
@@ -5815,13 +5842,15 @@ class AutoNoteApp(tk.Tk):
         buyer_messages = list_buyer_delivery_messages(self.project_dir)
         seller_receipts = list_seller_delivery_receipts(self.project_dir)
         materials = list_sales_materials(self.project_dir)
+        listing_kits = list_sales_listing_kits(self.project_dir)
+        listing_packages = list_sales_listing_packages(self.project_dir)
         latest_buyer_package = buyer_packages[0] if buyer_packages else None
         latest_buyer_message = buyer_messages[0] if buyer_messages else None
         latest_seller_receipt = seller_receipts[0] if seller_receipts else None
         support_state, support_text = self._home_support_send_readiness()
         artifact_remaining = sum(
             1
-            for paths in (releases, materials, handoffs, buyer_packages, buyer_messages)
+            for paths in (releases, materials, listing_packages, handoffs, buyer_packages, buyer_messages)
             if not paths
         )
         seller_remaining = len(missing) + len(warnings)
@@ -5835,6 +5864,7 @@ class AutoNoteApp(tk.Tk):
             buyer_packages=buyer_packages,
             buyer_messages=buyer_messages,
             materials=materials,
+            listing_packages=listing_packages,
         )
         buyer_package_errors = (
             verify_buyer_delivery_package(latest_buyer_package) if latest_buyer_package else []
@@ -5905,6 +5935,8 @@ class AutoNoteApp(tk.Tk):
             buyer_packages=buyer_packages,
             buyer_messages=buyer_messages,
             materials=materials,
+            listing_kits=listing_kits,
+            listing_packages=listing_packages,
             latest_buyer_package=latest_buyer_package,
             latest_buyer_message=latest_buyer_message,
             latest_seller_receipt=latest_seller_receipt,
@@ -5983,6 +6015,8 @@ class AutoNoteApp(tk.Tk):
         buyer_packages: list[Path],
         buyer_messages: list[Path],
         materials: list[Path],
+        listing_kits: list[Path],
+        listing_packages: list[Path],
         latest_buyer_package: Path | None,
         latest_buyer_message: Path | None,
         latest_seller_receipt: Path | None,
@@ -6016,6 +6050,14 @@ class AutoNoteApp(tk.Tk):
             "販売素材",
             "ok" if materials else "warn",
             f"最新 {_format_mtime(materials[0])}" if materials else "未作成",
+        )
+        latest_listing = listing_packages[0] if listing_packages else (listing_kits[0] if listing_kits else None)
+        listing_errors = verify_sales_listing_kit(latest_listing) if latest_listing else []
+        put(
+            "listing",
+            "掲載キット",
+            "fail" if listing_errors else ("ok" if latest_listing else "warn"),
+            f"NG {len(listing_errors)}件" if listing_errors else (f"最新 {_format_mtime(latest_listing)}" if latest_listing else "未作成"),
         )
         put(
             "handoff",
@@ -6149,6 +6191,7 @@ class AutoNoteApp(tk.Tk):
         buyer_packages: list[Path],
         buyer_messages: list[Path],
         materials: list[Path],
+        listing_packages: list[Path],
     ) -> SalesPlanStep:
         if missing or warnings:
             detail = missing[0] if missing else warnings[0]
@@ -6176,6 +6219,15 @@ class AutoNoteApp(tk.Tk):
                 detail="sales materials not found",
                 action="販売ページ文案、納品文、FAQを作成します。",
                 gui="診断 > 販売素材作成",
+                category="tool",
+            )
+        if not listing_packages:
+            return SalesPlanStep(
+                title="販売ページ掲載キットを作成する",
+                status="warning",
+                detail="sales listing kit not found",
+                action="販売ページへ貼る文案、画像、キャプション、チェック表をZIP化します。",
+                gui="診断 > 掲載キット作成",
                 category="tool",
             )
         if not handoffs:
@@ -6232,6 +6284,8 @@ class AutoNoteApp(tk.Tk):
             self.verify_latest_sales_materials_action()
         elif "販売素材" in title:
             self.create_sales_materials_action()
+        elif "掲載キット" in title:
+            self.create_sales_listing_kit_action()
         elif "販売用一式" in title:
             self.create_sales_handoff_action()
         elif "購入者向けZIP" in title:
@@ -6729,6 +6783,8 @@ class AutoNoteApp(tk.Tk):
             ("販売素材検証", "最新販売素材Markdownの未設定項目と反映漏れを確認", self.verify_latest_sales_materials_action),
             ("掲載画像作成", "販売ページ掲載用のSVG画像、キャプション、HTMLプレビューを作成", self.create_sales_screenshots_action),
             ("掲載画像検証", "最新の販売ページ画像パックを検証", self.verify_latest_sales_screenshots_action),
+            ("掲載キット作成", "販売ページへ貼る素材、画像、キャプション、チェック表をZIP化", self.create_sales_listing_kit_action),
+            ("掲載キット検証", "最新の掲載キットフォルダとZIPを検証", self.verify_latest_sales_listing_kit_action),
             ("テンプレ取込一括", "最新販売者テンプレを取り込んでから販売一括作成", self.create_sales_finalize_with_template_action),
             ("販売一括作成", "配布ZIP、販売素材、掲載画像、販売一式ZIP、購入者ZIP、診断、監査をまとめて作成", self.create_sales_finalize_action),
             ("販売準備", "配布ZIP、監査、受入、文書、連絡先を販売目線で確認", self.run_commercial_readiness_to_tab),
@@ -7776,6 +7832,57 @@ class AutoNoteApp(tk.Tk):
             self.notify("掲載画像パックの検証で確認事項が見つかりました", level="warning")
         else:
             self.notify(f"掲載画像パックを検証しました: {latest.name}", level="success")
+
+    def create_sales_listing_kit_action(self) -> None:
+        try:
+            kit = create_sales_listing_kit(self.project_dir, strict=True)
+        except OSError as exc:
+            self.notify("掲載キットの作成に失敗しました", level="error")
+            messagebox.showerror("掲載キットエラー", str(exc))
+            return
+        errors = verify_sales_listing_kit(kit.directory, strict=True, project_dir=self.project_dir)
+        package_errors = verify_sales_listing_kit(kit.package_path, strict=True, project_dir=self.project_dir)
+        text = "\n\n".join(
+            [
+                format_sales_listing_kit(kit),
+                format_sales_listing_verification(kit.directory, errors, strict=True),
+                format_sales_listing_verification(kit.package_path, package_errors, strict=True),
+            ]
+        )
+        self._set_text(self.diagnostics_text, text)
+        self.notebook.select(self.diagnostics_tab)
+        _open_path(kit.directory)
+        _open_path(kit.package_path)
+        _open_path(kit.directory / "index.html")
+        self.refresh_home()
+        level = "warning" if errors or package_errors else "success"
+        self.notify(f"掲載キットを作成しました: {kit.directory.name}", level=level)
+
+    def verify_latest_sales_listing_kit_action(self) -> None:
+        kits = list_sales_listing_kits(self.project_dir)
+        packages = list_sales_listing_packages(self.project_dir)
+        if not kits and not packages:
+            messagebox.showinfo("掲載キット検証", "掲載キットがまだありません。")
+            self.notify("掲載キットがありません", level="warning")
+            return
+        parts: list[str] = []
+        has_errors = False
+        if kits:
+            latest_kit = kits[0]
+            errors = verify_sales_listing_kit(latest_kit, strict=True, project_dir=self.project_dir)
+            has_errors = has_errors or bool(errors)
+            parts.append(format_sales_listing_verification(latest_kit, errors, strict=True))
+        if packages:
+            latest_package = packages[0]
+            errors = verify_sales_listing_kit(latest_package, strict=True, project_dir=self.project_dir)
+            has_errors = has_errors or bool(errors)
+            parts.append(format_sales_listing_verification(latest_package, errors, strict=True))
+        self._set_text(self.diagnostics_text, "\n\n".join(parts))
+        self.notebook.select(self.diagnostics_tab)
+        if has_errors:
+            self.notify("掲載キットの検証で確認事項が見つかりました", level="warning")
+        else:
+            self.notify("掲載キットを検証しました", level="success")
 
     def create_sales_finalize_action(self) -> None:
         self._create_sales_finalize_action(apply_latest_template=False)
@@ -10020,6 +10127,8 @@ def _home_report_status(label: str, path: Path) -> str:
         return "NG" if verify_release_package(path) else "OK"
     if label == "掲載画像":
         return "NG" if verify_sales_screenshot_pack(path) else "OK"
+    if label == "掲載キット":
+        return "NG" if verify_sales_listing_kit(path) else "OK"
     if label == "購入者ZIP":
         return "NG" if verify_buyer_delivery_package(path) else "OK"
     if label == "販売直前":
