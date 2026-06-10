@@ -599,6 +599,33 @@ def _command_palette_selection_index(current: int | None, delta: int, count: int
     return (current + delta) % count
 
 
+def _note_login_safety_text() -> str:
+    return "\n".join(
+        [
+            "note login safety / noteログイン安全ガイド",
+            "",
+            "結論",
+            "- Googleログインなどで「このブラウザまたはアプリは安全ではない可能性があります」と出る場合は、自動操作ブラウザを使わず、普段使っている既定ブラウザでログインします。",
+            "- auto-note は未公開APIやログイン回避を使わず、投稿ヘルパーでコピーしてnote画面へ貼り付ける運用を標準にします。",
+            "",
+            "GUIでの手順",
+            "1. ヘッダーまたは記事タブの noteログイン を押して普段のブラウザでログインする",
+            "2. 設定 > 投稿ヘルパー起動時にnote投稿画面も開く をONにする",
+            "3. 記事 > 投稿ヘルパー でヘルパーとnote投稿画面を開く",
+            "4. ヘルパーのコピー操作でタイトル/本文/タグを貼り付け、note画面で公開する",
+            "",
+            "CLIでの手順",
+            "- auto-note login --default-browser",
+            "- auto-note manual .\\articles\\post.md --append-tags",
+            "",
+            "自動操作ブラウザを使う場合",
+            "- 使える環境だけ `auto-note login --browser msedge` または `auto-note login --browser chrome` を試します。",
+            "- 二要素認証やCAPTCHAは手動で対応してください。",
+            "- 弾かれる場合は無理に突破せず、既定ブラウザ + 投稿ヘルパーに戻してください。",
+        ]
+    )
+
+
 def _gui_runtime_error_message(path: Path) -> str:
     return "\n".join(
         [
@@ -764,6 +791,16 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         command_palette_support_display_diagnostics_actions = sum(
             1 for label, _hint, _action in app.command_palette_actions() if label == "ZIP表示診断"
         )
+        command_palette_note_login_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "noteログイン"
+        )
+        command_palette_note_login_safety_actions = sum(
+            1 for label, _hint, _action in app.command_palette_actions() if label == "ログイン安全ガイド"
+        )
+        home_quick_login_safety_actions = sum(
+            1 for item in getattr(app, "home_quick_actions", []) if item[0] == "ログイン安全ガイド"
+        )
+        note_login_safety_chars = len(_note_login_safety_text())
         display_readability_status, display_readability_lines = app._display_readability_checks(style)
         display_readability_warnings = sum(1 for line in display_readability_lines if "[WARN]" in line)
         display_button_label_fit_ok, _display_button_label_fit_detail, _display_button_label_fit_lines = (
@@ -820,6 +857,10 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"command_palette_display_diagnostics_copy_actions={command_palette_display_diagnostics_copy_actions}, "
             f"command_palette_gui_log_clear_actions={command_palette_gui_log_clear_actions}, "
             f"command_palette_support_display_diagnostics_actions={command_palette_support_display_diagnostics_actions}, "
+            f"command_palette_note_login_actions={command_palette_note_login_actions}, "
+            f"command_palette_note_login_safety_actions={command_palette_note_login_safety_actions}, "
+            f"home_quick_login_safety_actions={home_quick_login_safety_actions}, "
+            f"note_login_safety_chars={note_login_safety_chars}, "
             f"display_readability_status={display_readability_status}, "
             f"display_readability_warnings={display_readability_warnings}, "
             f"display_button_label_fit_status={display_button_label_fit_status}, "
@@ -1389,7 +1430,7 @@ class AutoNoteApp(tk.Tk):
         quick = ttk.Frame(header, style="ChromeAlt.TFrame", padding=(10, 7))
         quick.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Label(quick, text="note", style="ChromeAction.TLabel").pack(side=tk.LEFT)
-        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=lambda: webbrowser.open(NOTE_LOGIN_URL), width=8).pack(
+        ttk.Button(quick, text="ログイン", style="Quiet.TButton", command=self.open_note_login_action, width=8).pack(
             side=tk.LEFT,
             padx=(8, 0),
         )
@@ -1972,6 +2013,7 @@ class AutoNoteApp(tk.Tk):
         quick.pack(fill=tk.X, pady=(0, 10))
         self.home_quick_actions = [
             ("投稿ヘルパーを開く", self.open_helper, "Primary.TButton"),
+            ("ログイン安全ガイド", self.show_note_login_safety_action),
             ("投稿キュー", self.publish_queue_to_tab),
             ("運用サマリー", self.run_overview_to_tab),
             ("予定ICS出力", self.export_calendar_action),
@@ -2399,7 +2441,7 @@ class AutoNoteApp(tk.Tk):
         ttk.Button(box, text="改善プラン", command=self.improvement_plan_selected_to_tab).pack(
             fill=tk.X, pady=(0, 6)
         )
-        ttk.Button(box, text="noteログイン", command=lambda: webbrowser.open(NOTE_LOGIN_URL)).pack(fill=tk.X)
+        ttk.Button(box, text="noteログイン", command=self.open_note_login_action).pack(fill=tk.X)
 
     def _build_check_actions(self, parent: ttk.Frame) -> None:
         box = ttk.LabelFrame(parent, text="確認")
@@ -3270,6 +3312,7 @@ class AutoNoteApp(tk.Tk):
             [
                 ("README", self.open_readme),
                 ("サポート", self.open_support_guide),
+                ("ログイン安全", self.show_note_login_safety_action),
                 ("更新手順", self.open_update_guide),
                 ("プライバシー", self.open_privacy_guide),
                 ("利用条件", self.open_terms_draft),
@@ -3289,6 +3332,8 @@ class AutoNoteApp(tk.Tk):
             actions,
             [
                 ("アプリ情報", self.show_app_info),
+                ("ログイン安全ガイド", self.show_note_login_safety_action),
+                ("noteログイン", self.open_note_login_action),
                 ("初回チェック", self.run_first_run_to_tab),
                 ("受入チェック", self.run_acceptance_to_tab),
                 ("受入保存", self.create_acceptance_report_action),
@@ -3530,6 +3575,7 @@ class AutoNoteApp(tk.Tk):
             "セルフテスト保存": self.create_self_test_report_action,
             "最初の記事": self.create_practice_article_action,
             "投稿ヘルパー": self.open_helper,
+            "ログイン安全ガイド": self.show_note_login_safety_action,
             "バックアップ": self.create_backup_action,
             "問い合わせ一式": self.create_support_bundle_action,
             "販売ナビ": self.run_sales_plan_to_tab,
@@ -3551,7 +3597,7 @@ class AutoNoteApp(tk.Tk):
             "レビュー保存": self.create_sales_review_report_action,
             "販売直前": self.run_sales_launch_to_tab,
             "直前保存": self.create_sales_launch_checklist_action,
-            "noteログイン": lambda: webbrowser.open(NOTE_LOGIN_URL),
+            "noteログイン": self.open_note_login_action,
             "次の一手": self.run_home_primary_action,
         }
         action = actions.get(item.name)
@@ -4807,6 +4853,15 @@ class AutoNoteApp(tk.Tk):
         except OSError as exc:
             self.notify("投稿ヘルパーの起動に失敗しました", level="error")
             messagebox.showerror("ヘルパーエラー", str(exc))
+
+    def open_note_login_action(self) -> None:
+        webbrowser.open(NOTE_LOGIN_URL)
+        self.notify("普段のブラウザでnoteログインを開きました", level="info")
+
+    def show_note_login_safety_action(self) -> None:
+        self._set_text(self.help_text, _note_login_safety_text())
+        self.notebook.select(self.help_tab)
+        self.notify("noteログイン安全ガイドを表示しました", level="info")
 
     def confirm_helper_safety(self, article: Article) -> bool:
         report = self.refresh_publish_ready_panel(article=article, show_popup=False, smoke_helper=False)
@@ -6247,6 +6302,8 @@ class AutoNoteApp(tk.Tk):
             ("作業進行: 投稿", "ホームの投稿工程を開く", lambda: self.open_home_progress_stage("publish")),
             ("作業進行: 販売", "ホームの販売工程を開く", lambda: self.open_home_progress_stage("sales")),
             ("作業進行: サポート", "ホームのサポート工程を開く", lambda: self.open_home_progress_stage("support")),
+            ("ログイン安全ガイド", "安全ではない可能性がある表示時の既定ブラウザ投稿手順", self.show_note_login_safety_action),
+            ("noteログイン", "普段の既定ブラウザでnoteログインを開く", self.open_note_login_action),
             ("投稿ヘルパー", "選択記事の投稿ヘルパーを開く", self.open_helper),
             ("投稿準備", "選択記事の投稿前チェックを表示", self.publish_ready_selected_to_tab),
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
@@ -7512,7 +7569,7 @@ class AutoNoteApp(tk.Tk):
         elif title == "配布ZIPを作成/検証する":
             self.run_preflight_create_release_to_tab()
         elif title == "noteログインを確認する":
-            webbrowser.open(NOTE_LOGIN_URL)
+            self.open_note_login_action()
         elif title == "投稿ヘルパーでnoteへ貼り付ける":
             self.open_helper()
         elif title == "公開後URLを保存する":

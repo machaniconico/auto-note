@@ -2596,6 +2596,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI note login safety guide text",
+            "note login safety / noteログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI note login default browser action",
+            "open_note_login_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI note login safety guide action",
+            "show_note_login_safety_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette note login action",
+            "noteログイン",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI command palette login safety action",
+            "ログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI command palette UI density large action",
             "表示サイズ: 大きめ",
         )
@@ -3088,6 +3123,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke support display diagnostics command metrics",
             "command_palette_support_display_diagnostics_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke note login command metrics",
+            "command_palette_note_login_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke login safety command metrics",
+            "command_palette_note_login_safety_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home login safety metric",
+            "home_quick_login_safety_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke login safety text metric",
+            "note_login_safety_chars=",
         )
     )
     checks.append(
@@ -4807,9 +4870,37 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "README.md",
+            "README note login safety guide guidance",
+            "ログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README note login default browser guidance",
+            "auto-note login --default-browser",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "docs" / "SUPPORT.md",
             "support guide send checklist guidance",
             "SUPPORT_SEND_CHECKLIST.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide note login safety guidance",
+            "ログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide note login default browser guidance",
+            "auto-note login --default-browser",
         )
     )
     checks.append(

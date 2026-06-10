@@ -73,6 +73,7 @@ from auto_note.gui import (
     _commercial_setup_field_rows,
     _commercial_setup_status_label,
     _gui_runtime_error_message,
+    _note_login_safety_text,
     _home_buyer_send_action,
     _home_buyer_send_button_label,
     _home_buyer_send_message_matches_package,
@@ -648,6 +649,13 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_command_palette_selection_index(0, -1, 3), 2)
         self.assertEqual(_command_palette_selection_index(2, 1, 3), 0)
         self.assertEqual(_command_palette_selection_index(1, 1, 0), -1)
+
+    def test_note_login_safety_text_prefers_default_browser(self) -> None:
+        text = _note_login_safety_text()
+        self.assertIn("安全ではない可能性", text)
+        self.assertIn("auto-note login --default-browser", text)
+        self.assertIn("投稿ヘルパー", text)
+        self.assertIn("未公開API", text)
 
     def test_gui_runtime_error_message_guides_recovery(self) -> None:
         message = _gui_runtime_error_message(Path("D:/workspace/auto-note/.auto-note/gui-error.log"))
@@ -3109,6 +3117,10 @@ tags: note
         self.assertIn("command_palette_display_diagnostics_copy_actions=1", text)
         self.assertIn("command_palette_gui_log_clear_actions=1", text)
         self.assertIn("command_palette_support_display_diagnostics_actions=1", text)
+        self.assertIn("command_palette_note_login_actions=1", text)
+        self.assertIn("command_palette_note_login_safety_actions=1", text)
+        self.assertIn("home_quick_login_safety_actions=1", text)
+        self.assertIn("note_login_safety_chars=", text)
         self.assertIn("display_readability_status=OK", text)
         self.assertIn("display_readability_warnings=0", text)
         self.assertIn("display_button_label_fit_status=OK", text)
@@ -3520,6 +3532,15 @@ tags:
                 + "command_palette_display_diagnostics_actions=\n"
                 + "command_palette_display_diagnostics_copy_actions=\n"
                 + "command_palette_support_display_diagnostics_actions=\n"
+                + "command_palette_note_login_actions=\n"
+                + "command_palette_note_login_safety_actions=\n"
+                + "home_quick_login_safety_actions=\n"
+                + "note_login_safety_chars=\n"
+                + "note login safety / noteログイン安全ガイド\n"
+                + "open_note_login_action\n"
+                + "show_note_login_safety_action\n"
+                + "ログイン安全ガイド\n"
+                + "auto-note login --default-browser\n"
                 + "display_readability_status=\n"
                 + "display_readability_warnings=\n"
                 + "display_button_label_fit_status=\n"
@@ -3790,7 +3811,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nメイリオ` (`Meiryo`) / `Meiryo UI\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nメイリオ` (`Meiryo`) / `Meiryo UI\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\n送付前チェック\n送付記録\n送付文コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -3813,7 +3834,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nGUIログ表示\nGUIログコピー\nGUIログ場所\nGUIログクリア\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
+                "SUPPORT_SEND_CHECKLIST.txt\nログイン安全ガイド\nauto-note login --default-browser\nGUIログ表示\nGUIログコピー\nGUIログ場所\nGUIログクリア\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRIVACY.md").write_text(
@@ -4141,6 +4162,11 @@ tags:
         self.assertIn("GUI home progress command palette support:fail", product_details)
         self.assertIn("GUI home progress command palette opener:fail", product_details)
         self.assertIn("GUI command palette status label:fail", product_details)
+        self.assertIn("GUI note login safety guide text:fail", product_details)
+        self.assertIn("GUI note login default browser action:fail", product_details)
+        self.assertIn("GUI note login safety guide action:fail", product_details)
+        self.assertIn("GUI command palette note login action:fail", product_details)
+        self.assertIn("GUI command palette login safety action:fail", product_details)
         self.assertIn("GUI command palette UI density large action:fail", product_details)
         self.assertIn("GUI command palette UI density quick apply:fail", product_details)
         self.assertIn("GUI command palette UI density settings focus:fail", product_details)
@@ -4212,6 +4238,10 @@ tags:
         self.assertIn("GUI smoke display diagnostics command metrics:fail", product_details)
         self.assertIn("GUI smoke display diagnostics copy command metrics:fail", product_details)
         self.assertIn("GUI smoke support display diagnostics command metrics:fail", product_details)
+        self.assertIn("GUI smoke note login command metrics:fail", product_details)
+        self.assertIn("GUI smoke login safety command metrics:fail", product_details)
+        self.assertIn("GUI smoke home login safety metric:fail", product_details)
+        self.assertIn("GUI smoke login safety text metric:fail", product_details)
         self.assertIn("GUI smoke display diagnostics metrics:fail", product_details)
         self.assertIn("GUI smoke display readability status:fail", product_details)
         self.assertIn("GUI smoke display readability warning count:fail", product_details)
@@ -4470,6 +4500,8 @@ tags:
         self.assertIn("README sales evidence manifest guidance:fail", product_details)
         self.assertIn("README RC handoff guidance:fail", product_details)
         self.assertIn("README support send checklist guidance:fail", product_details)
+        self.assertIn("README note login safety guide guidance:fail", product_details)
+        self.assertIn("README note login default browser guidance:fail", product_details)
         self.assertIn("README GUI log folder guidance:fail", product_details)
         self.assertIn("README GUI log clear guidance:fail", product_details)
         self.assertIn("README GUI log clear archive guidance:fail", product_details)
@@ -4479,6 +4511,8 @@ tags:
         self.assertIn("README diagnostic ZIP path guidance:fail", product_details)
         self.assertIn("README diagnostic ZIP verification guidance:fail", product_details)
         self.assertIn("support guide send checklist guidance:fail", product_details)
+        self.assertIn("support guide note login safety guidance:fail", product_details)
+        self.assertIn("support guide note login default browser guidance:fail", product_details)
         self.assertIn("support guide GUI log display guidance:fail", product_details)
         self.assertIn("support guide GUI log copy guidance:fail", product_details)
         self.assertIn("support guide GUI log folder guidance:fail", product_details)
@@ -4788,6 +4822,11 @@ tags:
         self.assertIn("GUI home progress command palette support:pass", launcher_details)
         self.assertIn("GUI home progress command palette opener:pass", launcher_details)
         self.assertIn("GUI command palette status label:pass", launcher_details)
+        self.assertIn("GUI note login safety guide text:pass", launcher_details)
+        self.assertIn("GUI note login default browser action:pass", launcher_details)
+        self.assertIn("GUI note login safety guide action:pass", launcher_details)
+        self.assertIn("GUI command palette note login action:pass", launcher_details)
+        self.assertIn("GUI command palette login safety action:pass", launcher_details)
         self.assertIn("GUI command palette UI density large action:pass", launcher_details)
         self.assertIn("GUI command palette UI density quick apply:pass", launcher_details)
         self.assertIn("GUI command palette UI density settings focus:pass", launcher_details)
@@ -4859,6 +4898,10 @@ tags:
         self.assertIn("GUI smoke display diagnostics command metrics:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics copy command metrics:pass", launcher_details)
         self.assertIn("GUI smoke support display diagnostics command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke note login command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke login safety command metrics:pass", launcher_details)
+        self.assertIn("GUI smoke home login safety metric:pass", launcher_details)
+        self.assertIn("GUI smoke login safety text metric:pass", launcher_details)
         self.assertIn("GUI smoke display diagnostics metrics:pass", launcher_details)
         self.assertIn("GUI smoke display readability status:pass", launcher_details)
         self.assertIn("GUI smoke display readability warning count:pass", launcher_details)
@@ -5118,6 +5161,8 @@ tags:
         self.assertIn("README sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("README RC handoff guidance:pass", launcher_details)
         self.assertIn("README support send checklist guidance:pass", launcher_details)
+        self.assertIn("README note login safety guide guidance:pass", launcher_details)
+        self.assertIn("README note login default browser guidance:pass", launcher_details)
         self.assertIn("README GUI log folder guidance:pass", launcher_details)
         self.assertIn("README GUI log clear guidance:pass", launcher_details)
         self.assertIn("README GUI log clear archive guidance:pass", launcher_details)
@@ -5127,6 +5172,8 @@ tags:
         self.assertIn("README diagnostic ZIP path guidance:pass", launcher_details)
         self.assertIn("README diagnostic ZIP verification guidance:pass", launcher_details)
         self.assertIn("support guide send checklist guidance:pass", launcher_details)
+        self.assertIn("support guide note login safety guidance:pass", launcher_details)
+        self.assertIn("support guide note login default browser guidance:pass", launcher_details)
         self.assertIn("support guide GUI log display guidance:pass", launcher_details)
         self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
         self.assertIn("support guide GUI log folder guidance:pass", launcher_details)
