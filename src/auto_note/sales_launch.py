@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 
 from .article import write_text_atomic
+from .maintenance import format_bytes
 from .paths import unique_path
 from .sales_finalize import list_sales_evidence_manifests, list_seller_delivery_receipts
 from .sales_review import SalesReviewReport, run_sales_review
@@ -106,6 +107,8 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
         f"- buyer delivery zip: {_name_or_none(review.buyer_delivery_package_path)}",
         f"- seller delivery receipt: {_name_or_none(review.seller_delivery_receipt_path)}",
         "",
+        *_buyer_delivery_copy_sheet(review),
+        "",
         "Automated checks / 自動確認",
     ]
     next_actions: list[str] = []
@@ -128,6 +131,8 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
             "Marketplace launch confirmation / 販売ページ公開前の目視",
             "[ ] 販売ページの商品名、価格、更新日、対応OS、納品ZIP名が最新の販売素材と一致している",
             "[ ] 決済後メッセージ欄へ buyer delivery message の本文を貼り付けた",
+            "[ ] 上の buyer delivery zip / zip size / zip SHA-256 が販売ページまたは決済後メッセージの表示と一致している",
+            "[ ] 決済後メッセージの貼り付け後、改行、リンク、SHA-256、ZIP名が崩れていない",
             "[ ] 添付または送付対象は buyer delivery zip だけにした",
             "[ ] 販売者用ZIP、診断ZIP、.auto-note、.venv、ログイン情報、支払い情報を送付対象から外した",
             "[ ] 返金条件、ライセンス、サポート範囲が販売ページ、README、利用条件で矛盾していない",
@@ -364,6 +369,34 @@ def _seller_evidence_check(project_dir: Path) -> SalesLaunchCheck:
             "`auto-note sales-finalize --project-dir . --delivery-receipt` で注文管理用の記録を保存してください。",
         )
     return SalesLaunchCheck("seller-only evidence", "pass", f"{manifests[0].name} and {receipts[0].name} saved")
+
+
+def _buyer_delivery_copy_sheet(report: SalesReviewReport) -> list[str]:
+    package_path = report.buyer_delivery_package_path
+    message_path = report.buyer_delivery_message_path
+    lines = ["Buyer delivery copy sheet / 購入者送付の照合値"]
+    if package_path is None:
+        lines.extend(
+            [
+                "- buyer delivery zip: none",
+                "- zip size: none",
+                "- zip SHA-256: none",
+            ]
+        )
+    else:
+        try:
+            size = format_bytes(package_path.stat().st_size)
+        except OSError:
+            size = "unreadable"
+        lines.extend(
+            [
+                f"- buyer delivery zip: {package_path.name}",
+                f"- zip size: {size}",
+                f"- zip SHA-256: {_sha256(package_path) or 'unreadable'}",
+            ]
+        )
+    lines.append(f"- delivery message: {_name_or_none(message_path)}")
+    return lines
 
 
 def _overall_status(checks: list[SalesLaunchCheck]) -> str:

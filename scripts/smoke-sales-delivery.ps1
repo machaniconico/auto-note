@@ -151,6 +151,12 @@ try {
   if ($launchText -notlike "*Platform-specific launch checks*") {
     throw "Sales launch checklist does not include platform-specific launch checks."
   }
+  if ($launchText -notlike "*Buyer delivery copy sheet*") {
+    throw "Sales launch checklist does not include buyer delivery copy values."
+  }
+  if ($launchText -notlike "*zip SHA-256*") {
+    throw "Sales launch checklist does not include the buyer ZIP SHA-256 value."
+  }
 
   Write-Host ""
   Write-Host "sales delivery smoke OK"

@@ -2199,6 +2199,8 @@ tags: note
                 sales_review_cli_code = cli_main(["sales-review", "--project-dir", str(project), "--report"])
             sales_launch = run_sales_launch_check(project)
             sales_launch_text = format_sales_launch_checklist(sales_launch)
+            assert report.buyer_delivery_package_path is not None
+            buyer_package_sha = hashlib.sha256(report.buyer_delivery_package_path.read_bytes()).hexdigest()
             sales_launch_report_path = write_sales_launch_checklist(project, report=sales_launch)
             sales_launch_report_text = sales_launch_report_path.read_text(encoding="utf-8")
             sales_launch_reports = list_sales_launch_checklists(project)
@@ -2270,6 +2272,11 @@ tags: note
         self.assertIn("Platform-specific launch checks", sales_launch_text)
         self.assertIn("generic marketplace", sales_launch_text)
         self.assertIn("添付または送付対象は最新のbuyer delivery zipだけにした", sales_launch_text)
+        self.assertIn("Buyer delivery copy sheet", sales_launch_text)
+        self.assertIn("zip size:", sales_launch_text)
+        self.assertIn("zip SHA-256:", sales_launch_text)
+        self.assertIn("貼り付け後、改行", sales_launch_text)
+        self.assertIn(buyer_package_sha, sales_launch_text)
         self.assertIn("manual marketplace preview", sales_launch_text)
         self.assertIn(report.buyer_delivery_package_path.name, sales_launch_text)
         self.assertGreaterEqual(len(sales_launch_reports), 1)
@@ -3330,7 +3337,9 @@ tags:
                 "sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt\n"
                 "sales-launch --project-dir . --report\n"
                 "sales-launch-checklist-*.txt\n"
-                "Platform-specific launch checks\n",
+                "Platform-specific launch checks\n"
+                "Buyer delivery copy sheet\n"
+                "zip SHA-256\n",
                 encoding="utf-8",
             )
             (project / ".github" / "workflows").mkdir(parents=True)
@@ -3478,7 +3487,8 @@ tags:
             )
             (project / "src" / "auto_note" / "sales_launch.py").write_text(
                 "run_sales_launch_check\nwrite_sales_launch_checklist\nrun_sales_review(project_dir)\n"
-                "MarketplaceLaunchProfile\n_marketplace_profile_for_url\nPlatform-specific launch checks\n",
+                "MarketplaceLaunchProfile\n_marketplace_profile_for_url\nPlatform-specific launch checks\n"
+                "Buyer delivery copy sheet\nzip SHA-256\n貼り付け後、改行\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
@@ -3947,6 +3957,8 @@ tags:
         self.assertIn("sales delivery smoke launch checklist:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
         self.assertIn("sales delivery smoke platform checklist assertion:fail", product_details)
+        self.assertIn("sales delivery smoke buyer copy sheet assertion:fail", product_details)
+        self.assertIn("sales delivery smoke buyer SHA-256 assertion:fail", product_details)
         self.assertIn("install smoke verifies safe display shortcut:fail", product_details)
         self.assertIn("install smoke checks safe display argument:fail", product_details)
         self.assertIn("install smoke uses isolated shortcut directories:fail", product_details)
@@ -4072,6 +4084,9 @@ tags:
         self.assertIn("sales launch marketplace profile:fail", product_details)
         self.assertIn("sales launch marketplace URL inference:fail", product_details)
         self.assertIn("sales launch platform checklist:fail", product_details)
+        self.assertIn("sales launch buyer delivery copy sheet:fail", product_details)
+        self.assertIn("sales launch buyer ZIP SHA-256 copy value:fail", product_details)
+        self.assertIn("sales launch paste formatting guard:fail", product_details)
         self.assertIn("privacy audit sales launch checklist:fail", product_details)
         self.assertIn("cleanup sales launch checklist:fail", product_details)
         self.assertIn("maintenance sales launch checklist summary:fail", product_details)
@@ -4624,6 +4639,8 @@ tags:
         self.assertIn("sales delivery smoke launch checklist:pass", launcher_details)
         self.assertIn("sales delivery smoke launch checklist assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke platform checklist assertion:pass", launcher_details)
+        self.assertIn("sales delivery smoke buyer copy sheet assertion:pass", launcher_details)
+        self.assertIn("sales delivery smoke buyer SHA-256 assertion:pass", launcher_details)
         self.assertIn("install smoke verifies safe display shortcut:pass", launcher_details)
         self.assertIn("install smoke checks safe display argument:pass", launcher_details)
         self.assertIn("install smoke uses isolated shortcut directories:pass", launcher_details)
@@ -4736,6 +4753,9 @@ tags:
         self.assertIn("sales launch marketplace profile:pass", launcher_details)
         self.assertIn("sales launch marketplace URL inference:pass", launcher_details)
         self.assertIn("sales launch platform checklist:pass", launcher_details)
+        self.assertIn("sales launch buyer delivery copy sheet:pass", launcher_details)
+        self.assertIn("sales launch buyer ZIP SHA-256 copy value:pass", launcher_details)
+        self.assertIn("sales launch paste formatting guard:pass", launcher_details)
         self.assertIn("privacy audit sales launch checklist:pass", launcher_details)
         self.assertIn("cleanup sales launch checklist:pass", launcher_details)
         self.assertIn("maintenance sales launch checklist summary:pass", launcher_details)
