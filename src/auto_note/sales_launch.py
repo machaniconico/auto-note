@@ -269,6 +269,17 @@ def list_sales_launch_confirmations(project_dir: Path) -> list[Path]:
     )
 
 
+def find_latest_sales_launch_confirmation(project_dir: Path) -> tuple[Path | None, str]:
+    for confirmation_path in list_sales_launch_confirmations(project_dir):
+        try:
+            confirmation_text = confirmation_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if confirmation_text.strip():
+            return confirmation_path, confirmation_text
+    return None, ""
+
+
 def has_sales_launch_blockers(report: SalesLaunchReport, *, strict: bool = False) -> bool:
     if report.status == "fail":
         return True

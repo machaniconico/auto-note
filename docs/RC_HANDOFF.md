@@ -22,7 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release.ps1 
 確認すること:
 
 - `auto-note.lnk` または `auto-note-gui.bat` でGUIが起動する
-- ホームの `販売準備タイムライン` で `販売者情報`, `配布ZIP`, `販売素材`, `販売一式`, `購入者ZIP/送付文`, `送付前照合`, `販売直前`, `一括チェック` の8工程が読める
+- ホームの `販売準備タイムライン` で `販売者情報`, `配布ZIP`, `販売素材`, `掲載画像`, `掲載キット`, `販売一式`, `購入者ZIP/送付文`, `送付前照合`, `販売直前`, `一括チェック` の10工程が読める
 - GUIの `販売前一括チェック` から `check-release.ps1 -Full` 相当をバックグラウンド実行でき、`.auto-note\reports\release-check-*.txt` がホームの `直近レポート` に残る
 - `noteログイン` が普段使う既定ブラウザで開く
 - `診断` タブの `トラブル診断`, `出荷前チェック`, `出荷ZIP作成` が実行できる
@@ -52,8 +52,10 @@ auto-note sales-screenshots --project-dir .
 auto-note sales-finalize --project-dir . --strict --gui-smoke
 auto-note sales-finalize --project-dir . --send-check --send-check-report
 auto-note sales-finalize --project-dir . --delivery-receipt
+auto-note sales-finalize --project-dir . --order-note
 auto-note sales-launch --project-dir . --report
 auto-note sales-launch --project-dir . --confirm-preview --note "preview checked"
+auto-note sales-launch --project-dir . --latest-confirmation
 ```
 
 残すもの:

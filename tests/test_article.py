@@ -232,6 +232,7 @@ from auto_note.sales_finalize import (
     run_buyer_send_readiness,
 )
 from auto_note.sales_launch import (
+    find_latest_sales_launch_confirmation,
     format_sales_launch_checklist,
     has_sales_launch_blockers,
     list_sales_launch_checklists,
@@ -2875,6 +2876,9 @@ tags: note
             )
             sales_launch_confirmation_text = sales_launch_confirmation_path.read_text(encoding="utf-8")
             sales_launch_confirmations = list_sales_launch_confirmations(project)
+            latest_sales_launch_confirmation_path, latest_sales_launch_confirmation_text = (
+                find_latest_sales_launch_confirmation(project)
+            )
             sales_launch_cli_output = io.StringIO()
             with redirect_stdout(sales_launch_cli_output):
                 sales_launch_cli_code = cli_main(["sales-launch", "--project-dir", str(project), "--report"])
@@ -2889,6 +2893,11 @@ tags: note
                         "--note",
                         "marketplace preview checked",
                     ]
+                )
+            sales_launch_latest_confirmation_cli_output = io.StringIO()
+            with redirect_stdout(sales_launch_latest_confirmation_cli_output):
+                sales_launch_latest_confirmation_cli_code = cli_main(
+                    ["sales-launch", "--project-dir", str(project), "--latest-confirmation"]
                 )
             privacy_after_sales_review = run_privacy_audit(project)
             privacy_after_sales_review_text = format_privacy_audit_report(privacy_after_sales_review)
@@ -3020,6 +3029,7 @@ tags: note
         self.assertNotIn(str(project), sales_launch_report_text)
         self.assertGreaterEqual(len(sales_launch_confirmations), 1)
         self.assertEqual(sales_launch_confirmations[0], sales_launch_confirmation_path)
+        self.assertEqual(latest_sales_launch_confirmation_path, sales_launch_confirmation_path)
         self.assertIn("Sales launch confirmation", sales_launch_confirmation_text)
         self.assertIn(sales_launch_report_path.name, sales_launch_confirmation_text)
         self.assertIn(report.buyer_delivery_package_path.name, sales_launch_confirmation_text)
@@ -3030,11 +3040,17 @@ tags: note
         self.assertIn("blocker count: 0", sales_launch_confirmation_text)
         self.assertIn("seller-only evidence", sales_launch_confirmation_text)
         self.assertNotIn(str(project), sales_launch_confirmation_text)
+        self.assertIn("Sales launch confirmation", latest_sales_launch_confirmation_text)
+        self.assertIn("checked note preview before publish", latest_sales_launch_confirmation_text)
         self.assertEqual(sales_launch_cli_code, 0)
         self.assertIn("sales launch checklist created:", sales_launch_cli_output.getvalue())
         self.assertIn("Sales launch checklist", sales_launch_cli_output.getvalue())
         self.assertEqual(sales_launch_confirm_cli_code, 0)
         self.assertIn("sales launch confirmation created:", sales_launch_confirm_cli_output.getvalue())
+        self.assertEqual(sales_launch_latest_confirmation_cli_code, 0)
+        self.assertIn("Sales launch confirmation", sales_launch_latest_confirmation_cli_output.getvalue())
+        self.assertIn("marketplace preview checked", sales_launch_latest_confirmation_cli_output.getvalue())
+        self.assertNotIn(str(project), sales_launch_latest_confirmation_cli_output.getvalue())
         self.assertIsNotNone(report.seller_send_checklist_path)
         self.assertTrue(seller_send_checklist_exists)
         self.assertIsNotNone(report.sales_plan_report_path)
@@ -4232,7 +4248,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-screenshots\nVerify a generated sales screenshot pack directory.\nsales-listing\nVerify a sales listing kit folder or zip.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\n--order-note\nextract_seller_order_management_block(receipt_text)\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n--confirm-preview\nsales launch confirmation created\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-screenshots\nVerify a generated sales screenshot pack directory.\nsales-listing\nVerify a sales listing kit folder or zip.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\n--order-note\nextract_seller_order_management_block(receipt_text)\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n--confirm-preview\nsales launch confirmation created\n--latest-confirmation\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "settings.py").write_text(
@@ -4358,7 +4374,7 @@ tags:
             )
             (project / "src" / "auto_note" / "sales_launch.py").write_text(
                 "run_sales_launch_check\nwrite_sales_launch_checklist\nrun_sales_review(project_dir)\n"
-                "write_sales_launch_confirmation\nlist_sales_launch_confirmations\nsales-launch-confirmation-*.txt\nseller-only evidence\n"
+                "write_sales_launch_confirmation\nlist_sales_launch_confirmations\nfind_latest_sales_launch_confirmation\nsales-launch-confirmation-*.txt\nseller-only evidence\n"
                 "_listing_kit_launch_check\n掲載キットZIPは販売ページ作成用\n"
                 "MarketplaceLaunchProfile\n_marketplace_profile_for_url\nPlatform-specific launch checks\n"
                 "Buyer delivery copy sheet\nzip SHA-256\nlatest release package\n貼り付け後、改行\n",
@@ -4392,7 +4408,11 @@ tags:
                 + "list_sales_listing_packages\n"
                 + "create_sales_launch_confirmation_action\n"
                 + "list_sales_launch_confirmations\n"
+                + "copy_latest_sales_launch_confirmation_action\n"
+                + 'self.clipboard_append(confirmation_text.rstrip() + "\\n")\n'
+                + "販売確認記録をコピーしました\n"
                 + "販売確認記録\n"
+                + "販売確認コピー\n"
                 + "販売確認\n"
                 + '"Yu Gothic"\n'
                 + '"Noto Sans JP"\n'
@@ -4781,8 +4801,10 @@ tags:
                 + "auto-note sales-listing\n"
                 + "sales-listing --project-dir . --verify\n"
                 + "sales-launch --project-dir . --confirm-preview\n"
+                + "sales-launch --project-dir . --latest-confirmation\n"
                 + "sales-launch-confirmation-*.txt\n"
                 + "販売確認記録\n"
+                + "販売確認コピー\n"
                 + "注文管理コピー欄\n"
                 + "注文控えコピー\n",
                 encoding="utf-8",
@@ -4804,6 +4826,7 @@ tags:
                 "docs\\RC_HANDOFF.md\n"
                 "auto_note gui --project-dir . --smoke --safe-display\n"
                 "sales-launch --project-dir . --confirm-preview\n"
+                "sales-launch --project-dir . --latest-confirmation\n"
                 "販売確認記録\n",
                 encoding="utf-8",
             )
@@ -4834,6 +4857,7 @@ tags:
                 + "sales-listing\n"
                 + "sales-listing --project-dir . --verify\n"
                 + "sales-launch --project-dir . --confirm-preview\n"
+                + "sales-launch --project-dir . --latest-confirmation\n"
                 + "sales-launch-confirmation-*.txt\n"
                 + "注文管理コピー欄\n"
                 + "注文控えコピー\n",
@@ -4847,6 +4871,7 @@ tags:
                 "sales-finalize --project-dir . --strict --gui-smoke\n"
                 "sales-launch --project-dir . --report\n"
                 "sales-launch --project-dir . --confirm-preview\n"
+                "sales-launch --project-dir . --latest-confirmation\n"
                 "sales-launch-confirmation-*.txt\n"
                 "止める条件\n",
                 encoding="utf-8",
@@ -5920,10 +5945,12 @@ tags:
         self.assertIn("CLI sales launch report command:pass", launcher_details)
         self.assertIn("CLI sales launch confirmation command:pass", launcher_details)
         self.assertIn("CLI sales launch confirmation output:pass", launcher_details)
+        self.assertIn("CLI latest sales launch confirmation command:pass", launcher_details)
         self.assertIn("sales launch checker:pass", launcher_details)
         self.assertIn("sales launch checklist writer:pass", launcher_details)
         self.assertIn("sales launch confirmation writer:pass", launcher_details)
         self.assertIn("sales launch confirmation lister:pass", launcher_details)
+        self.assertIn("sales launch confirmation latest finder:pass", launcher_details)
         self.assertIn("sales launch confirmation seller-only guard:pass", launcher_details)
         self.assertIn("sales launch depends on final review:pass", launcher_details)
         self.assertIn("sales launch listing kit gate:pass", launcher_details)
@@ -6395,6 +6422,9 @@ tags:
         self.assertIn("GUI sales launch checklist action:pass", launcher_details)
         self.assertIn("GUI sales launch confirmation action:pass", launcher_details)
         self.assertIn("GUI sales launch confirmation recent report:pass", launcher_details)
+        self.assertIn("GUI sales launch confirmation copy action:pass", launcher_details)
+        self.assertIn("GUI sales launch confirmation copy clipboard:pass", launcher_details)
+        self.assertIn("GUI sales launch confirmation copy feedback:pass", launcher_details)
         self.assertIn("GUI full release check action:pass", launcher_details)
         self.assertIn("GUI full release check background thread:pass", launcher_details)
         self.assertIn("GUI full release check report:pass", launcher_details)
@@ -6479,6 +6509,7 @@ tags:
         self.assertIn("README sales launch confirmation command guidance:pass", launcher_details)
         self.assertIn("README sales launch confirmation GUI guidance:pass", launcher_details)
         self.assertIn("README sales launch confirmation artifact guidance:pass", launcher_details)
+        self.assertIn("README sales launch confirmation copy guidance:pass", launcher_details)
         self.assertIn("README GUI full release check guidance:pass", launcher_details)
         self.assertIn("README release check report guidance:pass", launcher_details)
         self.assertIn("README sales evidence manifest guidance:pass", launcher_details)
@@ -6565,6 +6596,7 @@ tags:
         self.assertIn("product readiness sales launch report guidance:pass", launcher_details)
         self.assertIn("product readiness sales launch confirmation command:pass", launcher_details)
         self.assertIn("product readiness sales launch confirmation artifact:pass", launcher_details)
+        self.assertIn("product readiness sales launch confirmation copy guidance:pass", launcher_details)
         self.assertIn("product readiness sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("release starter pack guidance:pass", launcher_details)
         self.assertIn("release repair guidance:pass", launcher_details)

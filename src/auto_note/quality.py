@@ -2364,6 +2364,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI latest sales launch confirmation command",
+            "--latest-confirmation",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_plan.py",
             "sales plan buyer delivery package list",
             "list_buyer_delivery_packages",
@@ -2521,6 +2528,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch confirmation lister",
             "list_sales_launch_confirmations",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation latest finder",
+            "find_latest_sales_launch_confirmation",
         )
     )
     checks.append(
@@ -5690,6 +5704,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation copy action",
+            "copy_latest_sales_launch_confirmation_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation copy clipboard",
+            'self.clipboard_append(confirmation_text.rstrip() + "\\n")',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation copy feedback",
+            "販売確認記録をコピーしました",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI full release check action",
             "run_release_check_full_action",
         )
@@ -6112,6 +6147,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README sales launch confirmation artifact guidance",
             "sales-launch-confirmation-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README sales launch confirmation copy guidance",
+            "sales-launch --project-dir . --latest-confirmation",
         )
     )
     checks.append(
@@ -6693,6 +6735,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness sales launch confirmation artifact",
             "sales-launch-confirmation-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales launch confirmation copy guidance",
+            "sales-launch --project-dir . --latest-confirmation",
         )
     )
     checks.append(

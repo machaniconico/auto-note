@@ -167,6 +167,7 @@ from .sales_review import (
     write_sales_review_report,
 )
 from .sales_launch import (
+    find_latest_sales_launch_confirmation,
     format_sales_launch_checklist,
     has_sales_launch_blockers,
     list_sales_launch_checklists,
@@ -2252,6 +2253,7 @@ class AutoNoteApp(tk.Tk):
             ("販売直前", self.run_sales_launch_to_tab, None),
             ("直前保存", self.create_sales_launch_checklist_action, None),
             ("確認記録", self.create_sales_launch_confirmation_action, None),
+            ("確認コピー", self.copy_latest_sales_launch_confirmation_action, None),
             ("一括チェック", self.run_release_check_full_action, None),
             (self.home_support_next_button_var, self.run_home_support_next_action, None),
             ("サポート送付", self.show_support_send_panel_action, None),
@@ -2405,6 +2407,7 @@ class AutoNoteApp(tk.Tk):
             ("販売直前", self.run_sales_launch_to_tab),
             ("直前保存", self.create_sales_launch_checklist_action),
             ("販売確認記録", self.create_sales_launch_confirmation_action),
+            ("販売確認コピー", self.copy_latest_sales_launch_confirmation_action),
             ("販売前一括チェック", self.run_release_check_full_action),
             ("アクションプラン", self.run_action_plan_to_tab),
             ("クイック確認", self.run_quickstart_to_tab),
@@ -3489,6 +3492,7 @@ class AutoNoteApp(tk.Tk):
                 ("販売直前", self.run_sales_launch_to_tab),
                 ("直前保存", self.create_sales_launch_checklist_action),
                 ("販売確認記録", self.create_sales_launch_confirmation_action),
+                ("販売確認コピー", self.copy_latest_sales_launch_confirmation_action),
                 ("販売前一括チェック", self.run_release_check_full_action),
                 ("セルフテスト", self.run_self_test_to_tab),
                 ("セルフテスト保存", self.create_self_test_report_action),
@@ -4002,6 +4006,7 @@ class AutoNoteApp(tk.Tk):
             "販売直前": self.run_sales_launch_to_tab,
             "直前保存": self.create_sales_launch_checklist_action,
             "販売確認記録": self.create_sales_launch_confirmation_action,
+            "販売確認コピー": self.copy_latest_sales_launch_confirmation_action,
             "noteログイン": self.show_note_login_safety_action,
             "次の一手": self.run_home_primary_action,
         }
@@ -7201,6 +7206,7 @@ class AutoNoteApp(tk.Tk):
             ("販売直前", "販売ページ公開前に決済後メッセージ、添付ZIP、返金/サポート表示を確認", self.run_sales_launch_to_tab),
             ("直前保存", "販売ページ公開前の最終目視チェックリストを保存", self.create_sales_launch_checklist_action),
             ("販売確認記録", "販売ページのプレビュー確認後に販売者専用の証跡を保存", self.create_sales_launch_confirmation_action),
+            ("販売確認コピー", "最新の販売確認記録を販売者専用の控えとしてコピー", self.copy_latest_sales_launch_confirmation_action),
             (
                 "販売前一括チェック",
                 "check-release.ps1 -Full をバックグラウンドで実行し、証跡レポートを保存",
@@ -8451,6 +8457,37 @@ class AutoNoteApp(tk.Tk):
         self._refresh_home_reports()
         _open_path(path)
         self.notify(f"販売確認記録を保存しました: {path.name}", level=self._sales_launch_notify_level(report))
+
+    def copy_latest_sales_launch_confirmation_action(self) -> None:
+        confirmation_path, confirmation_text = find_latest_sales_launch_confirmation(self.project_dir)
+        if confirmation_path is None:
+            messagebox.showinfo(
+                "販売確認コピー",
+                "販売確認記録がまだありません。先に 販売確認記録 を作成してください。",
+            )
+            self.notify("販売確認記録がありません", level="warning")
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(confirmation_text.rstrip() + "\n")
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("クリップボードへコピーできませんでした", level="error")
+            messagebox.showerror("販売確認コピーエラー", str(exc))
+            return
+        self._set_text(
+            self.diagnostics_text,
+            "\n".join(
+                [
+                    "Copied sales launch confirmation / コピーした販売確認記録:",
+                    f"source: {confirmation_path}",
+                    "",
+                    confirmation_text.rstrip(),
+                ]
+            ),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"販売確認記録をコピーしました: {confirmation_path.name}", level="success")
 
     def _sales_review_notify_level(self, report) -> str:
         if has_sales_review_blockers(report):

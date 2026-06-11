@@ -796,12 +796,24 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "sales-launch":
             from .sales_launch import (
+                find_latest_sales_launch_confirmation,
                 format_sales_launch_checklist,
                 has_sales_launch_blockers,
                 run_sales_launch_check,
                 write_sales_launch_confirmation,
                 write_sales_launch_checklist,
             )
+
+            if args.latest_confirmation:
+                confirmation_path, confirmation_text = find_latest_sales_launch_confirmation(args.project_dir.resolve())
+                if confirmation_path is None:
+                    print(
+                        "sales launch confirmation not found. Run "
+                        "`auto-note sales-launch --project-dir . --confirm-preview --note \"checked\"` first."
+                    )
+                    return 1
+                print(confirmation_text.rstrip())
+                return 0
 
             report = run_sales_launch_check(args.project_dir.resolve())
             print(format_sales_launch_checklist(report))
@@ -1616,6 +1628,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--confirm-preview",
         action="store_true",
         help="Save seller-only evidence that the marketplace preview or test-purchase screen was checked.",
+    )
+    sales_launch.add_argument(
+        "--latest-confirmation",
+        action="store_true",
+        help="Print the latest saved seller-only marketplace preview confirmation without running a new checklist.",
     )
     sales_launch.add_argument("--note", help="Optional seller note saved with --confirm-preview.")
 
