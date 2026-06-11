@@ -92,6 +92,10 @@ from auto_note.gui import (
     _home_first_run_summary,
     _home_buyer_send_summary,
     _home_gui_log_status,
+    _home_operation_mode,
+    _home_operation_priority,
+    _home_operation_safety,
+    _home_operation_sales,
     _home_overview_badge,
     _home_primary_button_label,
     _home_progress_review_text,
@@ -387,6 +391,42 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_home_snapshot_readiness_state(58), "fail")
         self.assertEqual(_home_snapshot_next_state("blocker"), "fail")
         self.assertEqual(_home_snapshot_worst_state("ok", "warn", "info"), "warn")
+
+    def test_home_operation_helpers_prioritize_action_sales_and_safety(self) -> None:
+        blocker = ActionPlanStep(
+            "製品品質のNGを確認する",
+            "failure",
+            "品質チェックのNGを解消してください。",
+            gui="診断 > 品質チェック",
+            severity="blocker",
+            source="quality",
+        )
+        state, title, detail = _home_operation_priority(blocker)
+        self.assertEqual(state, "fail")
+        self.assertEqual(title, "製品品質のNGを確認する")
+        self.assertIn("診断 > 品質チェック", detail)
+        self.assertEqual(_home_operation_priority(None)[0], "ok")
+
+        sales_state, sales_title, sales_detail = _home_operation_sales(
+            "販売準備: READY TO VERIFY / 軽量 100/100",
+            "購入者送付: auto-note-buyer.zip / 送付文あり / 記録あり",
+            "次: 最終レビューで販売ページ文案と納品物の整合性を確認",
+        )
+        self.assertEqual(sales_state, "ok")
+        self.assertEqual(sales_title, "送付前レビュー")
+        self.assertIn("最終レビュー", sales_detail)
+        self.assertEqual(
+            _home_operation_sales(
+                "販売準備: NEEDS ATTENTION / 軽量 52/100",
+                "購入者送付: ZIPあり / 送付文不一致 / 記録なし",
+                "次: 送付文作成で最新ZIP名とSHA-256に合わせる",
+            )[0],
+            "fail",
+        )
+
+        self.assertEqual(_home_operation_safety("warn", "GUIログ: 要確認 / 128 B")[1], "GUIログ要確認")
+        self.assertEqual(_home_operation_mode("fail", "READY"), "対応優先")
+        self.assertEqual(_home_operation_mode("ok", "READY"), "出荷前確認")
 
     def test_article_focus_helpers_summarize_next_article_fix(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3982,6 +4022,10 @@ tags: note
         self.assertIn("home_sales_timeline_chars=", text)
         self.assertIn("home_status_badge_chars=", text)
         self.assertIn("home_updated_chars=", text)
+        self.assertIn("home_operation_items=", text)
+        self.assertIn("home_operation_items=3", text)
+        self.assertIn("home_operation_chars=", text)
+        self.assertIn("home_operation_pill_chars=", text)
         self.assertIn("home_primary_button_chars=", text)
         self.assertIn("command_palette_display_diagnostics_copy_actions=1", text)
         self.assertIn("command_palette_gui_log_clear_actions=1", text)
@@ -4661,6 +4705,27 @@ tags:
             )
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "今日のオペレーション\n"
+                + "TODAY OPERATIONS\n"
+                + "HomeOperation.TFrame\n"
+                + "HomeOperationTile.TFrame\n"
+                + "home_operation_vars\n"
+                + "home_operation_pills\n"
+                + "home_operation_rails\n"
+                + "home_operation_mode_pill\n"
+                + "_refresh_home_operation_panel\n"
+                + "_set_home_operation_item\n"
+                + "_home_operation_priority\n"
+                + "_home_operation_sales\n"
+                + "_home_operation_safety\n"
+                + "_home_operation_mode\n"
+                + "home_operation_items=\n"
+                + "home_operation_chars=\n"
+                + "home_operation_pill_chars=\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
                 + "ArticleFocus.TFrame\n"
                 + "article_focus_summary_var\n"
                 + "article_focus_next_var\n"
@@ -4794,7 +4859,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n納品照合\n送付証跡\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n今日のオペレーション\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n納品照合\n送付証跡\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             readme_fixture = project / "README.md"
@@ -4850,7 +4915,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n販売準備タイムライン\n軽量判定\n送付文有無\n納品照合\n送付証跡\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n今日のオペレーション\n販売準備タイムライン\n軽量判定\n送付文有無\n納品照合\n送付証跡\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             product_readiness_fixture = project / "docs" / "PRODUCT_READINESS.md"
@@ -5240,6 +5305,10 @@ tags:
         self.assertIn("GUI modern home compact snapshot refresh:fail", product_details)
         self.assertIn("GUI modern home compact snapshot helper:fail", product_details)
         self.assertIn("GUI smoke home compact snapshot:fail", product_details)
+        self.assertIn("GUI modern home operation panel:fail", product_details)
+        self.assertIn("GUI modern home operation refresh:fail", product_details)
+        self.assertIn("GUI modern home operation helper:fail", product_details)
+        self.assertIn("GUI smoke home operation count:fail", product_details)
         self.assertIn("GUI modern article focus panel:fail", product_details)
         self.assertIn("GUI modern article focus next action:fail", product_details)
         self.assertIn("GUI modern article focus helper:fail", product_details)
@@ -5468,6 +5537,7 @@ tags:
         self.assertIn("README home quick action search guidance:fail", product_details)
         self.assertIn("README home progress lane guidance:fail", product_details)
         self.assertIn("README home compact snapshot guidance:fail", product_details)
+        self.assertIn("README home operation panel guidance:fail", product_details)
         self.assertIn("README home progress direct open guidance:fail", product_details)
         self.assertIn("README home progress command palette guidance:fail", product_details)
         self.assertIn("README home first-run setup guidance:fail", product_details)
@@ -5722,6 +5792,7 @@ tags:
         self.assertIn("product readiness commercial policy review command:fail", product_details)
         self.assertIn("product readiness commercial setup command:fail", product_details)
         self.assertIn("product readiness home sales summary guidance:fail", product_details)
+        self.assertIn("product readiness home operation guidance:fail", product_details)
         self.assertIn("product readiness home sales timeline guidance:fail", product_details)
         self.assertIn("product readiness home sales lightweight guidance:fail", product_details)
         self.assertIn("product readiness home delivery release guidance:fail", product_details)
@@ -6072,6 +6143,10 @@ tags:
         self.assertIn("GUI modern home compact snapshot refresh:pass", launcher_details)
         self.assertIn("GUI modern home compact snapshot helper:pass", launcher_details)
         self.assertIn("GUI smoke home compact snapshot:pass", launcher_details)
+        self.assertIn("GUI modern home operation panel:pass", launcher_details)
+        self.assertIn("GUI modern home operation refresh:pass", launcher_details)
+        self.assertIn("GUI modern home operation helper:pass", launcher_details)
+        self.assertIn("GUI smoke home operation count:pass", launcher_details)
         self.assertIn("GUI modern article focus panel:pass", launcher_details)
         self.assertIn("GUI modern article focus next action:pass", launcher_details)
         self.assertIn("GUI modern article focus helper:pass", launcher_details)
@@ -6300,6 +6375,7 @@ tags:
         self.assertIn("README home quick action search guidance:pass", launcher_details)
         self.assertIn("README home progress lane guidance:pass", launcher_details)
         self.assertIn("README home compact snapshot guidance:pass", launcher_details)
+        self.assertIn("README home operation panel guidance:pass", launcher_details)
         self.assertIn("README home progress direct open guidance:pass", launcher_details)
         self.assertIn("README home progress command palette guidance:pass", launcher_details)
         self.assertIn("README home first-run setup guidance:pass", launcher_details)
@@ -6556,6 +6632,7 @@ tags:
         self.assertIn("product readiness commercial policy review command:pass", launcher_details)
         self.assertIn("product readiness commercial setup command:pass", launcher_details)
         self.assertIn("product readiness home sales summary guidance:pass", launcher_details)
+        self.assertIn("product readiness home operation guidance:pass", launcher_details)
         self.assertIn("product readiness home sales timeline guidance:pass", launcher_details)
         self.assertIn("product readiness home sales lightweight guidance:pass", launcher_details)
         self.assertIn("product readiness home delivery release guidance:pass", launcher_details)

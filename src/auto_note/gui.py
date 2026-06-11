@@ -905,6 +905,19 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "home_snapshot_vars")
             else 0
         )
+        home_operation_items = len(app.home_operation_vars) if hasattr(app, "home_operation_vars") else 0
+        home_operation_chars = (
+            len(app.home_operation_title_var.get())
+            + len(app.home_operation_detail_var.get())
+            + sum(len(value.get()) for value in app.home_operation_vars.values())
+            if hasattr(app, "home_operation_vars")
+            else 0
+        )
+        home_operation_pill_chars = (
+            len(str(app.home_operation_mode_pill.cget("text")))
+            if hasattr(app, "home_operation_mode_pill")
+            else 0
+        )
         home_progress_chars = len(app.home_progress_summary_var.get()) if hasattr(app, "home_progress_summary_var") else 0
         home_progress_stage_chars = (
             sum(len(value.get()) for value in app.home_progress_vars.values())
@@ -1024,6 +1037,9 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_report_items={home_report_items}, "
             f"home_snapshot_items={home_snapshot_items}, "
             f"home_snapshot_chars={home_snapshot_chars}, "
+            f"home_operation_items={home_operation_items}, "
+            f"home_operation_chars={home_operation_chars}, "
+            f"home_operation_pill_chars={home_operation_pill_chars}, "
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
@@ -1240,6 +1256,8 @@ class AutoNoteApp(tk.Tk):
         style.configure("HomeLead.TFrame", background=UI_COLORS["surface_strong"])
         style.configure("HomeSnapshot.TFrame", background=surface)
         style.configure("HomeSnapshotTile.TFrame", background=surface_alt)
+        style.configure("HomeOperation.TFrame", background=surface)
+        style.configure("HomeOperationTile.TFrame", background=surface_alt)
         style.configure("ArticleFocus.TFrame", background=surface_alt)
         style.configure("Elevated.TFrame", background=surface, relief="flat", borderwidth=1)
         style.configure("Toolbar.TFrame", background=surface_alt)
@@ -1334,6 +1352,24 @@ class AutoNoteApp(tk.Tk):
         style.configure("KpiLabel.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
         style.configure("KpiValue.TLabel", background=surface, foreground=primary, font=(font, 20, UI_HEADING_FONT_WEIGHT))
         style.configure("KpiHint.TLabel", background=surface, foreground=muted, font=(font, UI_SMALL_TEXT_SIZE))
+        style.configure(
+            "HomeOperationTitle.TLabel",
+            background=surface,
+            foreground=primary,
+            font=(font, 15, UI_HEADING_FONT_WEIGHT),
+        )
+        style.configure(
+            "HomeOperationLabel.TLabel",
+            background=surface_alt,
+            foreground=muted,
+            font=(font, UI_SMALL_TEXT_SIZE),
+        )
+        style.configure(
+            "HomeOperationValue.TLabel",
+            background=surface_alt,
+            foreground=primary,
+            font=(font, UI_TEXT_SIZE),
+        )
         style.configure("TNotebook", background=bg, borderwidth=0, tabmargins=(0, 8, 0, 0))
         style.configure(
             "TNotebook.Tab",
@@ -1527,6 +1563,7 @@ class AutoNoteApp(tk.Tk):
             "home_sales_status_pill",
             "home_buyer_send_status_pill",
             "home_release_check_status_pill",
+            "home_operation_mode_pill",
             "first_run_status_pill",
             "status_pill",
             "article_focus_status_pill",
@@ -1541,6 +1578,7 @@ class AutoNoteApp(tk.Tk):
                 widgets.append(widget)
         for name in (
             "home_snapshot_pills",
+            "home_operation_pills",
             "home_progress_pills",
             "home_sales_stage_pills",
             "home_sales_timeline_pills",
@@ -1776,6 +1814,108 @@ class AutoNoteApp(tk.Tk):
                 wraplength=250,
             ).pack(anchor=tk.W, fill=tk.X, pady=(5, 0))
 
+        self.home_primary_button_var = tk.StringVar(value="次を実行")
+
+        operation = ttk.Frame(home, style="HomeOperation.TFrame", padding=12)
+        operation.pack(fill=tk.X, pady=(0, 10))
+        operation_header = ttk.Frame(operation, style="HomeOperation.TFrame")
+        operation_header.pack(fill=tk.X, pady=(0, 10))
+        tk.Frame(operation_header, bg=UI_COLORS["accent"], width=4).pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
+        operation_title_group = ttk.Frame(operation_header, style="HomeOperation.TFrame")
+        operation_title_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(
+            operation_title_group,
+            text="TODAY OPERATIONS",
+            style="SurfaceMuted.TLabel",
+        ).pack(anchor=tk.W)
+        title_row = ttk.Frame(operation_title_group, style="HomeOperation.TFrame")
+        title_row.pack(fill=tk.X, pady=(3, 0))
+        self.home_operation_mode_pill = tk.Label(
+            title_row,
+            text="CHECK",
+            bg=UI_COLORS["warn"],
+            fg="#ffffff",
+            font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
+            padx=9,
+            pady=4,
+            width=10,
+        )
+        self.home_operation_mode_pill.pack(side=tk.LEFT)
+        self.home_operation_title_var = tk.StringVar(value="今日の作業を確認中です。")
+        ttk.Label(
+            title_row,
+            textvariable=self.home_operation_title_var,
+            style="HomeOperationTitle.TLabel",
+            wraplength=760,
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 0))
+        self.home_operation_detail_var = tk.StringVar(value="")
+        ttk.Label(
+            operation_title_group,
+            textvariable=self.home_operation_detail_var,
+            style="Muted.TLabel",
+            wraplength=900,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(4, 0))
+        operation_actions = ttk.Frame(operation_header, style="HomeOperation.TFrame")
+        operation_actions.pack(side=tk.RIGHT, padx=(12, 0))
+        ttk.Button(
+            operation_actions,
+            textvariable=self.home_primary_button_var,
+            style="Primary.TButton",
+            command=self.run_home_primary_action,
+        ).grid(row=0, column=0, sticky=tk.EW)
+        ttk.Button(
+            operation_actions,
+            text="販売次",
+            command=self.run_home_sales_next_action,
+        ).grid(row=1, column=0, sticky=tk.EW, pady=(6, 0))
+        ttk.Button(
+            operation_actions,
+            text="ログ確認",
+            command=self.show_gui_log_action,
+        ).grid(row=2, column=0, sticky=tk.EW, pady=(6, 0))
+
+        self.home_operation_vars: dict[str, tk.StringVar] = {}
+        self.home_operation_pills: dict[str, tk.Label] = {}
+        self.home_operation_rails: dict[str, tk.Frame] = {}
+        operation_grid = ttk.Frame(operation, style="HomeOperation.TFrame")
+        operation_grid.pack(fill=tk.X)
+        for index, (key, label) in enumerate(
+            (
+                ("priority", "最優先"),
+                ("sales", "販売/送付"),
+                ("safety", "復旧/安全"),
+            )
+        ):
+            tile = ttk.Frame(operation_grid, style="HomeOperationTile.TFrame", padding=(10, 9))
+            tile.grid(row=0, column=index, sticky="nsew", padx=(0 if index == 0 else 8, 0))
+            operation_grid.columnconfigure(index, weight=1, uniform="home_operation")
+            rail = tk.Frame(tile, bg=UI_COLORS["line"], height=3)
+            rail.pack(fill=tk.X, pady=(0, 8))
+            self.home_operation_rails[key] = rail
+            item_header = ttk.Frame(tile, style="HomeOperationTile.TFrame")
+            item_header.pack(fill=tk.X)
+            ttk.Label(item_header, text=label, style="HomeOperationLabel.TLabel").pack(side=tk.LEFT)
+            pill = tk.Label(
+                item_header,
+                text="CHECK",
+                bg=UI_COLORS["warn"],
+                fg="#ffffff",
+                font=(UI_FONT, UI_BADGE_FONT_SIZE, UI_BADGE_FONT_WEIGHT),
+                padx=7,
+                pady=3,
+                width=8,
+            )
+            pill.pack(side=tk.RIGHT)
+            self.home_operation_pills[key] = pill
+            value = tk.StringVar(value="確認中")
+            self.home_operation_vars[key] = value
+            ttk.Label(
+                tile,
+                textvariable=value,
+                style="HomeOperationValue.TLabel",
+                wraplength=300,
+            ).pack(anchor=tk.W, fill=tk.X, pady=(5, 0))
+
         self.kpi_frame = ttk.Frame(home)
         self.kpi_frame.pack(fill=tk.X, pady=(0, 10))
         self.kpi_vars: dict[str, tk.StringVar] = {}
@@ -1797,7 +1937,6 @@ class AutoNoteApp(tk.Tk):
         progress_header = ttk.Frame(progress, style="Surface.TFrame")
         progress_header.pack(fill=tk.X, pady=(0, 8))
         self.home_progress_summary_var = tk.StringVar(value="投稿までの進行状況を確認中です。")
-        self.home_primary_button_var = tk.StringVar(value="次を実行")
         ttk.Label(
             progress_header,
             textvariable=self.home_progress_summary_var,
@@ -5623,6 +5762,7 @@ class AutoNoteApp(tk.Tk):
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
         self._refresh_home_gui_log_status()
         self._refresh_home_snapshot_strip(readiness, action_plan, first_run_report)
+        self._refresh_home_operation_panel(readiness, action_plan)
         self._refresh_home_reports()
 
         lines = [
@@ -5760,6 +5900,55 @@ class AutoNoteApp(tk.Tk):
         rail = getattr(self, "home_snapshot_rails", {}).get(key)
         if value is not None:
             value.set(text)
+        if pill is not None:
+            pill_text, bg, fg = _home_sales_indicator_style(state)
+            pill.configure(text=pill_text, bg=bg, fg=fg)
+        if rail is not None:
+            rail.configure(bg=_home_state_accent_color(state))
+
+    def _refresh_home_operation_panel(self, readiness, action_plan) -> None:
+        if not hasattr(self, "home_operation_vars"):
+            return
+        next_step = action_plan.steps[0] if action_plan.steps else None
+        priority_state, priority_title, priority_detail = _home_operation_priority(next_step)
+        sales_state, sales_title, sales_detail = _home_operation_sales(
+            self.home_sales_status_var.get() if hasattr(self, "home_sales_status_var") else "",
+            self.home_buyer_send_var.get() if hasattr(self, "home_buyer_send_var") else "",
+            self.home_buyer_send_next_var.get() if hasattr(self, "home_buyer_send_next_var") else "",
+        )
+        gui_state, gui_text = _home_gui_log_status(gui_error_log_path(self.project_dir))
+        safety_state, safety_title, safety_detail = _home_operation_safety(gui_state, gui_text)
+        mode_state = _home_snapshot_worst_state(
+            priority_state,
+            sales_state,
+            safety_state,
+            _home_snapshot_readiness_state(readiness.score),
+        )
+        mode_label = _home_operation_mode(mode_state, action_plan.status)
+        if hasattr(self, "home_operation_title_var"):
+            self.home_operation_title_var.set(
+                f"{mode_label}: {priority_title if mode_state in {'fail', 'warn'} else sales_title}"
+            )
+        if hasattr(self, "home_operation_detail_var"):
+            self.home_operation_detail_var.set(
+                _home_snapshot_brief(
+                    f"準備度 {readiness.score}/100 / {priority_detail} / {sales_detail} / {safety_detail}",
+                    132,
+                )
+            )
+        if hasattr(self, "home_operation_mode_pill"):
+            pill_text, bg, fg = _home_sales_indicator_style(mode_state)
+            self.home_operation_mode_pill.configure(text=pill_text, bg=bg, fg=fg)
+        self._set_home_operation_item("priority", priority_state, f"{priority_title}: {priority_detail}")
+        self._set_home_operation_item("sales", sales_state, f"{sales_title}: {sales_detail}")
+        self._set_home_operation_item("safety", safety_state, f"{safety_title}: {safety_detail}")
+
+    def _set_home_operation_item(self, key: str, state: str, text: str) -> None:
+        value = getattr(self, "home_operation_vars", {}).get(key)
+        pill = getattr(self, "home_operation_pills", {}).get(key)
+        rail = getattr(self, "home_operation_rails", {}).get(key)
+        if value is not None:
+            value.set(_home_snapshot_brief(text, 92))
         if pill is not None:
             pill_text, bg, fg = _home_sales_indicator_style(state)
             pill.configure(text=pill_text, bg=bg, fg=fg)
@@ -10484,6 +10673,72 @@ def _home_primary_button_label(step: ActionPlanStep | None) -> str:
         return "バックアップ"
     label = step.title.strip() or "次を実行"
     return label if len(label) <= 12 else label[:10] + "..."
+
+
+def _home_operation_priority(step: ActionPlanStep | None) -> tuple[str, str, str]:
+    if step is None:
+        return (
+            "ok",
+            "出荷前チェック",
+            "大きな変更後や販売直前は、販売前一括チェックで状態を保存します。",
+        )
+    state = {
+        "blocker": "fail",
+        "warning": "warn",
+        "maintenance": "info",
+        "ready": "ok",
+        "info": "info",
+    }.get(step.severity, "info")
+    location = step.gui or step.command or "ホーム"
+    detail = _home_snapshot_brief(f"{step.action} / {location}", 86)
+    return state, _home_snapshot_brief(step.title, 36), detail
+
+
+def _home_operation_sales(
+    sales_status: str,
+    buyer_summary: str,
+    buyer_next: str,
+) -> tuple[str, str, str]:
+    combined = " / ".join(part for part in (sales_status, buyer_summary, buyer_next) if part)
+    if any(token in combined for token in ("ZIP検証NG", "送付文不一致", "記録不一致")):
+        state = "fail"
+    elif "READY TO VERIFY" in sales_status and "記録あり" in buyer_summary:
+        state = "ok"
+    elif "READY TO VERIFY" in sales_status:
+        state = "info"
+    else:
+        state = "warn"
+    if state == "ok":
+        title = "送付前レビュー"
+    elif state == "fail":
+        title = "送付物を修正"
+    elif "READY TO VERIFY" in sales_status:
+        title = "販売直前確認"
+    else:
+        title = "販売準備の残件"
+    detail = _home_snapshot_brief(buyer_next or buyer_summary or sales_status or "販売準備を確認します。", 86)
+    return state, title, detail
+
+
+def _home_operation_safety(gui_state: str, gui_text: str) -> tuple[str, str, str]:
+    state = gui_state if gui_state in {"ok", "info", "warn", "fail"} else "info"
+    title = {
+        "ok": "復旧ログなし",
+        "info": "安全確認",
+        "warn": "GUIログ要確認",
+        "fail": "復旧優先",
+    }.get(state, "安全確認")
+    return state, title, _home_snapshot_brief(gui_text or "GUIログを確認します。", 86)
+
+
+def _home_operation_mode(state: str, action_status: str) -> str:
+    if state == "fail" or action_status == "BLOCKED":
+        return "対応優先"
+    if state == "warn" or action_status == "NEEDS ATTENTION":
+        return "確認優先"
+    if action_status == "READY":
+        return "出荷前確認"
+    return "運用中"
 
 
 def _home_overview_badge(readiness_score: int, status: str) -> tuple[str, str, str]:
