@@ -330,26 +330,26 @@ UI_DENSITY_VALUES = {
 }
 _DPI_AWARENESS_ENABLED = False
 UI_COLORS = {
-    "bg": "#eef3f8",
+    "bg": "#e9eef6",
     "surface": "#ffffff",
-    "surface_alt": "#f6f8fb",
-    "surface_hover": "#edf4f7",
-    "surface_strong": "#e8f7f3",
-    "surface_selected": "#e6f4ef",
+    "surface_alt": "#f3f6fb",
+    "surface_hover": "#e9f2f1",
+    "surface_strong": "#e3f5f0",
+    "surface_selected": "#dcf0ea",
     "text_bg": "#fbfdff",
     "ink": "#101828",
-    "muted": "#667085",
-    "line": "#d6dee8",
-    "line_strong": "#bac6d5",
-    "chrome": "#111827",
-    "chrome_alt": "#263142",
+    "muted": "#5d6b7e",
+    "line": "#d4dce7",
+    "line_strong": "#b3c0d1",
+    "chrome": "#0f1b2c",
+    "chrome_alt": "#233349",
     "chrome_muted": "#cbd5e1",
-    "chrome_chip": "#202b3d",
+    "chrome_chip": "#1c2a3f",
     "accent": "#0f766e",
     "accent_hover": "#0d5f59",
     "accent_pressed": "#0a4e49",
     "accent_soft": "#dff7f2",
-    "focus": "#99f6e4",
+    "focus": "#2dd4bf",
     "danger": "#dc2626",
     "danger_soft": "#fee2e2",
     "warn": "#b45309",
@@ -360,10 +360,10 @@ UI_COLORS = {
     "ok_soft": "#dff3ed",
 }
 STATUS_COLORS = {
-    "draft": ("#f3f4f6", "#374151"),
-    "ready": ("#e7f0ff", "#174ea6"),
-    "scheduled": ("#fff4db", "#8a4f00"),
-    "published": ("#dff3ed", "#105f54"),
+    "draft": ("#eef1f5", "#3f4a5a"),
+    "ready": ("#e3edff", "#1d4fa6"),
+    "scheduled": ("#fdf0d2", "#8a5200"),
+    "published": ("#d8f1e9", "#0c6353"),
 }
 AUTOSAVE_INTERVAL_MS = 30_000
 
@@ -599,13 +599,14 @@ def _style_text_widget(widget: tk.Text, *, code: bool = False) -> None:
         background=UI_COLORS["text_bg"],
         foreground=UI_COLORS["ink"],
         insertbackground=UI_COLORS["accent"],
+        insertwidth=2,
         selectbackground=UI_COLORS["accent_soft"],
         selectforeground=UI_COLORS["ink"],
-        relief=tk.FLAT,
+        relief="flat",
         borderwidth=0,
         highlightthickness=1,
         highlightbackground=UI_COLORS["line"],
-        highlightcolor=UI_COLORS["focus"],
+        highlightcolor=UI_COLORS["accent"],
         padx=10,
         pady=10,
         spacing1=UI_TEXT_SPACING_TOP,
@@ -1280,11 +1281,43 @@ class AutoNoteApp(tk.Tk):
         style.configure("Surface.TFrame", background=surface)
         style.configure("HomeLead.TFrame", background=UI_COLORS["surface_strong"])
         style.configure("HomeSnapshot.TFrame", background=surface)
-        style.configure("HomeSnapshotTile.TFrame", background=surface_alt)
+        style.configure(
+            "HomeSnapshotTile.TFrame",
+            background=surface_alt,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+            borderwidth=1,
+            relief="solid",
+        )
         style.configure("HomeOperation.TFrame", background=surface)
-        style.configure("HomeOperationTile.TFrame", background=surface_alt)
-        style.configure("ArticleFocus.TFrame", background=surface_alt)
-        style.configure("Elevated.TFrame", background=surface, relief="flat", borderwidth=1)
+        style.configure(
+            "HomeOperationTile.TFrame",
+            background=surface_alt,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+            borderwidth=1,
+            relief="solid",
+        )
+        style.configure(
+            "ArticleFocus.TFrame",
+            background=surface_alt,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+            borderwidth=1,
+            relief="solid",
+        )
+        style.configure(
+            "Elevated.TFrame",
+            background=surface,
+            bordercolor=line,
+            lightcolor=line,
+            darkcolor=line,
+            borderwidth=1,
+            relief="solid",
+        )
         style.configure("Toolbar.TFrame", background=surface_alt)
         style.configure("Chrome.TFrame", background=chrome)
         style.configure("ChromeAlt.TFrame", background=chrome_alt)
@@ -1407,7 +1440,7 @@ class AutoNoteApp(tk.Tk):
         style.map(
             "TNotebook.Tab",
             background=[("selected", surface), ("active", selected)],
-            foreground=[("selected", primary), ("active", primary)],
+            foreground=[("selected", accent), ("active", primary)],
         )
         style.configure(
             "TEntry",
@@ -1459,31 +1492,38 @@ class AutoNoteApp(tk.Tk):
         )
         style.configure(
             "Treeview.Heading",
-            background=surface_alt,
+            background="#ecf1f8",
             foreground=muted,
             font=(font, UI_SMALL_TEXT_SIZE),
             padding=(8, 10),
             relief="flat",
         )
-        style.map("Treeview", background=[("selected", selected)], foreground=[("selected", primary)])
+        style.map("Treeview.Heading", background=[("active", "#e2e9f3")])
+        style.map("Treeview", background=[("selected", selected)], foreground=[("selected", UI_COLORS["ink"])])
         style.configure(
             "Vertical.TScrollbar",
-            background=surface_alt,
+            background="#c2cedd",
             troughcolor=bg,
             arrowcolor=muted,
             bordercolor=bg,
             lightcolor=bg,
             darkcolor=bg,
+            borderwidth=0,
+            relief="flat",
         )
+        style.map("Vertical.TScrollbar", background=[("active", "#a8b8cb"), ("pressed", "#a8b8cb")])
         style.configure(
             "Horizontal.TScrollbar",
-            background=surface_alt,
+            background="#c2cedd",
             troughcolor=bg,
             arrowcolor=muted,
             bordercolor=bg,
             lightcolor=bg,
             darkcolor=bg,
+            borderwidth=0,
+            relief="flat",
         )
+        style.map("Horizontal.TScrollbar", background=[("active", "#a8b8cb"), ("pressed", "#a8b8cb")])
         style.configure("TProgressbar", background=accent, troughcolor=surface_alt, borderwidth=0)
         style.configure(
             "TButton",
@@ -1494,6 +1534,7 @@ class AutoNoteApp(tk.Tk):
             bordercolor=line,
             lightcolor=line,
             darkcolor=line,
+            focuscolor=UI_COLORS["focus"],
         )
         style.map("TButton", background=[("active", selected), ("pressed", "#d9ece8")])
         style.configure(
@@ -1505,10 +1546,12 @@ class AutoNoteApp(tk.Tk):
             bordercolor=line,
             lightcolor=line,
             darkcolor=line,
+            focuscolor=UI_COLORS["focus"],
         )
         style.map(
             "Secondary.TButton",
             background=[("active", UI_COLORS["surface_hover"]), ("pressed", selected)],
+            bordercolor=[("active", line_strong)],
         )
         style.configure(
             "Primary.TButton",
@@ -1517,15 +1560,16 @@ class AutoNoteApp(tk.Tk):
             background=accent,
             foreground="#ffffff",
             borderwidth=0,
+            focuscolor="#d7fbf4",
         )
         style.map(
             "Primary.TButton",
             background=[
                 ("active", UI_COLORS["accent_hover"]),
                 ("pressed", UI_COLORS["accent_pressed"]),
-                ("disabled", "#8acfc5"),
+                ("disabled", "#9ed3cb"),
             ],
-            foreground=[("disabled", "#ecfdf5")],
+            foreground=[("disabled", "#f0fdfa")],
         )
         style.configure(
             "Quiet.TButton",
@@ -1533,6 +1577,7 @@ class AutoNoteApp(tk.Tk):
             font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=chrome_alt,
             foreground="#ffffff",
+            focuscolor="#d7fbf4",
         )
         style.map("Quiet.TButton", background=[("active", "#2b394c"), ("pressed", "#34445a")])
         style.configure(
@@ -1540,7 +1585,11 @@ class AutoNoteApp(tk.Tk):
             padding=UI_DANGER_BUTTON_PADDING,
             font=(font, UI_TEXT_SIZE, UI_CONTROL_FONT_WEIGHT),
             background=UI_COLORS["danger_soft"],
-            foreground="#991b1b",
+            foreground="#b91c1c",
+            bordercolor="#fecaca",
+            lightcolor="#fecaca",
+            darkcolor="#fecaca",
+            focuscolor=UI_COLORS["focus"],
         )
         style.map("Danger.TButton", background=[("active", "#fecaca"), ("pressed", "#fca5a5")])
         style.configure("TLabelframe", background=surface, padding=14, relief="flat", borderwidth=0)
