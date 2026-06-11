@@ -117,6 +117,23 @@ try {
     & $python -m auto_note sales-finalize --project-dir . --send-check --send-check-report --delivery-receipt
   }
 
+  Invoke-Smoke "Seller order note" {
+    $orderNoteLines = & $python -m auto_note sales-finalize --project-dir . --order-note
+    if ($LASTEXITCODE -ne 0) {
+      return
+    }
+    $orderNoteText = $orderNoteLines -join "`n"
+    if ($orderNoteText -notlike "*Order management copy block*") {
+      throw "Seller order note output does not include the order management copy block."
+    }
+    if ($orderNoteText -notlike "*Buyer delivery ZIP*") {
+      throw "Seller order note output does not include the buyer delivery ZIP."
+    }
+    if ($orderNoteText -like "*Privacy note*") {
+      throw "Seller order note output includes seller-only privacy notes."
+    }
+  }
+
   Invoke-Smoke "Sales launch checklist and confirmation" {
     & $python -m auto_note sales-launch --project-dir . --report --confirm-preview --note "smoke preview checked"
   }

@@ -1061,6 +1061,18 @@ def extract_seller_order_management_block(receipt_text: str) -> str:
     return ""
 
 
+def find_latest_seller_order_management_block(project_dir: Path) -> tuple[Path | None, str]:
+    for receipt_path in list_seller_delivery_receipts(project_dir):
+        try:
+            receipt_text = receipt_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        order_note = extract_seller_order_management_block(receipt_text)
+        if order_note:
+            return receipt_path, order_note
+    return None, ""
+
+
 def write_seller_delivery_receipt(project_dir: Path, *, report: BuyerSendReadinessReport | None = None) -> Path:
     project_dir = project_dir.resolve()
     report = report or run_buyer_send_readiness(project_dir)

@@ -1189,6 +1189,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke seller order note",
+            "sales-finalize --project-dir . --order-note",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke seller order note assertion",
+            "Order management copy block",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
             "sales delivery smoke launch checklist",
             "sales-launch --project-dir . --report --confirm-preview",
         )
@@ -1825,6 +1839,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI seller order note command",
+            "--order-note",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI seller order note extractor",
+            "extract_seller_order_management_block(receipt_text)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "sales finalize ignores stale handoffs during preflight",
             "include_sales_handoffs=False",
@@ -2010,6 +2038,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "seller delivery receipt order management extractor",
             "extract_seller_order_management_block",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt order management finder",
+            "find_latest_seller_order_management_block",
         )
     )
     checks.append(
@@ -5536,8 +5571,8 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
-            "GUI seller order note copy extractor",
-            "extract_seller_order_management_block(receipt_text)",
+            "GUI seller order note copy finder",
+            "find_latest_seller_order_management_block(self.project_dir)",
         )
     )
     checks.append(
@@ -6000,6 +6035,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README seller order note copy guidance",
             "注文控えコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README seller order note CLI guidance",
+            "sales-finalize --project-dir . --order-note",
         )
     )
     checks.append(
@@ -6581,6 +6623,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness seller order note copy guidance",
             "注文控えコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness seller order note CLI guidance",
+            "sales-finalize --project-dir . --order-note",
         )
     )
     checks.append(

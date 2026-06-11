@@ -125,7 +125,7 @@ from .sales_handoff import (
 )
 from .sales_finalize import (
     create_sales_finalize,
-    extract_seller_order_management_block,
+    find_latest_seller_order_management_block,
     find_buyer_delivery_package_for_message,
     format_buyer_send_readiness_report,
     format_seller_delivery_receipt,
@@ -9284,15 +9284,8 @@ class AutoNoteApp(tk.Tk):
             messagebox.showinfo("注文控えコピー", "送付記録がまだありません。先に 送付記録 を作成してください。")
             self.notify("送付記録がありません", level="warning")
             return
-        latest = receipts[0]
-        try:
-            receipt_text = latest.read_text(encoding="utf-8")
-        except OSError as exc:
-            self.notify("送付記録を読めません", level="error")
-            messagebox.showerror("注文控えコピーエラー", str(exc))
-            return
-        order_note = extract_seller_order_management_block(receipt_text)
-        if not order_note:
+        latest, order_note = find_latest_seller_order_management_block(self.project_dir)
+        if latest is None or not order_note:
             self.notify("注文管理コピー欄が見つかりません", level="error")
             messagebox.showerror(
                 "注文控えコピーエラー",

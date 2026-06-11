@@ -686,6 +686,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "sales-finalize":
             from .sales_finalize import (
                 create_sales_finalize,
+                extract_seller_order_management_block,
+                find_latest_seller_order_management_block,
                 format_buyer_send_readiness_report,
                 format_sales_finalize_report,
                 has_buyer_send_readiness_blockers,
@@ -696,6 +698,31 @@ def main(argv: list[str] | None = None) -> int:
             )
 
             project_dir = args.project_dir.resolve()
+
+            def print_seller_order_note(receipt_path: Path, *, with_heading: bool = False) -> int:
+                try:
+                    receipt_text = receipt_path.read_text(encoding="utf-8")
+                except OSError as exc:
+                    print(f"seller order note could not read receipt: {exc}")
+                    return 1
+                order_note = extract_seller_order_management_block(receipt_text)
+                if not order_note:
+                    print(f"seller order note not found in: {receipt_path}")
+                    return 1
+                if with_heading:
+                    print()
+                    print("seller order note / 注文管理コピー欄:")
+                print(order_note)
+                return 0
+
+            if args.order_note and not (args.send_check or args.send_check_report or args.delivery_receipt):
+                order_note_source, order_note = find_latest_seller_order_management_block(project_dir)
+                if order_note_source is None:
+                    print("seller order note not found. Run `auto-note sales-finalize --project-dir . --delivery-receipt` first.")
+                    return 1
+                print(order_note)
+                return 0
+
             if args.send_check or args.send_check_report or args.delivery_receipt:
                 from dataclasses import replace
 
@@ -716,7 +743,22 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.delivery_receipt and has_buyer_send_readiness_blockers(report, strict=args.strict):
                     print()
                     print("seller delivery receipt not created because buyer send readiness has blockers.")
-                return 1 if has_buyer_send_readiness_blockers(report, strict=args.strict) else 0
+                order_note_exit = 0
+                if args.order_note:
+                    order_note_source = receipt_path
+                    if order_note_source is None and not args.delivery_receipt:
+                        order_note_source, order_note = find_latest_seller_order_management_block(project_dir)
+                    if order_note_source is None:
+                        print()
+                        print("seller order note not found. Run `auto-note sales-finalize --project-dir . --delivery-receipt` first.")
+                        order_note_exit = 1
+                    elif receipt_path is None:
+                        print()
+                        print("seller order note / 注文管理コピー欄:")
+                        print(order_note)
+                    else:
+                        order_note_exit = print_seller_order_note(order_note_source, with_heading=True)
+                return 1 if has_buyer_send_readiness_blockers(report, strict=args.strict) or order_note_exit else 0
 
             report = create_sales_finalize(
                 project_dir,
@@ -1539,6 +1581,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--delivery-receipt",
         action="store_true",
         help="Save a seller delivery receipt template after buyer send readiness passes. Implies --send-check-report.",
+    )
+    sales_finalize.add_argument(
+        "--order-note",
+        action="store_true",
+        help="Print only the short order-management copy block from the latest seller delivery receipt.",
     )
     sales_finalize.add_argument("--no-report", action="store_true", help="Do not save sales-finalize-*.txt.")
 
