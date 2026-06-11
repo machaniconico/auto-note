@@ -5403,6 +5403,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery ZIP location action",
+            "open_latest_buyer_delivery_location_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery ZIP location guard",
+            "送付前チェックNGのため購入者ZIP場所を開きませんでした",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery ZIP location feedback",
+            "購入者向けZIPの場所を開きました",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI buyer delivery ZIP path copy clipboard",
             "self.clipboard_append(str(copied_path))",
         )
@@ -5853,6 +5874,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README buyer delivery ZIP path copy guidance",
             "ZIPパスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README buyer delivery ZIP location guidance",
+            "購入者ZIP場所",
         )
     )
     checks.append(
@@ -6406,6 +6434,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness buyer delivery ZIP path copy guidance",
             "ZIPパスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness buyer delivery ZIP location guidance",
+            "購入者ZIP場所",
         )
     )
     checks.append(

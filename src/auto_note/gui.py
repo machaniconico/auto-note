@@ -2240,6 +2240,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
             ("問い合わせ票", self.open_latest_buyer_support_request_action, None),
+            ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
             ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action, None),
             ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action, None),
@@ -2390,6 +2391,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前保存", self.create_buyer_send_readiness_report_action),
             ("送付記録", self.create_seller_delivery_receipt_action),
             ("問い合わせ票", self.open_latest_buyer_support_request_action),
+            ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
             ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action),
             ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action),
@@ -3471,6 +3473,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
                 ("問い合わせ票", self.open_latest_buyer_support_request_action),
+                ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action),
                 ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action),
@@ -3766,6 +3769,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
                 ("問い合わせ票", self.open_latest_buyer_support_request_action),
+                ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action),
                 ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action),
@@ -3978,6 +3982,7 @@ class AutoNoteApp(tk.Tk):
             "送付前保存": self.create_buyer_send_readiness_report_action,
             "送付記録": self.create_seller_delivery_receipt_action,
             "問い合わせ票": self.open_latest_buyer_support_request_action,
+            "購入者ZIP場所": self.open_latest_buyer_delivery_location_action,
             "送付文コピー": self.copy_latest_buyer_delivery_message_action,
             "ZIPパスコピー": self.copy_latest_buyer_delivery_zip_path_action,
             "送付情報コピー": self.copy_latest_buyer_delivery_sheet_action,
@@ -7174,6 +7179,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前チェック", "最新の送付文、購入者ZIP、販売者チェックリスト、販売証跡JSONを照合", self.run_buyer_send_readiness_to_tab),
             ("送付前保存", "購入者送付前チェックを時刻付きレポートとして保存", self.create_buyer_send_readiness_report_action),
             ("送付記録", "検証済みZIP名とSHA-256入りの販売者向け納品記録を保存", self.create_seller_delivery_receipt_action),
+            ("購入者ZIP場所", "送付前チェック後に購入者向けZIPがあるフォルダを開く", self.open_latest_buyer_delivery_location_action),
             ("送付文コピー", "最新の購入者向け送付文をZIP検証後にクリップボードへコピー", self.copy_latest_buyer_delivery_message_action),
             ("ZIPパスコピー", "送付前チェック後に購入者向けZIPの絶対パスをコピー", self.copy_latest_buyer_delivery_zip_path_action),
             ("送付情報コピー", "ZIP名、絶対パス、サイズ、SHA-256、送付文ファイルをコピー", self.copy_latest_buyer_delivery_sheet_action),
@@ -9291,6 +9297,53 @@ class AutoNoteApp(tk.Tk):
         self._set_text(self.diagnostics_text, "\n".join(parts))
         self.notebook.select(self.diagnostics_tab)
         self.notify(f"送付文をコピーしました: {message_path.name}", level="success")
+
+    def open_latest_buyer_delivery_location_action(self) -> None:
+        send_report = run_buyer_send_readiness(self.project_dir)
+        if has_buyer_send_readiness_blockers(send_report):
+            self._set_text(self.diagnostics_text, format_buyer_send_readiness_report(send_report))
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("送付前チェックNGのため購入者ZIP場所を開きませんでした", level="error")
+            return
+        package_path = send_report.buyer_delivery_package_path
+        if package_path is None or not package_path.exists():
+            messagebox.showinfo("購入者ZIP場所", "購入者向けZIPがまだありません。先に販売一括作成を実行してください。")
+            self.notify("購入者向けZIPがありません", level="warning")
+            return
+        package_errors = verify_buyer_delivery_package(package_path)
+        if package_errors:
+            self._set_text(
+                self.diagnostics_text,
+                "\n".join(
+                    [
+                        format_buyer_send_readiness_report(send_report),
+                        "",
+                        format_buyer_delivery_package_verification(package_path, package_errors),
+                        "",
+                        "購入者向けZIPの検証で問題が見つかったため、場所は開いていません。",
+                    ]
+                ),
+            )
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("購入者向けZIPに問題があるため場所を開きませんでした", level="error")
+            return
+        folder_path = package_path.parent.resolve()
+        _open_path(folder_path)
+        self._set_text(
+            self.diagnostics_text,
+            "\n".join(
+                [
+                    format_buyer_send_readiness_report(send_report),
+                    "",
+                    format_buyer_delivery_package_verification(package_path, []),
+                    "",
+                    f"Opened folder / 開いたフォルダ: {folder_path}",
+                    f"Buyer delivery ZIP / 購入者向けZIP: {package_path.name}",
+                ]
+            ),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"購入者向けZIPの場所を開きました: {package_path.name}", level="success")
 
     def copy_latest_buyer_delivery_zip_path_action(self) -> None:
         send_report = run_buyer_send_readiness(self.project_dir)
