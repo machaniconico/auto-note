@@ -161,6 +161,9 @@ try {
   if ($launchText -notlike "*Buyer delivery copy sheet*") {
     throw "Sales launch checklist does not include buyer delivery copy values."
   }
+  if ($launchText -notlike "*latest release package*") {
+    throw "Sales launch checklist does not include the latest release package value."
+  }
   if ($launchText -notlike "*zip SHA-256*") {
     throw "Sales launch checklist does not include the buyer ZIP SHA-256 value."
   }
@@ -174,6 +177,9 @@ try {
   }
   if ($confirmationText -notlike "*seller-only evidence*") {
     throw "Sales launch confirmation does not include seller-only evidence guidance."
+  }
+  if ($confirmationText -notlike "*latest release package*") {
+    throw "Sales launch confirmation does not include the latest release package value."
   }
 
   Write-Host ""

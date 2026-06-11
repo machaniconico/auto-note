@@ -35,6 +35,7 @@ class SalesReviewReport:
     checks: list[SalesReviewCheck]
     sales_materials_path: Path | None = None
     sales_listing_package_path: Path | None = None
+    latest_release_path: Path | None = None
     buyer_delivery_message_path: Path | None = None
     buyer_delivery_package_path: Path | None = None
     seller_delivery_receipt_path: Path | None = None
@@ -133,6 +134,7 @@ def run_sales_review(project_dir: Path) -> SalesReviewReport:
         checks=checks,
         sales_materials_path=materials_path,
         sales_listing_package_path=listing_package_path,
+        latest_release_path=buyer_send.latest_release_path,
         buyer_delivery_message_path=buyer_send.buyer_delivery_message_path,
         buyer_delivery_package_path=buyer_send.buyer_delivery_package_path,
         seller_delivery_receipt_path=receipt_path,
@@ -161,6 +163,7 @@ def format_sales_review(report: SalesReviewReport) -> str:
         "Artifacts / 確認対象",
         f"- sales materials: {_name_or_none(report.sales_materials_path)}",
         f"- sales listing kit: {_name_or_none(report.sales_listing_package_path)}",
+        f"- latest release package: {_name_or_none(report.latest_release_path)}",
         f"- buyer delivery message: {_name_or_none(report.buyer_delivery_message_path)}",
         f"- buyer delivery zip: {_name_or_none(report.buyer_delivery_package_path)}",
         f"- seller delivery receipt: {_name_or_none(report.seller_delivery_receipt_path)}",

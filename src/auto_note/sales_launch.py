@@ -114,6 +114,7 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
         "Artifacts / 販売直前に見るもの",
         f"- sales materials: {_name_or_none(review.sales_materials_path)}",
         f"- sales listing kit: {_name_or_none(review.sales_listing_package_path)}",
+        f"- latest release package: {_name_or_none(review.latest_release_path)}",
         f"- buyer delivery message: {_name_or_none(review.buyer_delivery_message_path)}",
         f"- buyer delivery zip: {_name_or_none(review.buyer_delivery_package_path)}",
         f"- seller delivery receipt: {_name_or_none(review.seller_delivery_receipt_path)}",
@@ -143,7 +144,7 @@ def format_sales_launch_checklist(report: SalesLaunchReport) -> str:
             "[ ] 販売ページの商品名、価格、更新日、対応OS、納品ZIP名が最新の販売素材と一致している",
             "[ ] 掲載キットZIPは販売ページ作成用として保管し、購入者向け添付/納品ファイルに入れていない",
             "[ ] 決済後メッセージ欄へ buyer delivery message の本文を貼り付けた",
-            "[ ] 上の buyer delivery zip / zip size / zip SHA-256 が販売ページまたは決済後メッセージの表示と一致している",
+            "[ ] 上の latest release package / buyer delivery zip / zip size / zip SHA-256 が販売ページまたは決済後メッセージの表示と一致している",
             "[ ] 決済後メッセージの貼り付け後、改行、リンク、SHA-256、ZIP名が崩れていない",
             "[ ] 添付または送付対象は buyer delivery zip だけにした",
             "[ ] 販売者用ZIP、診断ZIP、.auto-note、.venv、ログイン情報、支払い情報を送付対象から外した",
@@ -499,7 +500,10 @@ def _seller_evidence_check(project_dir: Path) -> SalesLaunchCheck:
 def _buyer_delivery_copy_sheet(report: SalesReviewReport) -> list[str]:
     package_path = report.buyer_delivery_package_path
     message_path = report.buyer_delivery_message_path
-    lines = ["Buyer delivery copy sheet / 購入者送付の照合値"]
+    lines = [
+        "Buyer delivery copy sheet / 購入者送付の照合値",
+        f"- latest release package: {_name_or_none(report.latest_release_path)}",
+    ]
     if package_path is None:
         lines.extend(
             [

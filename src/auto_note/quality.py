@@ -1217,6 +1217,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke latest release assertion",
+            "latest release package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
             "sales delivery smoke buyer SHA-256 assertion",
             "zip SHA-256",
         )
@@ -2427,6 +2434,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_review.py",
+            "sales review latest release artifact",
+            "latest release package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch checker",
             "run_sales_launch_check",
@@ -2514,6 +2528,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch buyer ZIP SHA-256 copy value",
             "zip SHA-256",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch latest release copy value",
+            "latest release package",
         )
     )
     checks.append(

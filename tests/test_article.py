@@ -2839,23 +2839,29 @@ tags: note
         self.assertEqual(sales_review.buyer_delivery_package_path, report.buyer_delivery_package_path)
         self.assertEqual(sales_review.buyer_delivery_message_path, report.buyer_delivery_message_path)
         self.assertEqual(sales_review.sales_listing_package_path, report.sales_listing_package_path)
+        self.assertEqual(sales_review.latest_release_path, release_path)
         self.assertEqual(sales_review.seller_delivery_receipt_path, seller_delivery_receipts[0])
         self.assertIn("Sales final review", sales_review_text)
         self.assertIn("Verdict: READY", sales_review_text)
         self.assertIn("sales listing kit", sales_review_text)
         self.assertIn(report.sales_listing_package_path.name, sales_review_text)
+        self.assertIn("latest release package:", sales_review_text)
+        self.assertIn(release_path.name, sales_review_text)
         self.assertIn("掲載キットZIPは販売ページ作成用", sales_review_text)
         self.assertIn("listing/settings alignment", sales_review_text)
         self.assertIn("buyer send readiness", sales_review_text)
         self.assertIn("Seller confirmation", sales_review_text)
         self.assertGreaterEqual(len(sales_review_reports), 1)
         self.assertIn("Sales final review", sales_review_report_text)
+        self.assertIn("latest release package:", sales_review_report_text)
+        self.assertIn(release_path.name, sales_review_report_text)
         self.assertNotIn(str(project), sales_review_report_text)
         self.assertEqual(sales_review_cli_code, 0)
         self.assertIn("sales review report created:", sales_review_cli_output.getvalue())
         self.assertIn("Sales final review", sales_review_cli_output.getvalue())
         self.assertFalse(has_sales_launch_blockers(sales_launch))
         self.assertEqual(sales_launch.status, "warn")
+        self.assertEqual(sales_launch.sales_review.latest_release_path, release_path)
         self.assertIn("Sales launch checklist", sales_launch_text)
         self.assertIn("Verdict: NEEDS REVIEW", sales_launch_text)
         self.assertIn("Marketplace launch confirmation", sales_launch_text)
@@ -2870,11 +2876,15 @@ tags: note
         self.assertIn("zip SHA-256:", sales_launch_text)
         self.assertIn("貼り付け後、改行", sales_launch_text)
         self.assertIn(buyer_package_sha, sales_launch_text)
+        self.assertIn("latest release package:", sales_launch_text)
+        self.assertIn(release_path.name, sales_launch_text)
         self.assertIn("manual marketplace preview", sales_launch_text)
         self.assertIn(report.buyer_delivery_package_path.name, sales_launch_text)
         self.assertGreaterEqual(len(sales_launch_reports), 1)
         self.assertEqual(sales_launch_reports[0], sales_launch_report_path)
         self.assertIn("Sales launch checklist", sales_launch_report_text)
+        self.assertIn("latest release package:", sales_launch_report_text)
+        self.assertIn(release_path.name, sales_launch_report_text)
         self.assertNotIn(str(project), sales_launch_report_text)
         self.assertGreaterEqual(len(sales_launch_confirmations), 1)
         self.assertEqual(sales_launch_confirmations[0], sales_launch_confirmation_path)
@@ -2882,6 +2892,8 @@ tags: note
         self.assertIn(sales_launch_report_path.name, sales_launch_confirmation_text)
         self.assertIn(report.buyer_delivery_package_path.name, sales_launch_confirmation_text)
         self.assertIn(buyer_package_sha, sales_launch_confirmation_text)
+        self.assertIn("latest release package:", sales_launch_confirmation_text)
+        self.assertIn(release_path.name, sales_launch_confirmation_text)
         self.assertIn("checked note preview before publish", sales_launch_confirmation_text)
         self.assertIn("blocker count: 0", sales_launch_confirmation_text)
         self.assertIn("seller-only evidence", sales_launch_confirmation_text)
@@ -4030,6 +4042,7 @@ tags:
                 "sales-launch-confirmation-*.txt\n"
                 "Platform-specific launch checks\n"
                 "Buyer delivery copy sheet\n"
+                "latest release package\n"
                 "zip SHA-256\n"
                 "seller-only evidence\n",
                 encoding="utf-8",
@@ -4197,7 +4210,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_review.py").write_text(
-                "run_sales_review\nwrite_sales_review_report\nrun_buyer_send_readiness\nlist_sales_listing_packages\nverify_sales_listing_kit\nnote official API limitation\n",
+                "run_sales_review\nwrite_sales_review_report\nrun_buyer_send_readiness\nlist_sales_listing_packages\nverify_sales_listing_kit\nnote official API limitation\nlatest release package\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_launch.py").write_text(
@@ -4205,7 +4218,7 @@ tags:
                 "write_sales_launch_confirmation\nlist_sales_launch_confirmations\nsales-launch-confirmation-*.txt\nseller-only evidence\n"
                 "_listing_kit_launch_check\n掲載キットZIPは販売ページ作成用\n"
                 "MarketplaceLaunchProfile\n_marketplace_profile_for_url\nPlatform-specific launch checks\n"
-                "Buyer delivery copy sheet\nzip SHA-256\n貼り付け後、改行\n",
+                "Buyer delivery copy sheet\nzip SHA-256\nlatest release package\n貼り付け後、改行\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
@@ -4772,6 +4785,7 @@ tags:
         self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
         self.assertIn("sales delivery smoke platform checklist assertion:fail", product_details)
         self.assertIn("sales delivery smoke buyer copy sheet assertion:fail", product_details)
+        self.assertIn("sales delivery smoke latest release assertion:fail", product_details)
         self.assertIn("sales delivery smoke buyer SHA-256 assertion:fail", product_details)
         self.assertIn("install smoke verifies safe display shortcut:fail", product_details)
         self.assertIn("install smoke checks safe display argument:fail", product_details)
@@ -4912,6 +4926,7 @@ tags:
         self.assertIn("sales review listing kit lister:fail", product_details)
         self.assertIn("sales review listing kit verifier:fail", product_details)
         self.assertIn("sales review listing copy limits:fail", product_details)
+        self.assertIn("sales review latest release artifact:fail", product_details)
         self.assertIn("privacy audit sales review report:fail", product_details)
         self.assertIn("cleanup sales review report:fail", product_details)
         self.assertIn("maintenance sales review report summary:fail", product_details)
@@ -4927,6 +4942,7 @@ tags:
         self.assertIn("sales launch platform checklist:fail", product_details)
         self.assertIn("sales launch buyer delivery copy sheet:fail", product_details)
         self.assertIn("sales launch buyer ZIP SHA-256 copy value:fail", product_details)
+        self.assertIn("sales launch latest release copy value:fail", product_details)
         self.assertIn("sales launch paste formatting guard:fail", product_details)
         self.assertIn("privacy audit sales launch checklist:fail", product_details)
         self.assertIn("cleanup sales launch checklist:fail", product_details)
@@ -5550,6 +5566,7 @@ tags:
         self.assertIn("sales delivery smoke launch confirmation seller-only guard:pass", launcher_details)
         self.assertIn("sales delivery smoke platform checklist assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke buyer copy sheet assertion:pass", launcher_details)
+        self.assertIn("sales delivery smoke latest release assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke buyer SHA-256 assertion:pass", launcher_details)
         self.assertIn("install smoke verifies safe display shortcut:pass", launcher_details)
         self.assertIn("install smoke checks safe display argument:pass", launcher_details)
@@ -5682,6 +5699,7 @@ tags:
         self.assertIn("sales review listing kit lister:pass", launcher_details)
         self.assertIn("sales review listing kit verifier:pass", launcher_details)
         self.assertIn("sales review listing copy limits:pass", launcher_details)
+        self.assertIn("sales review latest release artifact:pass", launcher_details)
         self.assertIn("privacy audit sales review report:pass", launcher_details)
         self.assertIn("cleanup sales review report:pass", launcher_details)
         self.assertIn("maintenance sales review report summary:pass", launcher_details)
@@ -5702,6 +5720,7 @@ tags:
         self.assertIn("sales launch platform checklist:pass", launcher_details)
         self.assertIn("sales launch buyer delivery copy sheet:pass", launcher_details)
         self.assertIn("sales launch buyer ZIP SHA-256 copy value:pass", launcher_details)
+        self.assertIn("sales launch latest release copy value:pass", launcher_details)
         self.assertIn("sales launch paste formatting guard:pass", launcher_details)
         self.assertIn("privacy audit sales launch checklist:pass", launcher_details)
         self.assertIn("privacy audit sales launch confirmation:pass", launcher_details)
