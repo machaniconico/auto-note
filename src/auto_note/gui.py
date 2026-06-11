@@ -624,6 +624,19 @@ def _release_check_report_path(project_dir: Path) -> Path:
     return unique_path(reports_dir / f"release-check-{datetime.now():%Y%m%d-%H%M%S}.txt")
 
 
+def _home_operation_report_path(project_dir: Path) -> Path:
+    reports_dir = _release_check_reports_dir(project_dir)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    return unique_path(reports_dir / f"home-operation-{datetime.now():%Y%m%d-%H%M%S}.txt")
+
+
+def _list_home_operation_reports(project_dir: Path) -> list[Path]:
+    reports_dir = _release_check_reports_dir(project_dir)
+    if not reports_dir.exists():
+        return []
+    return sorted(reports_dir.glob("home-operation-*.txt"), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
 def _list_release_check_reports(project_dir: Path) -> list[Path]:
     reports_dir = _release_check_reports_dir(project_dir)
     if not reports_dir.exists():
@@ -923,6 +936,11 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             for item in app.command_palette_actions()
             if item[0] == "運用要約コピー"
         )
+        home_operation_save_actions = sum(
+            1
+            for item in app.command_palette_actions()
+            if item[0] == "運用要約保存"
+        )
         home_progress_chars = len(app.home_progress_summary_var.get()) if hasattr(app, "home_progress_summary_var") else 0
         home_progress_stage_chars = (
             sum(len(value.get()) for value in app.home_progress_vars.values())
@@ -1046,6 +1064,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_operation_chars={home_operation_chars}, "
             f"home_operation_pill_chars={home_operation_pill_chars}, "
             f"home_operation_copy_actions={home_operation_copy_actions}, "
+            f"home_operation_save_actions={home_operation_save_actions}, "
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
@@ -1884,6 +1903,11 @@ class AutoNoteApp(tk.Tk):
             text="要約コピー",
             command=self.copy_home_operation_summary_action,
         ).grid(row=3, column=0, sticky=tk.EW, pady=(6, 0))
+        ttk.Button(
+            operation_actions,
+            text="要約保存",
+            command=self.save_home_operation_summary_action,
+        ).grid(row=4, column=0, sticky=tk.EW, pady=(6, 0))
 
         self.home_operation_vars: dict[str, tk.StringVar] = {}
         self.home_operation_pills: dict[str, tk.Label] = {}
@@ -6015,6 +6039,31 @@ class AutoNoteApp(tk.Tk):
         self.notebook.select(self.diagnostics_tab)
         self.notify("今日のオペレーション要約をコピーしました", level="success")
 
+    def save_home_operation_summary_action(self) -> None:
+        summary_text = self._home_operation_summary_text()
+        report_path = _home_operation_report_path(self.project_dir)
+        report_text = "\n".join(
+            [
+                "Home operation summary / 今日のオペレーション保存",
+                "",
+                f"generated: {datetime.now():%Y-%m-%d %H:%M:%S}",
+                f"project: {self.project_dir}",
+                "",
+                summary_text.rstrip(),
+                "",
+            ]
+        )
+        try:
+            write_text_atomic(report_path, report_text)
+        except OSError as exc:
+            self.notify("運用要約を保存できませんでした", level="error")
+            messagebox.showerror("運用要約保存", str(exc))
+            return
+        self._set_text(self.diagnostics_text, report_text + f"saved: {report_path}\n")
+        self.notebook.select(self.diagnostics_tab)
+        self._refresh_home_reports()
+        self.notify(f"今日のオペレーション要約を保存しました: {report_path.name}", level="success")
+
     def open_home_progress_stage(self, key: str) -> None:
         actions = {
             "setup": self.run_first_run_to_tab,
@@ -6119,6 +6168,7 @@ class AutoNoteApp(tk.Tk):
             ("販売直前", list_sales_launch_checklists(self.project_dir)),
             ("販売確認", list_sales_launch_confirmations(self.project_dir)),
             ("一括チェック", _list_release_check_reports(self.project_dir)),
+            ("運用要約", _list_home_operation_reports(self.project_dir)),
             ("投稿キュー", list_publish_queue_reports(self.project_dir)),
             ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
             ("運用サマリー", list_overview_reports(self.project_dir)),
@@ -7462,6 +7512,7 @@ class AutoNoteApp(tk.Tk):
                 self.run_release_check_full_action,
             ),
             ("運用要約コピー", "ホームの最優先、販売/送付、復旧/安全を短くコピー", self.copy_home_operation_summary_action),
+            ("運用要約保存", "ホームの最優先、販売/送付、復旧/安全を証跡として保存", self.save_home_operation_summary_action),
             ("アクションプラン", "いま優先すべき操作を表示", self.run_action_plan_to_tab),
             ("セルフテスト", "インストール後の基本動作を確認", self.run_self_test_to_tab),
             ("セルフテスト保存", "セルフテスト結果をテキスト保存", self.create_self_test_report_action),
