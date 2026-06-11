@@ -2239,6 +2239,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前チェック", self.run_buyer_send_readiness_to_tab, None),
             ("送付前保存", self.create_buyer_send_readiness_report_action, None),
             ("送付記録", self.create_seller_delivery_receipt_action, None),
+            ("送付記録コピー", self.copy_latest_seller_delivery_receipt_action, None),
             ("問い合わせ票", self.open_latest_buyer_support_request_action, None),
             ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
@@ -2390,6 +2391,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前チェック", self.run_buyer_send_readiness_to_tab),
             ("送付前保存", self.create_buyer_send_readiness_report_action),
             ("送付記録", self.create_seller_delivery_receipt_action),
+            ("送付記録コピー", self.copy_latest_seller_delivery_receipt_action),
             ("問い合わせ票", self.open_latest_buyer_support_request_action),
             ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
@@ -3472,6 +3474,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前チェック", self.run_buyer_send_readiness_to_tab),
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
+                ("送付記録コピー", self.copy_latest_seller_delivery_receipt_action),
                 ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
@@ -3768,6 +3771,7 @@ class AutoNoteApp(tk.Tk):
                 ("送付前チェック", self.run_buyer_send_readiness_to_tab),
                 ("送付前保存", self.create_buyer_send_readiness_report_action),
                 ("送付記録", self.create_seller_delivery_receipt_action),
+                ("送付記録コピー", self.copy_latest_seller_delivery_receipt_action),
                 ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("購入者ZIP場所", self.open_latest_buyer_delivery_location_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
@@ -3981,6 +3985,7 @@ class AutoNoteApp(tk.Tk):
             "送付前チェック": self.run_buyer_send_readiness_to_tab,
             "送付前保存": self.create_buyer_send_readiness_report_action,
             "送付記録": self.create_seller_delivery_receipt_action,
+            "送付記録コピー": self.copy_latest_seller_delivery_receipt_action,
             "問い合わせ票": self.open_latest_buyer_support_request_action,
             "購入者ZIP場所": self.open_latest_buyer_delivery_location_action,
             "送付文コピー": self.copy_latest_buyer_delivery_message_action,
@@ -7179,6 +7184,7 @@ class AutoNoteApp(tk.Tk):
             ("送付前チェック", "最新の送付文、購入者ZIP、販売者チェックリスト、販売証跡JSONを照合", self.run_buyer_send_readiness_to_tab),
             ("送付前保存", "購入者送付前チェックを時刻付きレポートとして保存", self.create_buyer_send_readiness_report_action),
             ("送付記録", "検証済みZIP名とSHA-256入りの販売者向け納品記録を保存", self.create_seller_delivery_receipt_action),
+            ("送付記録コピー", "最新の販売者向け納品記録を注文管理へ控えやすい形でコピー", self.copy_latest_seller_delivery_receipt_action),
             ("購入者ZIP場所", "送付前チェック後に購入者向けZIPがあるフォルダを開く", self.open_latest_buyer_delivery_location_action),
             ("送付文コピー", "最新の購入者向け送付文をZIP検証後にクリップボードへコピー", self.copy_latest_buyer_delivery_message_action),
             ("ZIPパスコピー", "送付前チェック後に購入者向けZIPの絶対パスをコピー", self.copy_latest_buyer_delivery_zip_path_action),
@@ -9229,6 +9235,41 @@ class AutoNoteApp(tk.Tk):
             self.notify(f"送付記録を作成しました: {receipt_path.name}", level="warning")
         else:
             self.notify(f"送付記録を作成しました: {receipt_path.name}", level="success")
+
+    def copy_latest_seller_delivery_receipt_action(self) -> None:
+        receipts = list_seller_delivery_receipts(self.project_dir)
+        if not receipts:
+            messagebox.showinfo("送付記録コピー", "送付記録がまだありません。先に 送付記録 を作成してください。")
+            self.notify("送付記録がありません", level="warning")
+            return
+        latest = receipts[0]
+        try:
+            receipt_text = latest.read_text(encoding="utf-8")
+        except OSError as exc:
+            self.notify("送付記録を読めません", level="error")
+            messagebox.showerror("送付記録コピーエラー", str(exc))
+            return
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(receipt_text.rstrip() + "\n")
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("クリップボードへコピーできませんでした", level="error")
+            messagebox.showerror("送付記録コピーエラー", str(exc))
+            return
+        self._set_text(
+            self.diagnostics_text,
+            "\n".join(
+                [
+                    "Copied seller delivery receipt / コピーした送付記録:",
+                    f"source: {latest}",
+                    "",
+                    receipt_text.rstrip(),
+                ]
+            ),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"送付記録をコピーしました: {latest.name}", level="success")
 
     def copy_latest_buyer_delivery_message_action(self) -> None:
         send_report = run_buyer_send_readiness(self.project_dir)

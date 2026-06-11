@@ -5487,6 +5487,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller delivery receipt copy action",
+            "copy_latest_seller_delivery_receipt_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller delivery receipt copy clipboard",
+            'self.clipboard_append(receipt_text.rstrip() + "\\n")',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller delivery receipt copy feedback",
+            "送付記録をコピーしました",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales finalize opens sales plan report",
             "sales_plan_report_path",
         )
@@ -5909,6 +5930,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README seller delivery receipt guidance",
             "sales-finalize --project-dir . --delivery-receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README seller delivery receipt copy guidance",
+            "送付記録コピー",
         )
     )
     checks.append(
@@ -6469,6 +6497,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness seller delivery receipt guidance",
             "sales-finalize --project-dir . --delivery-receipt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness seller delivery receipt copy guidance",
+            "送付記録コピー",
         )
     )
     checks.append(
