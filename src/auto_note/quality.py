@@ -5172,6 +5172,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home delivery release row",
+            "home_delivery_release_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home delivery release summary helper",
+            "_home_delivery_release_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home buyer send package freshness action",
             "購入者ZIP更新",
         )
@@ -5608,6 +5622,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home buyer send ZIP/message match guidance",
             "送付文と最新ZIP名/SHA-256の照合",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home delivery release match guidance",
+            "納品照合",
         )
     )
     checks.append(
@@ -6084,6 +6105,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home sales buyer message guidance",
             "送付文有無",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home delivery release guidance",
+            "納品照合",
         )
     )
     checks.append(

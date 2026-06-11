@@ -876,6 +876,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
                 + app.home_release_check_var.get()
                 + app.home_buyer_send_var.get()
                 + app.home_buyer_send_next_var.get()
+                + app.home_delivery_release_var.get()
             )
             if hasattr(app, "home_sales_status_var")
             else 0
@@ -1990,6 +1991,7 @@ class AutoNoteApp(tk.Tk):
         self.home_buyer_send_button_var = tk.StringVar(
             value=_home_buyer_send_button_label(self.home_buyer_send_action_var.get())
         )
+        self.home_delivery_release_var = tk.StringVar(value="納品照合を確認中です。")
         self.home_support_next_button_var = tk.StringVar(
             value=_home_support_next_button_label("問い合わせ一式を作成")
         )
@@ -2082,6 +2084,16 @@ class AutoNoteApp(tk.Tk):
             anchor=tk.W,
             fill=tk.X,
             pady=(4, 0),
+        )
+        ttk.Label(
+            sales_text,
+            textvariable=self.home_delivery_release_var,
+            style="Surface.TLabel",
+            wraplength=820,
+        ).pack(
+            anchor=tk.W,
+            fill=tk.X,
+            pady=(6, 0),
         )
         ttk.Label(sales_text, textvariable=self.home_sales_detail_var, style="Muted.TLabel", wraplength=820).pack(
             anchor=tk.W,
@@ -6040,6 +6052,15 @@ class AutoNoteApp(tk.Tk):
             latest_buyer_message,
             latest_seller_receipt,
         )
+        if hasattr(self, "home_delivery_release_var"):
+            self.home_delivery_release_var.set(
+                _home_delivery_release_summary(
+                    releases[0] if releases else None,
+                    latest_buyer_package,
+                    package_errors=buyer_package_errors,
+                    package_matches_release=buyer_package_matches_release,
+                )
+            )
         buyer_state, buyer_summary, buyer_next = _home_buyer_send_summary(
             latest_buyer_package,
             latest_buyer_message,
@@ -10577,6 +10598,30 @@ def _home_buyer_delivery_package_matches_release(
     if not package_release_name:
         return None
     return package_release_name == release_path.name
+
+
+def _home_delivery_release_summary(
+    release_path: Path | None,
+    package_path: Path | None,
+    *,
+    package_errors: list[str] | None = None,
+    package_matches_release: bool | None = None,
+) -> str:
+    latest_release = _home_snapshot_brief(release_path.name if release_path else "未作成", 42)
+    if not package_path:
+        return f"納品照合: 配布ZIP {latest_release} / 購入者ZIP 未作成"
+    package_release = _home_buyer_delivery_package_release_name(package_path)
+    package_release_text = _home_snapshot_brief(package_release or "確認不可", 42)
+    package_text = _home_snapshot_brief(package_path.name, 42)
+    if package_errors:
+        status = f"ZIP検証NG {len(package_errors)}件"
+    elif package_matches_release is False:
+        status = "要更新"
+    elif package_matches_release is True:
+        status = "一致"
+    else:
+        status = "要確認"
+    return f"納品照合: 配布ZIP {latest_release} / 購入者ZIP内 {package_release_text} / {status} / {package_text}"
 
 
 def _home_sales_artifact_stale_count(
