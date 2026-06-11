@@ -918,6 +918,11 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             if hasattr(app, "home_operation_mode_pill")
             else 0
         )
+        home_operation_copy_actions = sum(
+            1
+            for item in app.command_palette_actions()
+            if item[0] == "運用要約コピー"
+        )
         home_progress_chars = len(app.home_progress_summary_var.get()) if hasattr(app, "home_progress_summary_var") else 0
         home_progress_stage_chars = (
             sum(len(value.get()) for value in app.home_progress_vars.values())
@@ -1040,6 +1045,7 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
             f"home_operation_items={home_operation_items}, "
             f"home_operation_chars={home_operation_chars}, "
             f"home_operation_pill_chars={home_operation_pill_chars}, "
+            f"home_operation_copy_actions={home_operation_copy_actions}, "
             f"home_progress_chars={home_progress_chars}, "
             f"home_progress_stage_chars={home_progress_stage_chars}, "
             f"home_progress_action_items={home_progress_action_items}, "
@@ -1873,6 +1879,11 @@ class AutoNoteApp(tk.Tk):
             text="ログ確認",
             command=self.show_gui_log_action,
         ).grid(row=2, column=0, sticky=tk.EW, pady=(6, 0))
+        ttk.Button(
+            operation_actions,
+            text="要約コピー",
+            command=self.copy_home_operation_summary_action,
+        ).grid(row=3, column=0, sticky=tk.EW, pady=(6, 0))
 
         self.home_operation_vars: dict[str, tk.StringVar] = {}
         self.home_operation_pills: dict[str, tk.Label] = {}
@@ -5955,6 +5966,55 @@ class AutoNoteApp(tk.Tk):
         if rail is not None:
             rail.configure(bg=_home_state_accent_color(state))
 
+    def _home_operation_summary_text(self) -> str:
+        mode = (
+            str(self.home_operation_mode_pill.cget("text"))
+            if hasattr(self, "home_operation_mode_pill")
+            else "CHECK"
+        )
+        title = (
+            self.home_operation_title_var.get()
+            if hasattr(self, "home_operation_title_var")
+            else "今日の作業を確認中です。"
+        )
+        detail = self.home_operation_detail_var.get() if hasattr(self, "home_operation_detail_var") else ""
+        lines = [
+            "Today operations / 今日のオペレーション",
+            "",
+            f"[{mode}] {title}",
+        ]
+        if detail:
+            lines.append(detail)
+        lines.append("")
+        labels = {
+            "priority": "最優先",
+            "sales": "販売/送付",
+            "safety": "復旧/安全",
+        }
+        values = getattr(self, "home_operation_vars", {})
+        pills = getattr(self, "home_operation_pills", {})
+        for key, label in labels.items():
+            value = values.get(key)
+            pill = pills.get(key)
+            status = str(pill.cget("text")) if pill is not None else "CHECK"
+            text = value.get() if value is not None else "未確認"
+            lines.append(f"- {label}: [{status}] {text}")
+        return "\n".join(lines).rstrip() + "\n"
+
+    def copy_home_operation_summary_action(self) -> None:
+        summary_text = self._home_operation_summary_text()
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(summary_text)
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("運用要約をコピーできませんでした", level="error")
+            messagebox.showerror("運用要約コピー", str(exc))
+            return
+        self._set_text(self.diagnostics_text, summary_text)
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("今日のオペレーション要約をコピーしました", level="success")
+
     def open_home_progress_stage(self, key: str) -> None:
         actions = {
             "setup": self.run_first_run_to_tab,
@@ -7401,6 +7461,7 @@ class AutoNoteApp(tk.Tk):
                 "check-release.ps1 -Full をバックグラウンドで実行し、証跡レポートを保存",
                 self.run_release_check_full_action,
             ),
+            ("運用要約コピー", "ホームの最優先、販売/送付、復旧/安全を短くコピー", self.copy_home_operation_summary_action),
             ("アクションプラン", "いま優先すべき操作を表示", self.run_action_plan_to_tab),
             ("セルフテスト", "インストール後の基本動作を確認", self.run_self_test_to_tab),
             ("セルフテスト保存", "セルフテスト結果をテキスト保存", self.create_self_test_report_action),

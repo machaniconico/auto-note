@@ -921,6 +921,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README home operation summary copy guidance",
+            "要約コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README home progress direct open guidance",
             "作業進行レーンの各工程の `開く`",
         )
@@ -4206,6 +4213,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home operation summary copy action",
+            "copy_home_operation_summary_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home operation summary clipboard",
+            "clipboard_append(summary_text)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home operation copy action",
+            "home_operation_copy_actions=",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI modern article focus panel",
             "article_focus_summary_var",
         )
@@ -6434,6 +6462,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home operation guidance",
             "今日のオペレーション",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home operation summary copy guidance",
+            "要約コピー",
         )
     )
     checks.append(

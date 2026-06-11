@@ -4026,6 +4026,7 @@ tags: note
         self.assertIn("home_operation_items=3", text)
         self.assertIn("home_operation_chars=", text)
         self.assertIn("home_operation_pill_chars=", text)
+        self.assertIn("home_operation_copy_actions=1", text)
         self.assertIn("home_primary_button_chars=", text)
         self.assertIn("command_palette_display_diagnostics_copy_actions=1", text)
         self.assertIn("command_palette_gui_log_clear_actions=1", text)
@@ -4719,9 +4720,12 @@ tags:
                 + "_home_operation_sales\n"
                 + "_home_operation_safety\n"
                 + "_home_operation_mode\n"
+                + "copy_home_operation_summary_action\n"
+                + "clipboard_append(summary_text)\n"
                 + "home_operation_items=\n"
                 + "home_operation_chars=\n"
-                + "home_operation_pill_chars=\n",
+                + "home_operation_pill_chars=\n"
+                + "home_operation_copy_actions=\n",
                 encoding="utf-8",
             )
             gui_fixture.write_text(
@@ -4859,7 +4863,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n今日のオペレーション\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n納品照合\n送付証跡\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n今日のオペレーション\n要約コピー\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n納品照合\n送付証跡\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             readme_fixture = project / "README.md"
@@ -4915,7 +4919,7 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n今日のオペレーション\n販売準備タイムライン\n軽量判定\n送付文有無\n納品照合\n送付証跡\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
+                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n今日のオペレーション\n要約コピー\n販売準備タイムライン\n軽量判定\n送付文有無\n納品照合\n送付証跡\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
                 encoding="utf-8",
             )
             product_readiness_fixture = project / "docs" / "PRODUCT_READINESS.md"
@@ -5309,6 +5313,9 @@ tags:
         self.assertIn("GUI modern home operation refresh:fail", product_details)
         self.assertIn("GUI modern home operation helper:fail", product_details)
         self.assertIn("GUI smoke home operation count:fail", product_details)
+        self.assertIn("GUI home operation summary copy action:fail", product_details)
+        self.assertIn("GUI home operation summary clipboard:fail", product_details)
+        self.assertIn("GUI smoke home operation copy action:fail", product_details)
         self.assertIn("GUI modern article focus panel:fail", product_details)
         self.assertIn("GUI modern article focus next action:fail", product_details)
         self.assertIn("GUI modern article focus helper:fail", product_details)
@@ -5538,6 +5545,7 @@ tags:
         self.assertIn("README home progress lane guidance:fail", product_details)
         self.assertIn("README home compact snapshot guidance:fail", product_details)
         self.assertIn("README home operation panel guidance:fail", product_details)
+        self.assertIn("README home operation summary copy guidance:fail", product_details)
         self.assertIn("README home progress direct open guidance:fail", product_details)
         self.assertIn("README home progress command palette guidance:fail", product_details)
         self.assertIn("README home first-run setup guidance:fail", product_details)
@@ -5793,6 +5801,7 @@ tags:
         self.assertIn("product readiness commercial setup command:fail", product_details)
         self.assertIn("product readiness home sales summary guidance:fail", product_details)
         self.assertIn("product readiness home operation guidance:fail", product_details)
+        self.assertIn("product readiness home operation summary copy guidance:fail", product_details)
         self.assertIn("product readiness home sales timeline guidance:fail", product_details)
         self.assertIn("product readiness home sales lightweight guidance:fail", product_details)
         self.assertIn("product readiness home delivery release guidance:fail", product_details)
@@ -6147,6 +6156,9 @@ tags:
         self.assertIn("GUI modern home operation refresh:pass", launcher_details)
         self.assertIn("GUI modern home operation helper:pass", launcher_details)
         self.assertIn("GUI smoke home operation count:pass", launcher_details)
+        self.assertIn("GUI home operation summary copy action:pass", launcher_details)
+        self.assertIn("GUI home operation summary clipboard:pass", launcher_details)
+        self.assertIn("GUI smoke home operation copy action:pass", launcher_details)
         self.assertIn("GUI modern article focus panel:pass", launcher_details)
         self.assertIn("GUI modern article focus next action:pass", launcher_details)
         self.assertIn("GUI modern article focus helper:pass", launcher_details)
@@ -6376,6 +6388,7 @@ tags:
         self.assertIn("README home progress lane guidance:pass", launcher_details)
         self.assertIn("README home compact snapshot guidance:pass", launcher_details)
         self.assertIn("README home operation panel guidance:pass", launcher_details)
+        self.assertIn("README home operation summary copy guidance:pass", launcher_details)
         self.assertIn("README home progress direct open guidance:pass", launcher_details)
         self.assertIn("README home progress command palette guidance:pass", launcher_details)
         self.assertIn("README home first-run setup guidance:pass", launcher_details)
@@ -6633,6 +6646,7 @@ tags:
         self.assertIn("product readiness commercial setup command:pass", launcher_details)
         self.assertIn("product readiness home sales summary guidance:pass", launcher_details)
         self.assertIn("product readiness home operation guidance:pass", launcher_details)
+        self.assertIn("product readiness home operation summary copy guidance:pass", launcher_details)
         self.assertIn("product readiness home sales timeline guidance:pass", launcher_details)
         self.assertIn("product readiness home sales lightweight guidance:pass", launcher_details)
         self.assertIn("product readiness home delivery release guidance:pass", launcher_details)
