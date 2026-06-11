@@ -777,6 +777,13 @@ def _build_seller_delivery_receipt(release_name: str, handoff_name: str, created
         f"Release package / 配布ZIP: {release_name}\n"
         "Buyer delivery ZIP / 購入者へ送るZIP: auto-note-buyer-delivery-YYYYMMDD-HHMMSS.zip\n"
         "SHA-256 / 改ざん確認: CHECKSUMS.txt と BUYER_DELIVERY_MANIFEST.json を確認\n\n"
+        "Order management copy block / 注文管理コピー欄:\n"
+        "- auto-note delivery record: (fill after verifying buyer ZIP)\n"
+        "- Buyer delivery ZIP: auto-note-buyer-delivery-YYYYMMDD-HHMMSS.zip\n"
+        "- ZIP evidence: copy size/SHA-256 from verification before sending\n"
+        "- Buyer delivery message: BUYER_HANDOFF.txt\n"
+        f"- Latest release package at check: {release_name}\n"
+        "- Seller note: Attach/send only the buyer delivery ZIP. Keep this receipt seller-only.\n\n"
         "Order record / 注文記録:\n"
         "- Order ID / 注文ID:\n"
         "- Buyer name or marketplace handle / 購入者名または取引ID:\n"
@@ -1204,7 +1211,13 @@ def _verify_seller_delivery_receipt(archive: zipfile.ZipFile, release_name: str)
         errors.append("SELLER_DELIVERY_RECEIPT.txt does not look like an auto-note seller delivery receipt")
     if release_name and release_name not in text:
         errors.append(f"SELLER_DELIVERY_RECEIPT.txt does not mention release package: {release_name}")
-    for required_text in ("Buyer delivery ZIP", "Order ID", "SHA-256"):
+    for required_text in (
+        "Buyer delivery ZIP",
+        "Order ID",
+        "Order management copy block",
+        "Keep this receipt seller-only",
+        "SHA-256",
+    ):
         if required_text not in text:
             errors.append(f"SELLER_DELIVERY_RECEIPT.txt is missing {required_text}")
     return errors

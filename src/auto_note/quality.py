@@ -1994,6 +1994,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt order management block",
+            "Order management copy block",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt seller-only note",
+            "Keep this receipt seller-only",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
             "seller delivery receipt lister",
             "list_seller_delivery_receipts",
         )
@@ -5942,6 +5956,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README seller delivery receipt order management guidance",
+            "注文管理コピー欄",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README sales plan guidance",
             "auto-note sales-plan",
         )
@@ -6504,6 +6525,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness seller delivery receipt copy guidance",
             "送付記録コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness seller delivery receipt order management guidance",
+            "注文管理コピー欄",
         )
     )
     checks.append(
