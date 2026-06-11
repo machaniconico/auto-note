@@ -956,6 +956,7 @@ def format_buyer_send_readiness_report(report: BuyerSendReadinessReport) -> str:
     else:
         lines.append(f"- 添付するZIPは {_name_or_none(report.buyer_delivery_package_path)} だけです。")
         lines.append("- GUIの `送付文コピー` で、検証済み送付文をクリップボードへコピーできます。")
+        lines.append("- GUIの `ZIPパスコピー` / `送付情報コピー` で、添付ZIPのパスと照合値をコピーできます。")
         lines.append("- 販売者は販売用一式ZIP、販売ナビ、販売証跡JSON、診断ZIPを証跡として保管してください。")
     return "\n".join(lines)
 

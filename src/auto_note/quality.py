@@ -5417,6 +5417,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery sheet copy action",
+            "copy_latest_buyer_delivery_sheet_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery sheet copy contents",
+            "Buyer delivery copy sheet / 購入者送付の照合値",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery sheet copy clipboard",
+            "self.clipboard_append(sheet_text + \"\\n\")",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI buyer delivery sheet copy guard",
+            "送付前チェックNGのため送付情報をコピーしませんでした",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI buyer send readiness action",
             "run_buyer_send_readiness_to_tab",
         )
@@ -5825,6 +5853,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README buyer delivery ZIP path copy guidance",
             "ZIPパスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README buyer delivery sheet copy guidance",
+            "送付情報コピー",
         )
     )
     checks.append(
@@ -6371,6 +6406,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness buyer delivery ZIP path copy guidance",
             "ZIPパスコピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness buyer delivery sheet copy guidance",
+            "送付情報コピー",
         )
     )
     checks.append(

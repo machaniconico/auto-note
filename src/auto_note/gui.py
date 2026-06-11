@@ -2242,6 +2242,7 @@ class AutoNoteApp(tk.Tk):
             ("問い合わせ票", self.open_latest_buyer_support_request_action, None),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action, None),
             ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action, None),
+            ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action, None),
             ("最終レビュー", self.run_sales_review_to_tab, None),
             ("レビュー保存", self.create_sales_review_report_action, None),
             ("販売直前", self.run_sales_launch_to_tab, None),
@@ -2391,6 +2392,7 @@ class AutoNoteApp(tk.Tk):
             ("問い合わせ票", self.open_latest_buyer_support_request_action),
             ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
             ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action),
+            ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action),
             ("最終レビュー", self.run_sales_review_to_tab),
             ("レビュー保存", self.create_sales_review_report_action),
             ("販売直前", self.run_sales_launch_to_tab),
@@ -3471,6 +3473,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action),
+                ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
                 ("販売直前", self.run_sales_launch_to_tab),
@@ -3765,6 +3768,7 @@ class AutoNoteApp(tk.Tk):
                 ("問い合わせ票", self.open_latest_buyer_support_request_action),
                 ("送付文コピー", self.copy_latest_buyer_delivery_message_action),
                 ("ZIPパスコピー", self.copy_latest_buyer_delivery_zip_path_action),
+                ("送付情報コピー", self.copy_latest_buyer_delivery_sheet_action),
                 ("最終レビュー", self.run_sales_review_to_tab),
                 ("レビュー保存", self.create_sales_review_report_action),
                 ("記事CSV出力", self.export_inventory_action),
@@ -3976,6 +3980,7 @@ class AutoNoteApp(tk.Tk):
             "問い合わせ票": self.open_latest_buyer_support_request_action,
             "送付文コピー": self.copy_latest_buyer_delivery_message_action,
             "ZIPパスコピー": self.copy_latest_buyer_delivery_zip_path_action,
+            "送付情報コピー": self.copy_latest_buyer_delivery_sheet_action,
             "最終レビュー": self.run_sales_review_to_tab,
             "レビュー保存": self.create_sales_review_report_action,
             "販売直前": self.run_sales_launch_to_tab,
@@ -7171,6 +7176,7 @@ class AutoNoteApp(tk.Tk):
             ("送付記録", "検証済みZIP名とSHA-256入りの販売者向け納品記録を保存", self.create_seller_delivery_receipt_action),
             ("送付文コピー", "最新の購入者向け送付文をZIP検証後にクリップボードへコピー", self.copy_latest_buyer_delivery_message_action),
             ("ZIPパスコピー", "送付前チェック後に購入者向けZIPの絶対パスをコピー", self.copy_latest_buyer_delivery_zip_path_action),
+            ("送付情報コピー", "ZIP名、絶対パス、サイズ、SHA-256、送付文ファイルをコピー", self.copy_latest_buyer_delivery_sheet_action),
             ("最終レビュー", "販売ページ文案、送付文、購入者ZIP、納品記録の整合性を確認", self.run_sales_review_to_tab),
             ("レビュー保存", "販売ページ・納品最終レビューを時刻付きレポートとして保存", self.create_sales_review_report_action),
             ("販売直前", "販売ページ公開前に決済後メッセージ、添付ZIP、返金/サポート表示を確認", self.run_sales_launch_to_tab),
@@ -9339,6 +9345,80 @@ class AutoNoteApp(tk.Tk):
         )
         self.notebook.select(self.diagnostics_tab)
         self.notify(f"購入者向けZIPパスをコピーしました: {package_path.name}", level="success")
+
+    def copy_latest_buyer_delivery_sheet_action(self) -> None:
+        send_report = run_buyer_send_readiness(self.project_dir)
+        if has_buyer_send_readiness_blockers(send_report):
+            self._set_text(self.diagnostics_text, format_buyer_send_readiness_report(send_report))
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("送付前チェックNGのため送付情報をコピーしませんでした", level="error")
+            return
+        package_path = send_report.buyer_delivery_package_path
+        if package_path is None or not package_path.exists():
+            messagebox.showinfo("送付情報コピー", "購入者向けZIPがまだありません。先に販売一括作成を実行してください。")
+            self.notify("購入者向けZIPがありません", level="warning")
+            return
+        package_errors = verify_buyer_delivery_package(package_path)
+        if package_errors:
+            self._set_text(
+                self.diagnostics_text,
+                "\n".join(
+                    [
+                        format_buyer_send_readiness_report(send_report),
+                        "",
+                        format_buyer_delivery_package_verification(package_path, package_errors),
+                        "",
+                        "購入者向けZIPの検証で問題が見つかったため、送付情報はコピーしていません。",
+                    ]
+                ),
+            )
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("購入者向けZIPに問題があるため送付情報をコピーしませんでした", level="error")
+            return
+        try:
+            package_data = package_path.read_bytes()
+        except OSError as exc:
+            self.notify("購入者向けZIPを読めません", level="error")
+            messagebox.showerror("送付情報コピーエラー", str(exc))
+            return
+        copied_path = package_path.resolve()
+        package_sha = hashlib.sha256(package_data).hexdigest()
+        message_path = send_report.buyer_delivery_message_path
+        release_name = send_report.latest_release_path.name if send_report.latest_release_path else "none"
+        message_name = message_path.name if message_path else "none"
+        sheet_lines = [
+            "Buyer delivery copy sheet / 購入者送付の照合値",
+            f"- latest release package: {release_name}",
+            f"- buyer delivery zip: {package_path.name}",
+            f"- buyer delivery zip path: {copied_path}",
+            f"- zip size: {len(package_data)} bytes",
+            f"- zip SHA-256: {package_sha}",
+            f"- delivery message: {message_name}",
+            "- attach exactly this buyer delivery zip only / 購入者へ添付するのはこのZIPだけ",
+        ]
+        sheet_text = "\n".join(sheet_lines)
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(sheet_text + "\n")
+            self.update_idletasks()
+        except tk.TclError as exc:
+            self.notify("クリップボードへコピーできませんでした", level="error")
+            messagebox.showerror("送付情報コピーエラー", str(exc))
+            return
+        self._set_text(
+            self.diagnostics_text,
+            "\n".join(
+                [
+                    format_buyer_send_readiness_report(send_report),
+                    "",
+                    format_buyer_delivery_package_verification(package_path, []),
+                    "",
+                    sheet_text,
+                ]
+            ),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self.notify(f"購入者送付情報をコピーしました: {package_path.name}", level="success")
 
     def show_app_info(self) -> None:
         info = format_app_info(collect_app_info(self.project_dir))
