@@ -4188,13 +4188,15 @@ tags:
                 "sales-finalize --project-dir . --order-note\n"
                 "Order management copy block\n"
                 "sales-launch --project-dir . --report --confirm-preview\n"
+                "sales-launch --project-dir . --latest-confirmation\n"
                 "sales-launch-checklist-*.txt\n"
                 "sales-launch-confirmation-*.txt\n"
                 "Platform-specific launch checks\n"
                 "Buyer delivery copy sheet\n"
                 "latest release package\n"
                 "zip SHA-256\n"
-                "seller-only evidence\n",
+                "seller-only evidence\n"
+                "Latest sales launch confirmation output\n",
                 encoding="utf-8",
             )
             (project / ".github" / "workflows").mkdir(parents=True)
@@ -4972,6 +4974,8 @@ tags:
         self.assertIn("sales delivery smoke seller order note assertion:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
+        self.assertIn("sales delivery smoke latest launch confirmation:fail", product_details)
+        self.assertIn("sales delivery smoke latest launch confirmation assertion:fail", product_details)
         self.assertIn("sales delivery smoke platform checklist assertion:fail", product_details)
         self.assertIn("sales delivery smoke buyer copy sheet assertion:fail", product_details)
         self.assertIn("sales delivery smoke latest release assertion:fail", product_details)
@@ -5800,6 +5804,8 @@ tags:
         self.assertIn("sales delivery smoke launch checklist assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke launch confirmation assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke launch confirmation seller-only guard:pass", launcher_details)
+        self.assertIn("sales delivery smoke latest launch confirmation:pass", launcher_details)
+        self.assertIn("sales delivery smoke latest launch confirmation assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke platform checklist assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke buyer copy sheet assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke latest release assertion:pass", launcher_details)

@@ -1258,6 +1258,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke latest launch confirmation",
+            "sales-launch --project-dir . --latest-confirmation",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke latest launch confirmation assertion",
+            "Latest sales launch confirmation output",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "release.py",
             "release first-run checklist",
             "FIRST_RUN_CHECKLIST.txt",

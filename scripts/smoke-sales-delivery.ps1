@@ -138,6 +138,26 @@ try {
     & $python -m auto_note sales-launch --project-dir . --report --confirm-preview --note "smoke preview checked"
   }
 
+  Invoke-Smoke "Latest sales launch confirmation" {
+    $latestConfirmationLines = & $python -m auto_note sales-launch --project-dir . --latest-confirmation
+    if ($LASTEXITCODE -ne 0) {
+      return
+    }
+    $latestConfirmationText = $latestConfirmationLines -join "`n"
+    if ($latestConfirmationText -notlike "*Sales launch confirmation*") {
+      throw "Latest sales launch confirmation output does not include the confirmation title."
+    }
+    if ($latestConfirmationText -notlike "*smoke preview checked*") {
+      throw "Latest sales launch confirmation output does not include the seller note."
+    }
+    if ($latestConfirmationText -notlike "*seller-only evidence*") {
+      throw "Latest sales launch confirmation output does not include seller-only evidence guidance."
+    }
+    if ($latestConfirmationText -notlike "*latest release package*") {
+      throw "Latest sales launch confirmation output does not include the latest release package value."
+    }
+  }
+
   $readinessReport = Get-ChildItem -LiteralPath $salesDir -Filter "buyer-send-readiness-*.txt" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
