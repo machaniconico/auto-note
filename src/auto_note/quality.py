@@ -2960,6 +2960,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI smoke home sales includes buyer send evidence",
+            "home_buyer_send_evidence_var.get()",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI smoke home commercial focus",
             "home_commercial_focus_chars=",
         )
@@ -5186,6 +5193,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send evidence row",
+            "home_buyer_send_evidence_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home buyer send evidence helper",
+            "_home_buyer_send_evidence_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home buyer send package freshness action",
             "購入者ZIP更新",
         )
@@ -5629,6 +5650,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home delivery release match guidance",
             "納品照合",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home buyer send evidence guidance",
+            "送付証跡",
         )
     )
     checks.append(
@@ -6112,6 +6140,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home delivery release guidance",
             "納品照合",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home buyer send evidence guidance",
+            "送付証跡",
         )
     )
     checks.append(
