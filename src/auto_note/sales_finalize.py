@@ -1050,6 +1050,17 @@ def format_seller_delivery_receipt(
     return "\n".join(lines)
 
 
+def extract_seller_order_management_block(receipt_text: str) -> str:
+    lines = receipt_text.splitlines()
+    for start, line in enumerate(lines):
+        if line.startswith("Order management copy block"):
+            end = start + 1
+            while end < len(lines) and lines[end].strip():
+                end += 1
+            return "\n".join(lines[start:end]).rstrip()
+    return ""
+
+
 def write_seller_delivery_receipt(project_dir: Path, *, report: BuyerSendReadinessReport | None = None) -> Path:
     project_dir = project_dir.resolve()
     report = report or run_buyer_send_readiness(project_dir)

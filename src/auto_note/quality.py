@@ -2008,6 +2008,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "seller delivery receipt order management extractor",
+            "extract_seller_order_management_block",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
             "seller delivery receipt lister",
             "list_seller_delivery_receipts",
         )
@@ -5522,6 +5529,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller order note copy action",
+            "copy_latest_seller_order_note_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller order note copy extractor",
+            "extract_seller_order_management_block(receipt_text)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller order note copy clipboard",
+            'self.clipboard_append(order_note.rstrip() + "\\n")',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI seller order note copy feedback",
+            "注文管理控えをコピーしました",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales finalize opens sales plan report",
             "sales_plan_report_path",
         )
@@ -5958,6 +5993,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README seller delivery receipt order management guidance",
             "注文管理コピー欄",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README seller order note copy guidance",
+            "注文控えコピー",
         )
     )
     checks.append(
@@ -6532,6 +6574,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness seller delivery receipt order management guidance",
             "注文管理コピー欄",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness seller order note copy guidance",
+            "注文控えコピー",
         )
     )
     checks.append(

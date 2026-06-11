@@ -217,6 +217,7 @@ from auto_note.sales_handoff import (
 )
 from auto_note.sales_finalize import (
     create_sales_finalize,
+    extract_seller_order_management_block,
     format_buyer_send_readiness_report,
     format_sales_finalize_details,
     format_sales_finalize_report,
@@ -2428,6 +2429,11 @@ tags: note
         self.assertIn("注文管理コピー欄", seller_receipt)
         self.assertIn("Keep this receipt seller-only", seller_receipt)
         self.assertIn("SHA-256", seller_receipt)
+        seller_order_note = extract_seller_order_management_block(seller_receipt)
+        self.assertIn("Order management copy block", seller_order_note)
+        self.assertIn("Buyer delivery ZIP", seller_order_note)
+        self.assertIn("Keep this receipt seller-only", seller_order_note)
+        self.assertNotIn("Order record", seller_order_note)
         self.assertEqual(
             buyer_delivery_names,
             {
@@ -2909,6 +2915,12 @@ tags: note
         self.assertIn("ZIP evidence:", seller_delivery_receipt_text)
         self.assertIn("Keep this receipt seller-only", seller_delivery_receipt_text)
         self.assertIn("SHA-256", seller_delivery_receipt_text)
+        seller_order_note_text = extract_seller_order_management_block(seller_delivery_receipt_text)
+        self.assertIn("Order management copy block", seller_order_note_text)
+        self.assertIn(report.buyer_delivery_package_path.name, seller_order_note_text)
+        self.assertIn("ZIP evidence:", seller_order_note_text)
+        self.assertNotIn("Fill after sending", seller_order_note_text)
+        self.assertNotIn("Privacy note", seller_order_note_text)
         self.assertFalse(has_sales_review_blockers(sales_review))
         self.assertEqual(sales_review.status, "pass")
         self.assertEqual(sales_review.buyer_delivery_package_path, report.buyer_delivery_package_path)
@@ -4228,7 +4240,8 @@ tags:
             sales_finalize_fixture.write_text(
                 sales_finalize_fixture.read_text(encoding="utf-8")
                 + "Order management copy block\n"
-                + "Keep this receipt seller-only\n",
+                + "Keep this receipt seller-only\n"
+                + "extract_seller_order_management_block\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "privacy.py").write_text(
@@ -4312,6 +4325,15 @@ tags:
                 gui_fixture.read_text(encoding="utf-8")
                 + '"screenshots", "掲載画像"\n'
                 + "screenshot_packs\n",
+                encoding="utf-8",
+            )
+            gui_fixture.write_text(
+                gui_fixture.read_text(encoding="utf-8")
+                + "注文控えコピー\n"
+                + "copy_latest_seller_order_note_action\n"
+                + "extract_seller_order_management_block(receipt_text)\n"
+                + 'self.clipboard_append(order_note.rstrip() + "\\n")\n'
+                + "注文管理控えをコピーしました\n",
                 encoding="utf-8",
             )
             gui_fixture.write_text(
@@ -4713,7 +4735,8 @@ tags:
                 + "sales-launch --project-dir . --confirm-preview\n"
                 + "sales-launch-confirmation-*.txt\n"
                 + "販売確認記録\n"
-                + "注文管理コピー欄\n",
+                + "注文管理コピー欄\n"
+                + "注文控えコピー\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -4764,7 +4787,8 @@ tags:
                 + "sales-listing --project-dir . --verify\n"
                 + "sales-launch --project-dir . --confirm-preview\n"
                 + "sales-launch-confirmation-*.txt\n"
-                + "注文管理コピー欄\n",
+                + "注文管理コピー欄\n"
+                + "注文控えコピー\n",
                 encoding="utf-8",
             )
             (project / "docs" / "RC_HANDOFF.md").write_text(
@@ -5463,6 +5487,10 @@ tags:
         self.assertIn("GUI seller delivery receipt copy action:fail", product_details)
         self.assertIn("GUI seller delivery receipt copy clipboard:fail", product_details)
         self.assertIn("GUI seller delivery receipt copy feedback:fail", product_details)
+        self.assertIn("GUI seller order note copy action:fail", product_details)
+        self.assertIn("GUI seller order note copy extractor:fail", product_details)
+        self.assertIn("GUI seller order note copy clipboard:fail", product_details)
+        self.assertIn("GUI seller order note copy feedback:fail", product_details)
         self.assertIn("GUI sales materials verify action:fail", product_details)
         self.assertIn("GUI sales screenshots action:fail", product_details)
         self.assertIn("GUI sales screenshots verify action:fail", product_details)
@@ -5503,6 +5531,7 @@ tags:
         self.assertIn("seller delivery receipt latest release artifact:fail", product_details)
         self.assertIn("seller delivery receipt order management block:fail", product_details)
         self.assertIn("seller delivery receipt seller-only note:fail", product_details)
+        self.assertIn("seller delivery receipt order management extractor:fail", product_details)
         self.assertIn("GUI home buyer send package freshness:fail", product_details)
         self.assertIn("GUI home delivery release row:fail", product_details)
         self.assertIn("GUI home delivery release summary helper:fail", product_details)
@@ -5562,6 +5591,7 @@ tags:
         self.assertIn("README buyer delivery sheet copy guidance:fail", product_details)
         self.assertIn("README seller delivery receipt copy guidance:fail", product_details)
         self.assertIn("README seller delivery receipt order management guidance:fail", product_details)
+        self.assertIn("README seller order note copy guidance:fail", product_details)
         self.assertIn("README sales plan guidance:fail", product_details)
         self.assertIn("README sales plan upload guidance:fail", product_details)
         self.assertIn("README sales plan report guidance:fail", product_details)
@@ -5643,6 +5673,7 @@ tags:
         self.assertIn("product readiness buyer delivery ZIP location guidance:fail", product_details)
         self.assertIn("product readiness buyer delivery sheet copy guidance:fail", product_details)
         self.assertIn("product readiness seller delivery receipt copy guidance:fail", product_details)
+        self.assertIn("product readiness seller order note copy guidance:fail", product_details)
         self.assertIn("product readiness sales plan command:fail", product_details)
         self.assertIn("product readiness sales plan upload guidance:fail", product_details)
         self.assertIn("product readiness sales plan report guidance:fail", product_details)
@@ -6276,6 +6307,10 @@ tags:
         self.assertIn("GUI seller delivery receipt copy action:pass", launcher_details)
         self.assertIn("GUI seller delivery receipt copy clipboard:pass", launcher_details)
         self.assertIn("GUI seller delivery receipt copy feedback:pass", launcher_details)
+        self.assertIn("GUI seller order note copy action:pass", launcher_details)
+        self.assertIn("GUI seller order note copy extractor:pass", launcher_details)
+        self.assertIn("GUI seller order note copy clipboard:pass", launcher_details)
+        self.assertIn("GUI seller order note copy feedback:pass", launcher_details)
         self.assertIn("GUI sales materials action:pass", launcher_details)
         self.assertIn("GUI sales materials verify action:pass", launcher_details)
         self.assertIn("GUI sales screenshots action:pass", launcher_details)
@@ -6373,6 +6408,7 @@ tags:
         self.assertIn("README buyer delivery sheet copy guidance:pass", launcher_details)
         self.assertIn("README seller delivery receipt copy guidance:pass", launcher_details)
         self.assertIn("README seller delivery receipt order management guidance:pass", launcher_details)
+        self.assertIn("README seller order note copy guidance:pass", launcher_details)
         self.assertIn("README sales plan guidance:pass", launcher_details)
         self.assertIn("README sales plan upload guidance:pass", launcher_details)
         self.assertIn("README sales plan report guidance:pass", launcher_details)
@@ -6458,6 +6494,7 @@ tags:
         self.assertIn("product readiness buyer delivery sheet copy guidance:pass", launcher_details)
         self.assertIn("product readiness seller delivery receipt copy guidance:pass", launcher_details)
         self.assertIn("product readiness seller delivery receipt order management guidance:pass", launcher_details)
+        self.assertIn("product readiness seller order note copy guidance:pass", launcher_details)
         self.assertIn("product readiness sales plan command:pass", launcher_details)
         self.assertIn("product readiness sales plan upload guidance:pass", launcher_details)
         self.assertIn("product readiness sales plan report guidance:pass", launcher_details)
