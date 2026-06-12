@@ -107,30 +107,111 @@ def _helper_html(article: Article, body: str, report: ArticleReport) -> str:
               <title>auto-note helper</title>
               <style>
                 :root {
-                  color-scheme: light;
-                  font-family: "Segoe UI", system-ui, sans-serif;
-                  background: #f6f7f9;
-                  color: #17191c;
+                  color-scheme: light dark;
+                  --bg: #f3f5f9;
+                  --bg-wash: radial-gradient(1200px 400px at 50% -10%, rgba(13,148,136,.07), transparent 60%);
+                  --surface: #ffffff;
+                  --surface-muted: #f7f9fc;
+                  --border: rgba(15,23,42,.08);
+                  --border-strong: rgba(15,23,42,.14);
+                  --ink: #0f172a;
+                  --muted: #64748b;
+                  --accent: #0d9488;
+                  --hover: #0f766e;
+                  --soft: #ccfbf1;
+                  --on-accent: #ffffff;
+                  --danger: #dc2626;
+                  --danger-soft: #fee2e2;
+                  --warn: #b45309;
+                  --warn-soft: #fef3c7;
+                  --ok: #059669;
+                  --ok-soft: #d1fae5;
+                  --info: #2563eb;
+                  --info-soft: #dbeafe;
+                  --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
+                  --shadow-md: 0 1px 2px rgba(15,23,42,.05), 0 8px 24px -8px rgba(15,23,42,.12);
+                  --radius-card: 16px;
+                  --radius-control: 10px;
+                  --radius-pill: 999px;
+                  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+                  background: var(--bg);
+                  color: var(--ink);
+                }
+                @media (prefers-color-scheme: dark) {
+                  :root {
+                    --bg: #0b1220;
+                    --bg-wash: radial-gradient(1200px 400px at 50% -10%, rgba(45,212,191,.06), transparent 60%);
+                    --surface: #111a2c;
+                    --surface-muted: #0e1626;
+                    --border: rgba(148,163,184,.14);
+                    --border-strong: rgba(148,163,184,.22);
+                    --ink: #e2e8f0;
+                    --muted: #94a3b8;
+                    --accent: #2dd4bf;
+                    --hover: #5eead4;
+                    --soft: rgba(45,212,191,.14);
+                    --on-accent: #042f2c;
+                    --danger-soft: rgba(220,38,38,.18);
+                    --warn-soft: rgba(180,83,9,.18);
+                    --ok-soft: rgba(5,150,105,.18);
+                    --info-soft: rgba(37,99,235,.18);
+                    --shadow-sm: 0 1px 2px rgba(0,0,0,.24);
+                    --shadow-md: 0 1px 2px rgba(0,0,0,.24), 0 12px 30px -12px rgba(0,0,0,.52);
+                  }
+                }
+                * {
+                  box-sizing: border-box;
                 }
                 body {
                   margin: 0;
-                  padding: 24px;
+                  min-height: 100vh;
+                  padding: 28px;
+                  background: var(--bg-wash), var(--bg);
+                  color: var(--ink);
+                  font: 15px/1.75 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
                 }
                 main {
-                  max-width: 1120px;
+                  max-width: 1180px;
                   margin: 0 auto;
                 }
-                header {
+                .topbar {
                   display: flex;
                   justify-content: space-between;
-                  gap: 16px;
+                  gap: 18px;
                   align-items: center;
-                  margin-bottom: 16px;
+                  margin-bottom: 18px;
+                }
+                .brand {
+                  display: flex;
+                  align-items: center;
+                  gap: 11px;
+                  min-width: 0;
+                }
+                .brand-mark {
+                  align-items: center;
+                  background: linear-gradient(135deg, #0d9488, #10b981);
+                  border-radius: 9px;
+                  box-shadow: var(--shadow-sm);
+                  color: #ffffff;
+                  display: inline-flex;
+                  flex: 0 0 auto;
+                  height: 28px;
+                  justify-content: center;
+                  width: 28px;
                 }
                 h1 {
-                  font-size: 22px;
                   margin: 0;
-                  font-weight: 650;
+                  font-size: 20px;
+                  font-weight: 700;
+                  letter-spacing: -0.01em;
+                  line-height: 1.2;
+                }
+                .brand small {
+                  color: var(--muted);
+                  display: block;
+                  font-size: 12px;
+                  line-height: 1.35;
+                  margin-top: 2px;
                 }
                 .actions, .copy-row, .tabs {
                   display: flex;
@@ -138,73 +219,159 @@ def _helper_html(article: Article, body: str, report: ArticleReport) -> str:
                   gap: 8px;
                   align-items: center;
                 }
+                a, button {
+                  align-items: center;
+                  border: 1px solid var(--border-strong);
+                  border-radius: var(--radius-control);
+                  color: var(--ink);
+                  cursor: pointer;
+                  display: inline-flex;
+                  font: inherit;
+                  font-weight: 650;
+                  gap: 7px;
+                  min-height: 38px;
+                  padding: 8px 12px;
+                  text-decoration: none;
+                  transition: all .15s ease;
+                  white-space: nowrap;
+                }
+                button {
+                  background: transparent;
+                }
+                .primary,
+                button.primary,
+                a.primary {
+                  background: linear-gradient(180deg, var(--accent), var(--hover));
+                  border-color: transparent;
+                  color: var(--on-accent);
+                }
+                .ghost,
+                a.ghost {
+                  background: transparent;
+                }
+                a:hover,
+                button:hover {
+                  background: var(--surface-muted);
+                }
+                .primary:hover,
+                button.primary:hover,
+                a.primary:hover {
+                  background: linear-gradient(180deg, var(--hover), var(--accent));
+                  box-shadow: var(--shadow-md);
+                  transform: translateY(-1px);
+                }
+                a:active,
+                button:active {
+                  transform: scale(.98);
+                }
+                a:focus-visible,
+                button:focus-visible,
+                textarea:focus-visible,
+                input:focus-visible {
+                  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+                  outline-offset: 2px;
+                }
                 .metrics {
                   display: grid;
                   grid-template-columns: repeat(4, minmax(120px, 1fr));
-                  gap: 10px;
-                  margin: 12px 0 16px;
+                  gap: 12px;
+                  margin: 14px 0 18px;
                 }
                 .metric {
-                  background: #ffffff;
-                  border: 1px solid #dcdfe5;
-                  border-radius: 8px;
-                  padding: 10px 12px;
+                  background: var(--surface);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius-card);
+                  box-shadow: var(--shadow-sm);
+                  overflow: hidden;
+                  padding: 14px 15px 13px;
+                  position: relative;
+                }
+                .metric::before {
+                  background: var(--accent);
+                  content: "";
+                  height: 2px;
+                  left: 0;
+                  position: absolute;
+                  right: 0;
+                  top: 0;
                 }
                 .metric strong {
                   display: block;
-                  font-size: 19px;
+                  font-size: 22px;
+                  font-variant-numeric: tabular-nums;
+                  font-weight: 700;
+                  letter-spacing: 0;
+                  line-height: 1.2;
+                }
+                .metric span {
+                  color: var(--muted);
+                  display: block;
+                  font-size: 12px;
+                  margin-top: 4px;
                 }
                 section, aside {
-                  background: #ffffff;
-                  border: 1px solid #dcdfe5;
-                  border-radius: 8px;
-                  margin-top: 12px;
+                  background: var(--surface);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius-card);
+                  box-shadow: var(--shadow-sm);
+                  margin-top: 14px;
                   overflow: hidden;
+                  transition: all .15s ease;
+                }
+                section:focus-within,
+                aside:focus-within {
+                  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+                  box-shadow: var(--shadow-md);
                 }
                 .bar {
                   display: flex;
                   justify-content: space-between;
                   align-items: center;
                   gap: 12px;
-                  padding: 12px 14px;
-                  border-bottom: 1px solid #e7e9ee;
-                  background: #fbfbfc;
+                  padding: 12px 14px 12px 16px;
+                  border-bottom: 1px solid var(--border);
+                  background: var(--surface-muted);
                 }
                 h2 {
-                  font-size: 14px;
+                  font-size: 13.5px;
                   margin: 0;
                   font-weight: 650;
+                  letter-spacing: 0;
                 }
-                button, a {
-                  border: 1px solid #c8ccd4;
-                  background: #ffffff;
-                  color: #17191c;
-                  padding: 8px 12px;
-                  border-radius: 6px;
-                  font: inherit;
-                  cursor: pointer;
-                  text-decoration: none;
-                  white-space: nowrap;
+                .tabs {
+                  background: var(--surface-muted);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius-pill);
+                  gap: 2px;
+                  padding: 3px;
                 }
-                button.primary, a.primary {
-                  background: #146c5f;
-                  border-color: #146c5f;
-                  color: #ffffff;
+                .tabs button {
+                  border: 0;
+                  border-radius: var(--radius-pill);
+                  min-height: 30px;
+                  padding: 5px 11px;
                 }
-                button.warn {
-                  background: #7b4b13;
-                  border-color: #7b4b13;
-                  color: #ffffff;
+                .tabs button[data-tab="edit"] {
+                  background: var(--surface);
+                  box-shadow: var(--shadow-sm);
+                }
+                body:has(#preview.active) .tabs button[data-tab="edit"] {
+                  background: transparent;
+                  box-shadow: none;
+                }
+                body:has(#preview.active) .tabs button[data-tab="preview"] {
+                  background: var(--surface);
+                  box-shadow: var(--shadow-sm);
                 }
                 textarea, input {
-                  box-sizing: border-box;
                   display: block;
                   width: 100%;
                   border: 0;
+                  background: var(--surface);
+                  color: var(--ink);
                   resize: vertical;
-                  padding: 14px;
+                  padding: 16px;
                   font: 15px/1.65 ui-monospace, "Cascadia Code", Consolas, monospace;
-                  color: #17191c;
                   outline: none;
                 }
                 input {
@@ -217,9 +384,10 @@ def _helper_html(article: Article, body: str, report: ArticleReport) -> str:
                   min-height: 420px;
                 }
                 .status {
-                  min-height: 22px;
-                  color: #146c5f;
+                  color: var(--accent);
                   font-size: 13px;
+                  min-height: 22px;
+                  font-weight: 650;
                 }
                 .grid {
                   display: grid;
@@ -228,26 +396,44 @@ def _helper_html(article: Article, body: str, report: ArticleReport) -> str:
                   align-items: start;
                 }
                 .side {
-                  padding: 14px;
+                  padding: 16px;
                 }
                 .side dl {
                   margin: 0;
                 }
                 .side dt {
-                  color: #5b626f;
+                  color: var(--muted);
                   font-size: 12px;
+                  font-weight: 650;
                   margin-top: 12px;
                 }
                 .side dd {
                   margin: 4px 0 0;
                   overflow-wrap: anywhere;
+                  font-size: 14px;
+                }
+                .side dd:first-of-type {
+                  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
                 }
                 .issues {
                   margin: 8px 0 0;
-                  padding-left: 18px;
+                  padding: 0;
+                  list-style: none;
                 }
                 .issues li {
-                  margin: 6px 0;
+                  align-items: flex-start;
+                  display: flex;
+                  gap: 8px;
+                  margin: 7px 0;
+                }
+                .issues li::before {
+                  background: var(--warn);
+                  border-radius: 50%;
+                  content: "";
+                  flex: 0 0 auto;
+                  height: 7px;
+                  margin-top: .65em;
+                  width: 7px;
                 }
                 .preview {
                   display: none;
@@ -264,42 +450,66 @@ def _helper_html(article: Article, body: str, report: ArticleReport) -> str:
                   line-height: 1.35;
                 }
                 .preview pre {
-                  background: #20242a;
-                  color: #f6f7f9;
-                  padding: 12px;
-                  border-radius: 6px;
+                  background: #08111f;
+                  border: 1px solid rgba(148,163,184,.22);
+                  border-radius: 12px;
+                  color: #e2e8f0;
                   overflow: auto;
+                  padding: 14px;
+                }
+                svg {
+                  flex: 0 0 auto;
                 }
                 @media (max-width: 860px) {
                   body {
-                    padding: 14px;
+                    padding: 16px;
                   }
-                  header, .bar {
+                  .topbar, .bar {
                     align-items: flex-start;
                     flex-direction: column;
                   }
-                  .grid, .metrics {
+                  .grid {
                     grid-template-columns: 1fr;
+                  }
+                  .metrics {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                  }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  *, *::before, *::after {
+                    transition: none !important;
                   }
                 }
               </style>
             </head>
             <body>
               <main>
-                <header>
-                  <h1>auto-note helper</h1>
+                <header class="topbar">
+                  <div class="brand">
+                    <span class="brand-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+                        <path d="M14 3v5h5"></path>
+                        <path d="M9 15l2 2 4-6"></path>
+                      </svg>
+                    </span>
+                    <div>
+                      <h1>auto-note helper</h1>
+                      <small>note投稿用コピー支援</small>
+                    </div>
+                  </div>
                   <div class="actions">
                     <a class="primary" href="$note_new_url" target="_blank" rel="noreferrer">note 投稿画面</a>
-                    <a href="$note_login_url" target="_blank" rel="noreferrer">ログイン</a>
+                    <a class="ghost" href="$note_login_url" target="_blank" rel="noreferrer">ログイン</a>
                   </div>
                 </header>
                 <div class="status" id="status"></div>
 
                 <div class="metrics">
-                  <div class="metric"><strong id="titleCount">$title_chars</strong>タイトル文字</div>
-                  <div class="metric"><strong id="bodyCount">$body_chars</strong>本文文字</div>
-                  <div class="metric"><strong id="lineCount">$lines</strong>行</div>
-                  <div class="metric"><strong id="readTime">$reading_minutes</strong>分目安</div>
+                  <div class="metric"><strong id="titleCount">$title_chars</strong><span>タイトル文字</span></div>
+                  <div class="metric"><strong id="bodyCount">$body_chars</strong><span>本文文字</span></div>
+                  <div class="metric"><strong id="lineCount">$lines</strong><span>行</span></div>
+                  <div class="metric"><strong id="readTime">$reading_minutes</strong><span>分目安</span></div>
                 </div>
 
                 <div class="grid">
@@ -537,23 +747,30 @@ def _helper_html(article: Article, body: str, report: ArticleReport) -> str:
 
 
 def _dashboard_html(items: list[DashboardItem]) -> str:
+    article_count = len(items)
+    ok_count = sum(1 for item in items if item.report.ok)
+    ng_count = article_count - ok_count
+    scheduled_count = sum(1 for item in items if item.report.article.scheduled)
     rows = []
     for item in items:
         report = item.report
         article = report.article
         status = "OK" if report.ok else "NG"
         issue_count = len(report.issues)
+        tags = "".join(f"<span class=\"tag\">{escape(tag)}</span>" for tag in article.tags)
+        scheduled = escape(article.scheduled) if article.scheduled else "<span class=\"muted-dash\">—</span>"
+        issues = str(issue_count) if issue_count else "<span class=\"muted-dash\">—</span>"
         rows.append(
             "<tr>"
             f"<td><span class=\"badge {status.lower()}\">{status}</span></td>"
-            f"<td><a href=\"{escape(item.helper_path.resolve().as_uri())}\">{escape(article.title)}</a>"
+            f"<td class=\"article-cell\"><a href=\"{escape(item.helper_path.resolve().as_uri())}\">{escape(article.title)}</a>"
             f"<small>{escape(str(article.source))}</small></td>"
             f"<td>{escape(article.status)}</td>"
-            f"<td>{escape(article.scheduled)}</td>"
-            f"<td>{report.stats.body_chars}</td>"
-            f"<td>{report.stats.reading_minutes}</td>"
-            f"<td>{escape(', '.join(article.tags))}</td>"
-            f"<td>{issue_count}</td>"
+            f"<td>{scheduled}</td>"
+            f"<td class=\"num\">{report.stats.body_chars}</td>"
+            f"<td class=\"num\">{report.stats.reading_minutes}</td>"
+            f"<td><div class=\"tags\">{tags or '<span class=\"muted-dash\">—</span>'}</div></td>"
+            f"<td class=\"num\">{issues}</td>"
             "</tr>"
         )
 
@@ -568,149 +785,442 @@ def _dashboard_html(items: list[DashboardItem]) -> str:
               <title>auto-note dashboard</title>
               <style>
                 :root {
-                  font-family: "Segoe UI", system-ui, sans-serif;
-                  background: #f6f7f9;
-                  color: #17191c;
+                  color-scheme: light dark;
+                  --bg: #f3f5f9;
+                  --bg-wash: radial-gradient(1200px 400px at 50% -10%, rgba(13,148,136,.07), transparent 60%);
+                  --surface: #ffffff;
+                  --surface-muted: #f7f9fc;
+                  --border: rgba(15,23,42,.08);
+                  --border-strong: rgba(15,23,42,.14);
+                  --ink: #0f172a;
+                  --muted: #64748b;
+                  --accent: #0d9488;
+                  --hover: #0f766e;
+                  --soft: #ccfbf1;
+                  --on-accent: #ffffff;
+                  --danger: #dc2626;
+                  --danger-soft: #fee2e2;
+                  --warn: #b45309;
+                  --warn-soft: #fef3c7;
+                  --ok: #059669;
+                  --ok-soft: #d1fae5;
+                  --info: #2563eb;
+                  --info-soft: #dbeafe;
+                  --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
+                  --shadow-md: 0 1px 2px rgba(15,23,42,.05), 0 8px 24px -8px rgba(15,23,42,.12);
+                  --radius-card: 16px;
+                  --radius-control: 10px;
+                  --radius-pill: 999px;
+                  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+                  background: var(--bg);
+                  color: var(--ink);
+                }
+                @media (prefers-color-scheme: dark) {
+                  :root {
+                    --bg: #0b1220;
+                    --bg-wash: radial-gradient(1200px 400px at 50% -10%, rgba(45,212,191,.06), transparent 60%);
+                    --surface: #111a2c;
+                    --surface-muted: #0e1626;
+                    --border: rgba(148,163,184,.14);
+                    --border-strong: rgba(148,163,184,.22);
+                    --ink: #e2e8f0;
+                    --muted: #94a3b8;
+                    --accent: #2dd4bf;
+                    --hover: #5eead4;
+                    --soft: rgba(45,212,191,.14);
+                    --on-accent: #042f2c;
+                    --danger-soft: rgba(220,38,38,.18);
+                    --warn-soft: rgba(180,83,9,.18);
+                    --ok-soft: rgba(5,150,105,.18);
+                    --info-soft: rgba(37,99,235,.18);
+                    --shadow-sm: 0 1px 2px rgba(0,0,0,.24);
+                    --shadow-md: 0 1px 2px rgba(0,0,0,.24), 0 12px 30px -12px rgba(0,0,0,.52);
+                  }
+                }
+                * {
+                  box-sizing: border-box;
                 }
                 body {
                   margin: 0;
-                  padding: 24px;
+                  min-height: 100vh;
+                  padding: 28px;
+                  background: var(--bg-wash), var(--bg);
+                  color: var(--ink);
+                  font: 15px/1.75 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
                 }
                 main {
                   max-width: 1180px;
                   margin: 0 auto;
                 }
-                header {
+                .topbar {
                   display: flex;
                   justify-content: space-between;
-                  gap: 12px;
+                  gap: 18px;
                   align-items: center;
-                  margin-bottom: 16px;
+                  margin-bottom: 18px;
+                }
+                .brand {
+                  display: flex;
+                  align-items: center;
+                  gap: 11px;
+                  min-width: 0;
+                }
+                .brand-mark {
+                  align-items: center;
+                  background: linear-gradient(135deg, #0d9488, #10b981);
+                  border-radius: 9px;
+                  box-shadow: var(--shadow-sm);
+                  color: #ffffff;
+                  display: inline-flex;
+                  flex: 0 0 auto;
+                  height: 28px;
+                  justify-content: center;
+                  width: 28px;
                 }
                 h1 {
                   margin: 0;
-                  font-size: 22px;
+                  font-size: 20px;
+                  font-weight: 700;
+                  letter-spacing: -0.01em;
+                  line-height: 1.2;
                 }
-                a, button {
-                  border: 1px solid #c8ccd4;
-                  background: #ffffff;
-                  color: #17191c;
-                  padding: 8px 12px;
-                  border-radius: 6px;
-                  text-decoration: none;
+                .brand small {
+                  color: var(--muted);
+                  display: block;
+                  font-size: 12px;
+                  line-height: 1.35;
+                  margin-top: 2px;
+                }
+                a {
+                  align-items: center;
+                  border: 1px solid var(--border-strong);
+                  border-radius: var(--radius-control);
+                  color: var(--ink);
+                  display: inline-flex;
                   font: inherit;
+                  font-weight: 650;
+                  gap: 7px;
+                  min-height: 38px;
+                  padding: 8px 12px;
+                  text-decoration: none;
+                  transition: all .15s ease;
+                  white-space: nowrap;
                 }
                 a.primary {
-                  background: #146c5f;
-                  border-color: #146c5f;
-                  color: #ffffff;
+                  background: linear-gradient(180deg, var(--accent), var(--hover));
+                  border-color: transparent;
+                  color: var(--on-accent);
+                }
+                a:hover {
+                  background: var(--surface-muted);
+                }
+                a.primary:hover {
+                  background: linear-gradient(180deg, var(--hover), var(--accent));
+                  box-shadow: var(--shadow-md);
+                  transform: translateY(-1px);
+                }
+                a:active {
+                  transform: scale(.98);
+                }
+                a:focus-visible,
+                input:focus-visible {
+                  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+                  outline-offset: 2px;
+                }
+                .stats {
+                  display: grid;
+                  grid-template-columns: repeat(4, minmax(0, 1fr));
+                  gap: 12px;
+                  margin: 0 0 16px;
+                }
+                .stat {
+                  background: var(--surface);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius-card);
+                  box-shadow: var(--shadow-sm);
+                  padding: 14px 15px;
+                }
+                .stat strong {
+                  display: block;
+                  font-size: 24px;
+                  font-variant-numeric: tabular-nums;
+                  font-weight: 700;
+                  letter-spacing: 0;
+                  line-height: 1.15;
+                }
+                .stat span {
+                  color: var(--muted);
+                  display: block;
+                  font-size: 12px;
+                  font-weight: 650;
+                  margin-top: 4px;
+                }
+                .search-row {
+                  align-items: center;
+                  display: grid;
+                  gap: 10px;
+                  grid-template-columns: minmax(0, 1fr) auto;
+                  margin-bottom: 12px;
+                }
+                .search {
+                  position: relative;
+                }
+                .search svg {
+                  color: var(--muted);
+                  left: 14px;
+                  position: absolute;
+                  top: 50%;
+                  transform: translateY(-50%);
                 }
                 input {
-                  box-sizing: border-box;
                   width: 100%;
-                  border: 1px solid #c8ccd4;
-                  border-radius: 6px;
-                  padding: 10px 12px;
-                  margin-bottom: 12px;
+                  border: 1px solid var(--border-strong);
+                  border-radius: var(--radius-control);
+                  background: var(--surface);
+                  color: var(--ink);
+                  padding: 11px 14px 11px 42px;
                   font: inherit;
+                  transition: all .15s ease;
+                }
+                .filter-count {
+                  color: var(--muted);
+                  font-size: 12px;
+                  font-variant-numeric: tabular-nums;
+                  font-weight: 650;
+                  white-space: nowrap;
+                }
+                .table-card {
+                  background: var(--surface);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius-card);
+                  box-shadow: var(--shadow-sm);
+                  overflow: hidden;
+                }
+                .table-scroll {
+                  overflow-x: auto;
                 }
                 table {
                   width: 100%;
-                  border-collapse: collapse;
-                  background: #ffffff;
-                  border: 1px solid #dcdfe5;
-                  border-radius: 8px;
-                  overflow: hidden;
+                  min-width: 900px;
+                  border-collapse: separate;
+                  border-spacing: 0;
                 }
                 th, td {
-                  padding: 11px 12px;
-                  border-bottom: 1px solid #e7e9ee;
+                  padding: 12px 14px;
+                  border-bottom: 1px solid var(--border);
                   text-align: left;
                   vertical-align: top;
                 }
                 th {
-                  background: #fbfbfc;
-                  font-size: 13px;
+                  background: var(--surface-muted);
+                  color: var(--muted);
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: .08em;
+                  position: sticky;
+                  text-transform: uppercase;
+                  top: 0;
+                  z-index: 1;
+                }
+                tbody tr {
+                  transition: background-color .15s ease;
+                }
+                tbody tr:hover {
+                  background: var(--surface-muted);
+                }
+                tbody tr:last-child td {
+                  border-bottom: 0;
                 }
                 small {
                   display: block;
-                  color: #5b626f;
-                  margin-top: 3px;
+                  color: var(--muted);
+                  font-size: 12px;
+                  line-height: 1.45;
+                  margin-top: 4px;
                   overflow-wrap: anywhere;
                 }
+                .article-cell a {
+                  border: 0;
+                  color: var(--ink);
+                  display: inline;
+                  font-weight: 600;
+                  min-height: 0;
+                  padding: 0;
+                  text-decoration: none;
+                  white-space: normal;
+                }
+                .article-cell a:hover {
+                  color: var(--accent);
+                  background: transparent;
+                }
                 .badge {
-                  display: inline-block;
-                  min-width: 34px;
-                  text-align: center;
-                  border-radius: 999px;
-                  padding: 3px 8px;
+                  align-items: center;
+                  border-radius: var(--radius-pill);
+                  display: inline-flex;
+                  gap: 6px;
                   font-size: 12px;
+                  font-variant-numeric: tabular-nums;
                   font-weight: 650;
+                  min-width: 48px;
+                  padding: 3px 9px;
+                }
+                .badge::before {
+                  border-radius: 50%;
+                  content: "";
+                  height: 7px;
+                  width: 7px;
                 }
                 .ok {
-                  background: #dff3ed;
-                  color: #105f54;
+                  background: var(--ok-soft);
+                  color: var(--ok);
+                }
+                .ok::before {
+                  background: var(--ok);
                 }
                 .ng {
-                  background: #ffe2df;
-                  color: #8b2119;
+                  background: var(--danger-soft);
+                  color: var(--danger);
+                }
+                .ng::before {
+                  background: var(--danger);
+                }
+                .tags {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 5px;
+                }
+                .tag {
+                  background: var(--soft);
+                  border-radius: var(--radius-pill);
+                  color: var(--accent);
+                  display: inline-flex;
+                  font-size: 12px;
+                  line-height: 1.4;
+                  padding: 2px 8px;
+                }
+                .num {
+                  font-variant-numeric: tabular-nums;
+                }
+                .muted-dash {
+                  color: var(--muted);
                 }
                 @media (max-width: 760px) {
                   body {
-                    padding: 14px;
+                    padding: 16px;
                   }
-                  header {
+                  .topbar {
                     flex-direction: column;
                     align-items: flex-start;
                   }
-                  table {
-                    display: block;
-                    overflow-x: auto;
+                  .stats {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                  }
+                  .search-row {
+                    grid-template-columns: 1fr;
+                  }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  *, *::before, *::after {
+                    transition: none !important;
                   }
                 }
               </style>
             </head>
             <body>
               <main>
-                <header>
-                  <h1>auto-note dashboard</h1>
-                  <a class="primary" href="$note_new_url" target="_blank" rel="noreferrer">note 投稿画面</a>
+                <header class="topbar">
+                  <div class="brand">
+                    <span class="brand-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+                        <path d="M14 3v5h5"></path>
+                        <path d="M9 15l2 2 4-6"></path>
+                      </svg>
+                    </span>
+                    <div>
+                      <h1>auto-note</h1>
+                      <small>dashboard</small>
+                    </div>
+                  </div>
+                  <a class="primary" href="$note_new_url" target="_blank" rel="noreferrer">
+                    note 投稿画面
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <path d="M15 3h6v6"></path>
+                      <path d="M10 14L21 3"></path>
+                    </svg>
+                  </a>
                 </header>
-                <input id="filter" placeholder="検索">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>状態</th>
-                      <th>記事</th>
-                      <th>工程</th>
-                      <th>予定</th>
-                      <th>文字</th>
-                      <th>分</th>
-                      <th>タグ</th>
-                      <th>指摘</th>
-                    </tr>
-                  </thead>
-                  <tbody id="rows">
-                    $rows
-                  </tbody>
-                </table>
+                <div class="stats">
+                  <div class="stat"><strong>$article_count</strong><span>記事数</span></div>
+                  <div class="stat"><strong>$ok_count</strong><span>OK</span></div>
+                  <div class="stat"><strong>$ng_count</strong><span>NG</span></div>
+                  <div class="stat"><strong>$scheduled_count</strong><span>予定あり</span></div>
+                </div>
+                <div class="search-row">
+                  <div class="search">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <path d="M21 21l-4.35-4.35"></path>
+                    </svg>
+                    <input id="filter" placeholder="検索">
+                  </div>
+                  <div class="filter-count" id="resultCount">$article_count件</div>
+                </div>
+                <div class="table-card">
+                  <div class="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>状態</th>
+                          <th>記事</th>
+                          <th>工程</th>
+                          <th>予定</th>
+                          <th>文字</th>
+                          <th>分</th>
+                          <th>タグ</th>
+                          <th>指摘</th>
+                        </tr>
+                      </thead>
+                      <tbody id="rows">
+                        $rows
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </main>
               <script>
                 const filter = document.getElementById("filter");
                 const rows = Array.from(document.querySelectorAll("#rows tr"));
-                filter.addEventListener("input", function () {
+                const resultCount = document.getElementById("resultCount");
+                function updateFilter() {
                   const value = filter.value.toLowerCase();
+                  let visible = 0;
                   for (const row of rows) {
-                    row.style.display = row.textContent.toLowerCase().includes(value) ? "" : "none";
+                    const matched = row.textContent.toLowerCase().includes(value);
+                    row.style.display = matched ? "" : "none";
+                    if (matched) {
+                      visible += 1;
+                    }
                   }
-                });
+                  resultCount.textContent = visible + " / " + rows.length + "件";
+                }
+                filter.addEventListener("input", updateFilter);
+                updateFilter();
               </script>
             </body>
             </html>
             """
         )
     )
-    return template.safe_substitute(note_new_url=NOTE_NEW_TEXT_URL, rows="\n".join(rows))
+    return template.safe_substitute(
+        note_new_url=NOTE_NEW_TEXT_URL,
+        rows="\n".join(rows),
+        article_count=str(article_count),
+        ok_count=str(ok_count),
+        ng_count=str(ng_count),
+        scheduled_count=str(scheduled_count),
+    )
 
 
 def _issues_html(report: ArticleReport) -> str:
