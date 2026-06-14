@@ -1211,6 +1211,7 @@ class AutoNoteApp(tk.Tk):
         self._last_improvement_plan: ImprovementPlan | None = None
         self._last_article_focus_plan: ImprovementPlan | None = None
         self._release_check_thread: threading.Thread | None = None
+        self._commercial_readiness_thread: threading.Thread | None = None
         self.editor_dirty = False
         self._restoring_selection = False
         self._home_sales_next_step = None
@@ -8751,25 +8752,70 @@ class AutoNoteApp(tk.Tk):
             self.notify(f"{label}が完了しました", level=level)
 
     def run_commercial_readiness_to_tab(self) -> None:
-        report = run_commercial_readiness(self.project_dir)
-        self._set_text(self.diagnostics_text, format_commercial_readiness_report(report))
-        self.notebook.select(self.diagnostics_tab)
-        self.notify("販売準備を確認しました", level=self._commercial_readiness_notify_level(report))
+        self._start_commercial_readiness(save=False)
 
     def create_commercial_readiness_report_action(self) -> None:
+        self._start_commercial_readiness(save=True)
+
+    def _start_commercial_readiness(self, *, save: bool) -> None:
+        # run_commercial_readiness runs a privacy audit + release verify + acceptance
+        # check (no Tk access), so compute it on a worker thread and marshal the UI
+        # update back via after(0) to keep the window responsive. Mirrors the
+        # release-check pattern.
+        running = self._commercial_readiness_thread
+        if running is not None and running.is_alive():
+            self.notify("販売準備の確認は実行中です。完了まで待ってください。", level="warning")
+            return
+        self._set_text(self.diagnostics_text, "販売準備を確認中です。完了後にこの画面を更新します。")
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("販売準備を確認中…", level="info")
+        thread = threading.Thread(
+            target=self._run_commercial_readiness_worker,
+            args=(save,),
+            daemon=True,
+        )
+        self._commercial_readiness_thread = thread
+        thread.start()
+
+    def _run_commercial_readiness_worker(self, save: bool) -> None:
+        report = None
+        path = None
+        error: Exception | None = None
         try:
             report = run_commercial_readiness(self.project_dir)
-            path = write_commercial_readiness_report(self.project_dir, report=report)
-        except OSError as exc:
-            self.notify("販売準備レポート保存に失敗しました", level="error")
-            messagebox.showerror("販売準備保存エラー", str(exc))
+            if save:
+                path = write_commercial_readiness_report(self.project_dir, report=report)
+        except Exception as exc:  # surfaced to the user on the main thread
+            error = exc
+        try:
+            self.after(0, lambda: self._finish_commercial_readiness(report, path, save, error))
+        except tk.TclError:
+            pass
+
+    def _finish_commercial_readiness(self, report, path, save: bool, error: Exception | None) -> None:
+        self._commercial_readiness_thread = None
+        if error is not None or report is None:
+            if save:
+                self.notify("販売準備レポート保存に失敗しました", level="error")
+                messagebox.showerror("販売準備保存エラー", str(error))
+            else:
+                self.notify("販売準備の確認に失敗しました", level="error")
+                messagebox.showerror("販売準備エラー", str(error))
             return
-        self._set_text(
-            self.diagnostics_text,
-            format_commercial_readiness_report(report) + f"\n\nsaved: {path}",
-        )
-        self.notebook.select(self.diagnostics_tab)
-        self.notify(f"販売準備レポートを保存しました: {path.name}", level=self._commercial_readiness_notify_level(report))
+        if save and path is not None:
+            self._set_text(
+                self.diagnostics_text,
+                format_commercial_readiness_report(report) + f"\n\nsaved: {path}",
+            )
+            self.notebook.select(self.diagnostics_tab)
+            self.notify(
+                f"販売準備レポートを保存しました: {path.name}",
+                level=self._commercial_readiness_notify_level(report),
+            )
+        else:
+            self._set_text(self.diagnostics_text, format_commercial_readiness_report(report))
+            self.notebook.select(self.diagnostics_tab)
+            self.notify("販売準備を確認しました", level=self._commercial_readiness_notify_level(report))
 
     def create_commercial_policy_review_action(self) -> None:
         try:
