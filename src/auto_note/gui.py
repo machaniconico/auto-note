@@ -853,6 +853,8 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
         app = AutoNoteApp(project_dir, ui_density_override="large" if safe_display else None)
         app.withdraw()
         app.update_idletasks()
+        app._load_check_tab_once()
+        app._load_diagnostics_tab_once()
         tabs = len(app.notebook.tabs())
         articles = len(app.article_paths)
         first_run_items = len(app.first_run_tree.get_children()) if hasattr(app, "first_run_tree") else 0
@@ -1212,6 +1214,10 @@ class AutoNoteApp(tk.Tk):
         self._last_article_focus_plan: ImprovementPlan | None = None
         self._release_check_thread: threading.Thread | None = None
         self._commercial_readiness_thread: threading.Thread | None = None
+        self._readiness_thread: threading.Thread | None = None
+        self._quickstart_thread: threading.Thread | None = None
+        self._check_all_loaded = False
+        self._diagnostics_loaded = False
         self.editor_dirty = False
         self._restoring_selection = False
         self._home_sales_next_step = None
@@ -1253,7 +1259,30 @@ class AutoNoteApp(tk.Tk):
         self.refresh_first_run_panel()
         self.refresh_review_panel()
         self.refresh_help()
+
+    def _on_notebook_tab_changed(self, _event=None) -> None:
+        selected = str(self.notebook.select())
+        if selected == str(self.check_tab):
+            self._load_check_tab_once()
+        elif selected == str(self.diagnostics_tab):
+            self._load_diagnostics_tab_once()
+
+    def _load_check_tab_once(self) -> None:
+        if self._check_all_loaded:
+            return
+        if hasattr(self, "check_text") and self.check_text.get("1.0", tk.END).strip():
+            self._check_all_loaded = True
+            return
+        self._check_all_loaded = True
         self.run_check_all(show_popup=False)
+
+    def _load_diagnostics_tab_once(self) -> None:
+        if self._diagnostics_loaded:
+            return
+        if hasattr(self, "diagnostics_text") and self.diagnostics_text.get("1.0", tk.END).strip():
+            self._diagnostics_loaded = True
+            return
+        self._diagnostics_loaded = True
         self.run_diagnostics_to_tab()
 
     def _active_ui_density(self) -> str:
@@ -1805,6 +1834,7 @@ class AutoNoteApp(tk.Tk):
         self._build_settings_tab()
         self._build_diagnostics_tab()
         self._build_help_tab()
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_notebook_tab_changed, add="+")
         self._build_notification_bar(shell)
         self._refresh_manual_readability_widgets()
 
@@ -5685,6 +5715,7 @@ class AutoNoteApp(tk.Tk):
         self.notify("レビュー一覧を更新しました", level="warning" if has_review_blockers(reviews) else "success")
 
     def run_check_all(self, show_popup: bool = True) -> None:
+        self._check_all_loaded = True
         try:
             reports = inspect_path(
                 self.articles_dir,
@@ -8017,6 +8048,7 @@ class AutoNoteApp(tk.Tk):
     def run_diagnostics_to_tab(self) -> None:
         if not hasattr(self, "diagnostics_text"):
             return
+        self._diagnostics_loaded = True
         items = run_diagnostics(self.project_dir)
         backups = list_backups(self.project_dir)
         diagnostic_reports = list_diagnostic_reports(self.project_dir)
@@ -8411,8 +8443,41 @@ class AutoNoteApp(tk.Tk):
         self.notify("プライバシー監査を実行しました", level=level)
 
     def run_quickstart_to_tab(self) -> None:
-        report = run_quickstart(self.project_dir)
-        self._set_text(self.diagnostics_text, format_quickstart_report(report))
+        running = self._quickstart_thread
+        if running is not None and running.is_alive():
+            self.notify("クイック確認は実行中です。完了まで待ってください。", level="warning")
+            return
+        self._set_text(self.diagnostics_text, "クイック確認中…\n完了後にこの画面を更新します。")
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("クイック確認中…", level="info")
+        thread = threading.Thread(
+            target=self._run_quickstart_worker,
+            daemon=True,
+        )
+        self._quickstart_thread = thread
+        thread.start()
+
+    def _run_quickstart_worker(self) -> None:
+        report = None
+        text = ""
+        error: Exception | None = None
+        try:
+            report = run_quickstart(self.project_dir)
+            text = format_quickstart_report(report)
+        except Exception as exc:  # surfaced to the user on the main thread
+            error = exc
+        try:
+            self.after(0, lambda: self._finish_quickstart(report, text, error))
+        except tk.TclError:
+            pass
+
+    def _finish_quickstart(self, report, text: str, error: Exception | None) -> None:
+        self._quickstart_thread = None
+        if error is not None or report is None:
+            self.notify("クイック確認に失敗しました", level="error")
+            messagebox.showerror("クイック確認エラー", str(error))
+            return
+        self._set_text(self.diagnostics_text, text)
         self.notebook.select(self.diagnostics_tab)
         self.notify("クイック確認を実行しました", level=self._quickstart_notify_level(report))
 
@@ -9306,8 +9371,41 @@ class AutoNoteApp(tk.Tk):
         return "success"
 
     def run_readiness_to_tab(self) -> None:
-        report = run_readiness(self.project_dir)
-        self._set_text(self.diagnostics_text, format_readiness_report(report))
+        running = self._readiness_thread
+        if running is not None and running.is_alive():
+            self.notify("準備度の確認は実行中です。完了まで待ってください。", level="warning")
+            return
+        self._set_text(self.diagnostics_text, "準備度を確認中…\n完了後にこの画面を更新します。")
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("準備度を確認中…", level="info")
+        thread = threading.Thread(
+            target=self._run_readiness_worker,
+            daemon=True,
+        )
+        self._readiness_thread = thread
+        thread.start()
+
+    def _run_readiness_worker(self) -> None:
+        report = None
+        text = ""
+        error: Exception | None = None
+        try:
+            report = run_readiness(self.project_dir)
+            text = format_readiness_report(report)
+        except Exception as exc:  # surfaced to the user on the main thread
+            error = exc
+        try:
+            self.after(0, lambda: self._finish_readiness(report, text, error))
+        except tk.TclError:
+            pass
+
+    def _finish_readiness(self, report, text: str, error: Exception | None) -> None:
+        self._readiness_thread = None
+        if error is not None or report is None:
+            self.notify("準備度の確認に失敗しました", level="error")
+            messagebox.showerror("準備度エラー", str(error))
+            return
+        self._set_text(self.diagnostics_text, text)
         self.notebook.select(self.diagnostics_tab)
         self.notify("準備度を確認しました", level="success" if report.ok else "warning")
 
