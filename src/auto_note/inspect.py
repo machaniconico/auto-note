@@ -92,7 +92,7 @@ def _issues_for(article: Article, body: str) -> list[Issue]:
         issues.append(Issue("warn", "status が scheduled ですが scheduled が空です。"))
     if article.status == "published" and not article.published_url:
         issues.append(Issue("warn", "公開済みですが published_url が空です。"))
-    if re.search(r"\b(TODO|FIXME|下書き|要確認)\b", body, flags=re.I):
+    if re.search(r"(\bTODO\b|\bFIXME\b|下書き|要確認)", body, flags=re.I):
         issues.append(Issue("warn", "本文に未処理メモらしき文字があります。"))
 
     for image in collect_article_images(article):

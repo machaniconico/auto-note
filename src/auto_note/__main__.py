@@ -14,6 +14,12 @@ from .article import ArticleError, body_with_tags, hashtags_for, load_article, t
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (AttributeError, ValueError):
+            pass
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -992,7 +998,7 @@ def main(argv: list[str] | None = None) -> int:
                 set_article_cover(args.file, imported.relative_path)
                 print(f"set cover: {imported.relative_path}")
             if args.insert:
-                current = args.file.read_text(encoding="utf-8")
+                current = args.file.read_text(encoding="utf-8-sig")
                 write_text_atomic(args.file, current.rstrip() + "\n\n" + imported.markdown + "\n")
                 print(f"inserted image markdown: {imported.markdown}")
             else:
@@ -1175,7 +1181,7 @@ def main(argv: list[str] | None = None) -> int:
                     time.sleep(args.interval)
             return 0
 
-    except (ArticleError, RuntimeError, KeyboardInterrupt) as exc:
+    except (RuntimeError, OSError, ValueError, KeyboardInterrupt) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

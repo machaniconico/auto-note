@@ -318,7 +318,7 @@ def _scheduled_articles(path: Path, *, pattern: str, days: int) -> list[Article]
         except ArticleError:
             continue
         delta = (scheduled_at.date() - now.date()).days
-        if delta <= days:
+        if 0 <= delta <= days:
             articles.append(article)
     return sorted(articles, key=lambda article: _schedule_or_max(article.scheduled))
 

@@ -164,7 +164,8 @@ def _review_body(article: Article, body: str, items: list[ReviewItem]) -> None:
 
 
 def _review_structure(body: str, items: list[ReviewItem]) -> None:
-    headings = re.findall(r"^#{2,3}\s+(.+?)\s*$", body, flags=re.MULTILINE)
+    stripped = re.sub(r"```.*?```", "", body, flags=re.DOTALL)
+    headings = re.findall(r"^#{2,3}\s+(.+?)\s*$", stripped, flags=re.MULTILINE)
     if not headings:
         _add(items, "構成", "improve", "本文見出しがありません。", "2-4個の見出しに分けて、流し読みできる形にします。", 10)
     elif len(headings) == 1:
@@ -184,7 +185,8 @@ def _review_opening(body: str, items: list[ReviewItem]) -> None:
 
 
 def _review_ending(body: str, items: list[ReviewItem]) -> None:
-    tail = _plain_text(body[-900:])
+    cleaned = _plain_text(body)
+    tail = cleaned[-900:]
     if re.search(r"(まとめ|最後に|結論|次に|試して|コメント|フォロー|スキ|シェア|相談|登録|購入|参加)", tail):
         _add(items, "締め", "ok", "締めに要約または次の行動が入っています。", "")
     else:

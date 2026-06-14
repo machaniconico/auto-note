@@ -492,6 +492,13 @@ def _delivery_message_checkout_check(report: SalesReviewReport) -> SalesLaunchCh
     if package_path.name not in message_text:
         missing.append("ZIP name")
     package_sha = _sha256(package_path)
+    if not package_sha:
+        return SalesLaunchCheck(
+            "checkout delivery message",
+            "fail",
+            f"{package_path.name} is unreadable",
+            "購入者向けZIPを読めるか確認してください。",
+        )
     if package_sha and package_sha not in message_text:
         missing.append("SHA-256")
     if missing:

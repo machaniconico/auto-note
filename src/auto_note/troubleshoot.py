@@ -298,7 +298,6 @@ def _sanitize(text: str, project_dir: Path) -> str:
         project_dir.resolve().as_posix(): "<PROJECT_DIR>",
         str(Path.home()): "<HOME>",
         Path.home().as_posix(): "<HOME>",
-        Path.home().name: "<USER>",
     }
     sanitized = text
     for value, replacement in sorted(replacements.items(), key=lambda pair: len(pair[0]), reverse=True):

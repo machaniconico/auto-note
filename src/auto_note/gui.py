@@ -3660,13 +3660,21 @@ class AutoNoteApp(tk.Tk):
             return
         self._run_action_plan_step(step)
 
+    def _copy_to_clipboard(self, text: str) -> None:
+        # Must use update() (not update_idletasks()) so the selection-request events
+        # that hand data to the OS clipboard manager are processed. TclError is
+        # intentionally propagated so guarded call sites can report a real failure
+        # instead of showing a false "copied" message.
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self.update()
+
     def copy_selected_home_action_command(self) -> None:
         step = self._selected_home_action_step()
         if step is None or not step.command:
             self.notify("コピーできるCLIがありません", level="warning")
             return
-        self.clipboard_clear()
-        self.clipboard_append(step.command)
+        self._copy_to_clipboard(step.command)
         self.notify("CLIコマンドをコピーしました", level="success")
 
     def _build_diagnostics_tab(self) -> None:
@@ -4256,8 +4264,7 @@ class AutoNoteApp(tk.Tk):
         if item is None or not item.command:
             self.notify("コピーできるCLIがありません", level="warning")
             return
-        self.clipboard_clear()
-        self.clipboard_append(item.command)
+        self._copy_to_clipboard(item.command)
         self.notify("CLIコマンドをコピーしました", level="success")
 
     def _configure_review_tree_tags(self) -> None:
@@ -4831,7 +4838,7 @@ class AutoNoteApp(tk.Tk):
         path = Path(selection[0])
         try:
             self._set_selected_article(load_article(path))
-        except ArticleError as exc:
+        except (ArticleError, OSError, UnicodeDecodeError) as exc:
             messagebox.showerror("読み込みエラー", str(exc))
             self._set_selected_article(None)
 
@@ -5282,7 +5289,7 @@ class AutoNoteApp(tk.Tk):
                 self.refresh_home()
                 self.refresh_review_panel()
                 self.run_check_all(show_popup=False)
-            except (OSError, ArticleError) as exc:
+            except (OSError, ArticleError, UnicodeDecodeError) as exc:
                 self.notify("メタ情報の保存に失敗しました", level="error")
                 messagebox.showerror("メタ情報エラー", str(exc))
                 return
@@ -5452,7 +5459,7 @@ class AutoNoteApp(tk.Tk):
                     set_article_cover(article.source, imported.relative_path)
                     self._set_selected_article(load_article(article.source))
                     self.refresh_articles()
-                except (OSError, ArticleError) as exc:
+                except (OSError, ArticleError, UnicodeDecodeError) as exc:
                     self.notify("cover設定に失敗しました", level="error")
                     messagebox.showerror("cover設定エラー", str(exc))
                     return
@@ -5464,7 +5471,7 @@ class AutoNoteApp(tk.Tk):
             return
         try:
             self._set_selected_article(load_article(article.source))
-        except ArticleError as exc:
+        except (ArticleError, OSError, UnicodeDecodeError) as exc:
             self._set_editor(_read_text(article.source))
             self.notify("記事の再読み込みに失敗しました", level="error")
             messagebox.showerror("再読み込みエラー", str(exc))
@@ -5700,9 +5707,7 @@ class AutoNoteApp(tk.Tk):
         else:
             value = text_bundle(article, append_tags=self.settings.append_tags_by_default)
             label = "全文"
-        self.clipboard_clear()
-        self.clipboard_append(value)
-        self.update()
+        self._copy_to_clipboard(value)
         self.notify(f"{label}をコピーしました", level="success")
 
     def save_status(self) -> None:
@@ -6088,9 +6093,7 @@ class AutoNoteApp(tk.Tk):
     def copy_home_operation_summary_action(self) -> None:
         summary_text = self._home_operation_summary_text()
         try:
-            self.clipboard_clear()
-            self.clipboard_append(summary_text)
-            self.update_idletasks()
+            self._copy_to_clipboard(summary_text)
         except tk.TclError as exc:
             self.notify("運用要約をコピーできませんでした", level="error")
             messagebox.showerror("運用要約コピー", str(exc))
@@ -6293,9 +6296,7 @@ class AutoNoteApp(tk.Tk):
             self._refresh_home_reports()
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(str(path.resolve()))
-            self.update_idletasks()
+            self._copy_to_clipboard(str(path.resolve()))
         except tk.TclError as exc:
             self.notify("直近レポートのパスをコピーできませんでした", level="error")
             messagebox.showerror("直近レポート", str(exc))
@@ -7840,9 +7841,7 @@ class AutoNoteApp(tk.Tk):
             self.focus_support_contact_field()
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(contact)
-            self.update_idletasks()
+            self._copy_to_clipboard(contact)
         except tk.TclError as exc:
             self.notify("サポート連絡先をコピーできませんでした", level="error")
             messagebox.showerror("連絡先コピー", str(exc))
@@ -8071,9 +8070,7 @@ class AutoNoteApp(tk.Tk):
         self._set_text(self.diagnostics_text, text)
         self.notebook.select(self.diagnostics_tab)
         try:
-            self.clipboard_clear()
-            self.clipboard_append(text)
-            self.update_idletasks()
+            self._copy_to_clipboard(text)
         except tk.TclError as exc:
             self.notify("表示診断をコピーできませんでした", level="error")
             messagebox.showerror("表示診断コピー", str(exc))
@@ -8877,9 +8874,7 @@ class AutoNoteApp(tk.Tk):
             self.notify("販売確認記録がありません", level="warning")
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(confirmation_text.rstrip() + "\n")
-            self.update_idletasks()
+            self._copy_to_clipboard(confirmation_text.rstrip() + "\n")
         except tk.TclError as exc:
             self.notify("クリップボードへコピーできませんでした", level="error")
             messagebox.showerror("販売確認コピーエラー", str(exc))
@@ -9200,7 +9195,8 @@ class AutoNoteApp(tk.Tk):
     def _finish_release_check_full(self, report_path: Path, text: str, status: str) -> None:
         self._release_check_thread = None
         self._set_text(self.diagnostics_text, text + f"\nsaved: {report_path}\n")
-        self.notebook.select(self.diagnostics_tab)
+        if str(self.notebook.select()) == str(self.diagnostics_tab):
+            self.notebook.select(self.diagnostics_tab)
         self._refresh_home_reports()
         self._refresh_home_sales_summary()
         if status == "OK":
@@ -9445,9 +9441,7 @@ class AutoNoteApp(tk.Tk):
             return
         latest = reports[0]
         try:
-            self.clipboard_clear()
-            self.clipboard_append(str(latest.resolve()))
-            self.update_idletasks()
+            self._copy_to_clipboard(str(latest.resolve()))
         except tk.TclError as exc:
             self.notify("診断レポートZIPのパスをコピーできませんでした", level="error")
             messagebox.showerror("診断ZIPパス", str(exc))
@@ -9704,9 +9698,7 @@ class AutoNoteApp(tk.Tk):
             messagebox.showerror("送付記録コピーエラー", str(exc))
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(receipt_text.rstrip() + "\n")
-            self.update_idletasks()
+            self._copy_to_clipboard(receipt_text.rstrip() + "\n")
         except tk.TclError as exc:
             self.notify("クリップボードへコピーできませんでした", level="error")
             messagebox.showerror("送付記録コピーエラー", str(exc))
@@ -9740,9 +9732,7 @@ class AutoNoteApp(tk.Tk):
             )
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(order_note.rstrip() + "\n")
-            self.update_idletasks()
+            self._copy_to_clipboard(order_note.rstrip() + "\n")
         except tk.TclError as exc:
             self.notify("クリップボードへコピーできませんでした", level="error")
             messagebox.showerror("注文控えコピーエラー", str(exc))
@@ -9817,9 +9807,7 @@ class AutoNoteApp(tk.Tk):
             self.notify("購入者向けZIPに問題があるため送付文をコピーしませんでした", level="error")
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(message_text + "\n")
-            self.update_idletasks()
+            self._copy_to_clipboard(message_text + "\n")
         except tk.TclError as exc:
             self.notify("クリップボードへコピーできませんでした", level="error")
             messagebox.showerror("送付文コピーエラー", str(exc))
@@ -9907,9 +9895,7 @@ class AutoNoteApp(tk.Tk):
             return
         copied_path = package_path.resolve()
         try:
-            self.clipboard_clear()
-            self.clipboard_append(str(copied_path))
-            self.update_idletasks()
+            self._copy_to_clipboard(str(copied_path))
         except tk.TclError as exc:
             self.notify("クリップボードへコピーできませんでした", level="error")
             messagebox.showerror("ZIPパスコピーエラー", str(exc))
@@ -9982,9 +9968,7 @@ class AutoNoteApp(tk.Tk):
         ]
         sheet_text = "\n".join(sheet_lines)
         try:
-            self.clipboard_clear()
-            self.clipboard_append(sheet_text + "\n")
-            self.update_idletasks()
+            self._copy_to_clipboard(sheet_text + "\n")
         except tk.TclError as exc:
             self.notify("クリップボードへコピーできませんでした", level="error")
             messagebox.showerror("送付情報コピーエラー", str(exc))
@@ -10210,9 +10194,7 @@ class AutoNoteApp(tk.Tk):
         latest = bundles[0]
         self._refresh_support_summary()
         try:
-            self.clipboard_clear()
-            self.clipboard_append(str(latest.resolve()))
-            self.update_idletasks()
+            self._copy_to_clipboard(str(latest.resolve()))
         except tk.TclError as exc:
             self.notify("最新問い合わせ一式ZIPのパスをコピーできませんでした", level="error")
             messagebox.showerror("最新ZIPパス", str(exc))
@@ -10253,9 +10235,7 @@ class AutoNoteApp(tk.Tk):
             ]
         )
         try:
-            self.clipboard_clear()
-            self.clipboard_append(message)
-            self.update_idletasks()
+            self._copy_to_clipboard(message)
         except tk.TclError as exc:
             self.notify("サポート送付メモをコピーできませんでした", level="error")
             messagebox.showerror("送付文コピー", str(exc))
@@ -10425,9 +10405,7 @@ class AutoNoteApp(tk.Tk):
             self.notify("コピーできるGUIログはまだありません", level="warning")
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(text)
-            self.update_idletasks()
+            self._copy_to_clipboard(text)
         except tk.TclError as exc:
             self.notify("GUIログをコピーできませんでした", level="error")
             messagebox.showerror("GUIログコピー", str(exc))
@@ -10520,9 +10498,7 @@ class AutoNoteApp(tk.Tk):
             self.notify("コピーできる復旧レポートはまだありません", level="warning")
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(text)
-            self.update_idletasks()
+            self._copy_to_clipboard(text)
         except tk.TclError as exc:
             self.notify("復旧レポートをコピーできませんでした", level="error")
             messagebox.showerror("復旧レポートコピー", str(exc))
@@ -10591,7 +10567,6 @@ class AutoNoteApp(tk.Tk):
             self._set_text(self.check_text, text)
 
     def _set_text(self, widget: ScrolledText, text: str) -> None:
-        _style_text_widget(widget)
         widget.configure(state=tk.NORMAL)
         widget.delete("1.0", tk.END)
         widget.insert(tk.END, text)
@@ -11720,7 +11695,7 @@ def _backup_restore_blocked_message(inspection) -> str:
 
 
 def _read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    return path.read_text(encoding="utf-8-sig", errors="replace")
 
 
 def _format_timestamp(value: float) -> str:

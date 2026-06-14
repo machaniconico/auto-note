@@ -274,44 +274,50 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
         quality = mask_text(quality, project_dir)
         maintenance = mask_text(maintenance, project_dir)
 
-    with zipfile.ZipFile(report_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("diagnostics.txt", diagnostics + "\n")
-        archive.writestr("article-index.txt", article_index + "\n")
-        archive.writestr("article-review.txt", article_review + "\n")
-        archive.writestr("first-run.txt", first_run + "\n")
-        archive.writestr("acceptance.txt", acceptance + "\n")
-        archive.writestr("self-test.txt", self_test + "\n")
-        archive.writestr("action-plan.txt", action_plan + "\n")
-        archive.writestr("overview.txt", overview + "\n")
-        archive.writestr("calendar.txt", calendar + "\n")
-        archive.writestr("quickstart.txt", quickstart + "\n")
-        archive.writestr("publish-ready.txt", publish_ready + "\n")
-        archive.writestr("improvement-plan.txt", improvement_plan + "\n")
-        archive.writestr("publish-queue.txt", publish_queue + "\n")
-        archive.writestr("gui-smoke.txt", gui_smoke + "\n")
-        archive.writestr("preflight.txt", preflight + "\n")
-        archive.writestr("troubleshoot.txt", troubleshoot + "\n")
-        archive.writestr("settings-summary.txt", _build_settings_summary(project_dir))
-        archive.writestr("readiness.txt", readiness + "\n")
-        archive.writestr("commercial-readiness.txt", commercial_readiness + "\n")
-        archive.writestr("commercial-setup-template.txt", commercial_setup_template + "\n")
-        archive.writestr("sales-plan.txt", sales_plan + "\n")
-        archive.writestr("sales-materials.txt", sales_materials + "\n")
-        archive.writestr("sales-finalize.txt", sales_finalize + "\n")
-        archive.writestr("sales-launch.txt", sales_launch + "\n")
-        archive.writestr("seller-send-checklist.txt", seller_send_checklist + "\n")
-        archive.writestr("sales-evidence-manifest.json", sales_evidence_manifest + "\n")
-        archive.writestr("product-quality.txt", product_quality + "\n")
-        archive.writestr("quality.txt", quality + "\n")
-        archive.writestr("maintenance-summary.txt", maintenance + "\n")
-        _write_text_file(archive, project_dir, ".auto-note/gui-error.log", include_private=include_private)
-        path = project_dir / "pyproject.toml"
-        if path.exists() and path.is_file():
-            archive.write(path, "pyproject.toml")
-        if include_private:
-            settings_path = project_dir / ".auto-note" / "settings.json"
-            if settings_path.exists():
-                archive.write(settings_path, ".auto-note/settings.json")
+    temp_path = reports_dir / f".{report_path.name}.tmp"
+    try:
+        with zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("diagnostics.txt", diagnostics + "\n")
+            archive.writestr("article-index.txt", article_index + "\n")
+            archive.writestr("article-review.txt", article_review + "\n")
+            archive.writestr("first-run.txt", first_run + "\n")
+            archive.writestr("acceptance.txt", acceptance + "\n")
+            archive.writestr("self-test.txt", self_test + "\n")
+            archive.writestr("action-plan.txt", action_plan + "\n")
+            archive.writestr("overview.txt", overview + "\n")
+            archive.writestr("calendar.txt", calendar + "\n")
+            archive.writestr("quickstart.txt", quickstart + "\n")
+            archive.writestr("publish-ready.txt", publish_ready + "\n")
+            archive.writestr("improvement-plan.txt", improvement_plan + "\n")
+            archive.writestr("publish-queue.txt", publish_queue + "\n")
+            archive.writestr("gui-smoke.txt", gui_smoke + "\n")
+            archive.writestr("preflight.txt", preflight + "\n")
+            archive.writestr("troubleshoot.txt", troubleshoot + "\n")
+            archive.writestr("settings-summary.txt", _build_settings_summary(project_dir))
+            archive.writestr("readiness.txt", readiness + "\n")
+            archive.writestr("commercial-readiness.txt", commercial_readiness + "\n")
+            archive.writestr("commercial-setup-template.txt", commercial_setup_template + "\n")
+            archive.writestr("sales-plan.txt", sales_plan + "\n")
+            archive.writestr("sales-materials.txt", sales_materials + "\n")
+            archive.writestr("sales-finalize.txt", sales_finalize + "\n")
+            archive.writestr("sales-launch.txt", sales_launch + "\n")
+            archive.writestr("seller-send-checklist.txt", seller_send_checklist + "\n")
+            archive.writestr("sales-evidence-manifest.json", sales_evidence_manifest + "\n")
+            archive.writestr("product-quality.txt", product_quality + "\n")
+            archive.writestr("quality.txt", quality + "\n")
+            archive.writestr("maintenance-summary.txt", maintenance + "\n")
+            _write_text_file(archive, project_dir, ".auto-note/gui-error.log", include_private=include_private)
+            path = project_dir / "pyproject.toml"
+            if path.exists() and path.is_file():
+                archive.write(path, "pyproject.toml")
+            if include_private:
+                settings_path = project_dir / ".auto-note" / "settings.json"
+                if settings_path.exists():
+                    archive.write(settings_path, ".auto-note/settings.json")
+        temp_path.replace(report_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
     return report_path
 
@@ -322,17 +328,23 @@ def create_support_diagnostic_report(project_dir: Path, *, include_private: bool
     report_path = unique_path(reports_dir / f"auto-note-support-diagnostic-{datetime.now():%Y%m%d-%H%M%S}.zip")
     sections = _build_support_diagnostic_sections(project_dir, include_private=include_private)
 
-    with zipfile.ZipFile(report_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name in REQUIRED_DIAGNOSTIC_REPORT_FILES:
-            archive.writestr(name, sections.get(name, "(empty)") + "\n")
-        _write_text_file(archive, project_dir, ".auto-note/gui-error.log", include_private=include_private)
-        path = project_dir / "pyproject.toml"
-        if path.exists() and path.is_file():
-            archive.write(path, "pyproject.toml")
-        if include_private:
-            settings_path = project_dir / ".auto-note" / "settings.json"
-            if settings_path.exists():
-                archive.write(settings_path, ".auto-note/settings.json")
+    temp_path = reports_dir / f".{report_path.name}.tmp"
+    try:
+        with zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name in REQUIRED_DIAGNOSTIC_REPORT_FILES:
+                archive.writestr(name, sections.get(name, "(empty)") + "\n")
+            _write_text_file(archive, project_dir, ".auto-note/gui-error.log", include_private=include_private)
+            path = project_dir / "pyproject.toml"
+            if path.exists() and path.is_file():
+                archive.write(path, "pyproject.toml")
+            if include_private:
+                settings_path = project_dir / ".auto-note" / "settings.json"
+                if settings_path.exists():
+                    archive.write(settings_path, ".auto-note/settings.json")
+        temp_path.replace(report_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
     return report_path
 
@@ -508,7 +520,6 @@ def mask_text(text: str, project_dir: Path) -> str:
         project_dir.resolve().as_posix(): "<PROJECT_DIR>",
         str(Path.home()): "<HOME>",
         Path.home().as_posix(): "<HOME>",
-        Path.home().name: "<USER>",
     }
     for value, replacement in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
         if value:

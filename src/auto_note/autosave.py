@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from hashlib import sha1
 from pathlib import Path
 
+from .article import write_text_atomic
+
 
 @dataclass(frozen=True)
 class AutosaveState:
@@ -24,7 +26,7 @@ def autosave_path(project_dir: Path, article_path: Path) -> Path:
 def write_autosave(project_dir: Path, article_path: Path, text: str) -> Path:
     path = autosave_path(project_dir, article_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    write_text_atomic(path, text)
     return path
 
 
