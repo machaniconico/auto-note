@@ -1226,15 +1226,11 @@ class AutoNoteApp(tk.Tk):
         self._bind_shortcuts()
         self.report_callback_exception = self.handle_callback_exception
         self.protocol("WM_DELETE_WINDOW", self.on_close)
-        self.refresh_articles()
-        self.refresh_ideas()
-        self.refresh_schedule()
-        self.refresh_home()
-        self.refresh_first_run_panel()
-        self.refresh_review_panel()
-        self.refresh_help()
-        self.run_check_all(show_popup=False)
-        self.run_diagnostics_to_tab()
+        # Defer the initial data load to the first idle tick so the window paints
+        # immediately instead of freezing before first paint. update_idletasks()
+        # (used by smoke_gui) and the mainloop both flush this, so behavior is
+        # unchanged for tests and real launches alike.
+        self.after_idle(self._initial_refresh)
         if self.display_safe_mode:
             if self.display_safe_mode_reason == "auto-readability":
                 message = "表示を自動補正: 文字が潰れそうなため大きめ表示で起動しました"
@@ -1246,6 +1242,18 @@ class AutoNoteApp(tk.Tk):
             )
         self.after(350, self.show_onboarding_if_needed)
         self.schedule_autosave()
+
+    def _initial_refresh(self) -> None:
+        # Runs once on the first idle tick after construction (see __init__).
+        self.refresh_articles()
+        self.refresh_ideas()
+        self.refresh_schedule()
+        self.refresh_home()
+        self.refresh_first_run_panel()
+        self.refresh_review_panel()
+        self.refresh_help()
+        self.run_check_all(show_popup=False)
+        self.run_diagnostics_to_tab()
 
     def _active_ui_density(self) -> str:
         return self.display_density_override or _normalise_ui_density(getattr(self.settings, "ui_density", "comfortable"))
