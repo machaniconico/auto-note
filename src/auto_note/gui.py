@@ -5523,6 +5523,10 @@ class AutoNoteApp(tk.Tk):
             if self._autosave_job:
                 self.after_cancel(self._autosave_job)
                 self._autosave_job = None
+            self._quickstart_thread = None
+            self._readiness_thread = None
+            self._commercial_readiness_thread = None
+            self._release_check_thread = None
             self.destroy()
 
     def open_helper(self) -> None:
@@ -8469,7 +8473,7 @@ class AutoNoteApp(tk.Tk):
         try:
             self.after(0, lambda: self._finish_quickstart(report, text, error))
         except tk.TclError:
-            pass
+            self._quickstart_thread = None
 
     def _finish_quickstart(self, report, text: str, error: Exception | None) -> None:
         self._quickstart_thread = None
@@ -8861,7 +8865,7 @@ class AutoNoteApp(tk.Tk):
         try:
             self.after(0, lambda: self._finish_commercial_readiness(report, path, save, error))
         except tk.TclError:
-            pass
+            self._commercial_readiness_thread = None
 
     def _finish_commercial_readiness(self, report, path, save: bool, error: Exception | None) -> None:
         self._commercial_readiness_thread = None
@@ -9326,7 +9330,7 @@ class AutoNoteApp(tk.Tk):
         try:
             self.after(0, lambda: self._finish_release_check_full(report_path, safe_text, status))
         except tk.TclError:
-            pass
+            self._release_check_thread = None
 
     def _finish_release_check_full(self, report_path: Path, text: str, status: str) -> None:
         self._release_check_thread = None
@@ -9397,7 +9401,7 @@ class AutoNoteApp(tk.Tk):
         try:
             self.after(0, lambda: self._finish_readiness(report, text, error))
         except tk.TclError:
-            pass
+            self._readiness_thread = None
 
     def _finish_readiness(self, report, text: str, error: Exception | None) -> None:
         self._readiness_thread = None

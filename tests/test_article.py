@@ -4596,6 +4596,53 @@ tags: note
             self.assertIn(f"articles/{article.name}", result.restored_files)
             self.assertIn("Restore status: ready", _backup_restore_confirmation(inspection))
 
+    def test_restore_backup_uses_unique_staging_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            backup = project / "backup.zip"
+            with zipfile.ZipFile(backup, "w") as archive:
+                archive.writestr("articles/restored.md", "restored")
+            collision = project / ".auto-note" / ".restore-tmp-20260614-010203-123456"
+            collision.mkdir(parents=True)
+
+            class FixedDatetime:
+                @classmethod
+                def now(cls):
+                    return datetime(2026, 6, 14, 1, 2, 3, 123456)
+
+            with patch("auto_note.backup.datetime", FixedDatetime):
+                result = restore_backup(project, backup, create_safety_backup=False)
+
+            self.assertTrue(collision.exists())
+            self.assertEqual((project / "articles" / "restored.md").read_text(encoding="utf-8"), "restored")
+            self.assertIn("articles/restored.md", result.restored_files)
+
+    def test_restore_backup_restores_original_articles_when_swap_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            articles = project / "articles"
+            articles.mkdir()
+            keep = articles / "keep.md"
+            keep.write_text("live article", encoding="utf-8")
+            backup = project / "backup.zip"
+            with zipfile.ZipFile(backup, "w") as archive:
+                archive.writestr("articles/new.md", "backup article")
+            path_class = type(project)
+            real_rename = path_class.rename
+
+            def flaky_rename(self, target):
+                if self.name == "articles" and self.parent.name.startswith(".restore-tmp"):
+                    raise OSError("staged articles rename failed")
+                return real_rename(self, target)
+
+            with patch.object(path_class, "rename", flaky_rename):
+                with self.assertRaisesRegex(OSError, "staged articles rename failed"):
+                    restore_backup(project, backup, create_safety_backup=False)
+
+            self.assertEqual(keep.read_text(encoding="utf-8"), "live article")
+            self.assertFalse((articles / "articles").exists())
+            self.assertFalse((articles / "new.md").exists())
+
     def test_restore_backup_keeps_articles_when_corrupt_backup_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -5498,6 +5545,31 @@ tags:
             self.assertEqual(read_autosave(project, article), "unsaved draft")
             self.assertTrue(clear_autosave(project, article))
             self.assertFalse(autosave_state(project, article).exists)
+
+    def test_autosave_state_handles_autosave_deleted_before_stat(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            article = project / "articles" / "draft.md"
+            autosave = project / ".auto-note" / "autosaves" / "draft.md.autosave"
+            with patch("auto_note.autosave.autosave_path", return_value=autosave):
+                with patch.object(type(autosave), "stat", side_effect=FileNotFoundError):
+                    state = autosave_state(project, article)
+
+            self.assertEqual(state.article_path, article)
+            self.assertEqual(state.autosave_path, autosave)
+            self.assertFalse(state.exists)
+            self.assertFalse(state.newer_than_article)
+            self.assertEqual(state.size_bytes, 0)
+            self.assertIsNone(state.updated_at)
+
+    def test_clear_autosave_handles_file_deleted_before_unlink(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            article = project / "articles" / "draft.md"
+            autosave = project / ".auto-note" / "autosaves" / "draft.md.autosave"
+            with patch("auto_note.autosave.autosave_path", return_value=autosave):
+                with patch.object(type(autosave), "exists", return_value=True):
+                    self.assertTrue(clear_autosave(project, article))
 
     def test_quality_checks_workflow_values(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -8706,6 +8778,38 @@ tags:
             self.assertFalse(old_file.exists())
             self.assertFalse(nested_old_file.exists())
             self.assertTrue(keep_file.exists())
+
+    def test_cleanup_generated_files_reports_unlink_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            output_dir = project / ".auto-note"
+            output_dir.mkdir(parents=True)
+            deleted_file = output_dir / "manual-post.html"
+            locked_file = output_dir / "note-login.html"
+            deleted_file.write_text("delete", encoding="utf-8")
+            locked_file.write_text("locked", encoding="utf-8")
+            old_time = (datetime.now() - timedelta(days=10)).timestamp()
+            os.utime(deleted_file, (old_time, old_time))
+            os.utime(locked_file, (old_time, old_time))
+            deleted_size = deleted_file.stat().st_size
+            path_class = type(project)
+            real_unlink = path_class.unlink
+
+            def flaky_unlink(self, *args, **kwargs):
+                if self == locked_file:
+                    raise PermissionError("locked")
+                return real_unlink(self, *args, **kwargs)
+
+            with patch.object(path_class, "unlink", flaky_unlink):
+                result = cleanup_generated_files(project, older_than_days=7, dry_run=False)
+            report = format_cleanup_report(result, dry_run=False)
+
+            self.assertEqual(result.deleted, 1)
+            self.assertEqual(result.reclaimed_bytes, deleted_size)
+            self.assertEqual(result.failed, [locked_file])
+            self.assertFalse(deleted_file.exists())
+            self.assertTrue(locked_file.exists())
+            self.assertIn("削除失敗: 1件", report)
 
     def test_cleanup_generated_files_keeps_latest_reports_and_requires_release_opt_in(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

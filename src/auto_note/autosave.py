@@ -36,25 +36,32 @@ def read_autosave(project_dir: Path, article_path: Path) -> str:
 
 def clear_autosave(project_dir: Path, article_path: Path) -> bool:
     path = autosave_path(project_dir, article_path)
-    if not path.exists():
+    existed = path.exists()
+    if not existed:
+        path.unlink(missing_ok=True)
         return False
-    path.unlink()
+    path.unlink(missing_ok=True)
     return True
 
 
 def autosave_state(project_dir: Path, article_path: Path) -> AutosaveState:
     path = autosave_path(project_dir, article_path)
-    if not path.exists():
+    try:
+        autosave_stat = path.stat()
+    except FileNotFoundError:
         return AutosaveState(article_path, path, False, False, 0, None)
 
-    autosave_mtime = path.stat().st_mtime
-    article_mtime = article_path.stat().st_mtime if article_path.exists() else 0
+    autosave_mtime = autosave_stat.st_mtime
+    try:
+        article_mtime = article_path.stat().st_mtime
+    except FileNotFoundError:
+        article_mtime = 0
     return AutosaveState(
         article_path=article_path,
         autosave_path=path,
         exists=True,
         newer_than_article=autosave_mtime > article_mtime,
-        size_bytes=path.stat().st_size,
+        size_bytes=autosave_stat.st_size,
         updated_at=autosave_mtime,
     )
 

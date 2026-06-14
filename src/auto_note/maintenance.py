@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -20,6 +20,7 @@ class CleanupResult:
     items: list[CleanupItem]
     deleted: int
     reclaimed_bytes: int
+    failed: list[Path] = field(default_factory=list)
 
 
 def collect_cleanup_items(project_dir: Path, *, older_than_days: int = 7) -> list[CleanupItem]:
@@ -317,15 +318,17 @@ def cleanup_generated_files(
         )
     deleted = 0
     reclaimed = 0
+    failed: list[Path] = []
     if not dry_run:
         for item in items:
             try:
                 item.path.unlink()
-            except FileNotFoundError:
+            except OSError:
+                failed.append(item.path)
                 continue
             deleted += 1
             reclaimed += item.size_bytes
-    return CleanupResult(items=items, deleted=deleted, reclaimed_bytes=reclaimed)
+    return CleanupResult(items=items, deleted=deleted, reclaimed_bytes=reclaimed, failed=failed)
 
 
 def format_cleanup_report(
@@ -352,6 +355,8 @@ def format_cleanup_report(
         lines.append(f"見込み解放容量: {_format_bytes(total_bytes)}")
     else:
         lines.append(f"解放容量: {_format_bytes(result.reclaimed_bytes)}")
+    if result.failed:
+        lines.append(f"削除失敗: {len(result.failed)}件")
     if not result.items:
         lines.append("対象ファイルはありません。")
         return "\n".join(lines)

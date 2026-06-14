@@ -223,7 +223,6 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
     from .selftest import run_self_test
 
     reports_dir = project_dir / ".auto-note" / "diagnostics"
-    reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = unique_path(reports_dir / f"auto-note-diagnostic-{datetime.now():%Y%m%d-%H%M%S}.zip")
 
     shared_readiness = run_readiness(project_dir)
@@ -310,6 +309,10 @@ def create_diagnostic_report(project_dir: Path, *, include_private: bool = False
         maintenance = mask_text(maintenance, project_dir)
 
     temp_path = reports_dir / f".{report_path.name}.tmp"
+    try:
+        reports_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise RuntimeError(f"could not create diagnostic reports directory: {reports_dir}") from exc
     try:
         with zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("diagnostics.txt", diagnostics + "\n")

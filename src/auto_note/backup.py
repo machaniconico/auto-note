@@ -233,10 +233,10 @@ def restore_backup(project_dir: Path, backup_path: Path, *, create_safety_backup
             if (create_safety_backup or clears_articles) and _has_project_data(project_dir)
             else None
         )
-        staging = project_dir / ".auto-note" / f".restore-tmp-{datetime.now():%Y%m%d-%H%M%S}"
+        staging: Path | None = None
         restored: list[str] = []
         try:
-            staging.mkdir(parents=True, exist_ok=False)
+            staging = _make_unique_restore_staging(project_dir / ".auto-note")
             for info in members:
                 if info.is_dir():
                     continue
@@ -251,12 +251,7 @@ def restore_backup(project_dir: Path, backup_path: Path, *, create_safety_backup
                 if clears_articles:
                     articles_dir = project_dir / "articles"
                     staged_articles = staging / "articles"
-                    if articles_dir.exists():
-                        shutil.rmtree(articles_dir)
-                    if staged_articles.exists():
-                        shutil.move(str(staged_articles), str(articles_dir))
-                    else:
-                        articles_dir.mkdir(parents=True, exist_ok=True)
+                    _swap_restored_articles(articles_dir, staged_articles)
                 for normalized in restored:
                     if normalized.startswith("articles/"):
                         continue
@@ -266,7 +261,8 @@ def restore_backup(project_dir: Path, backup_path: Path, *, create_safety_backup
                     os.replace(staged_path, target)
             except Exception:
                 if safety_backup is not None:
-                    shutil.rmtree(staging, ignore_errors=True)
+                    if staging is not None:
+                        shutil.rmtree(staging, ignore_errors=True)
                     try:
                         restore_backup(project_dir, safety_backup, create_safety_backup=False)
                     except Exception:
@@ -280,7 +276,8 @@ def restore_backup(project_dir: Path, backup_path: Path, *, create_safety_backup
                     pass
             raise
         finally:
-            shutil.rmtree(staging, ignore_errors=True)
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
 
     return BackupRestoreResult(backup=backup_path, safety_backup=safety_backup, restored_files=restored)
 
@@ -352,6 +349,53 @@ def _has_project_data(project_dir: Path) -> bool:
     if (project_dir / "articles").exists():
         return True
     return any((project_dir / relative).exists() for relative in (".auto-note/settings.json", ".auto-note/ideas.json"))
+
+
+def _make_unique_restore_staging(parent: Path) -> Path:
+    stem = f".restore-tmp-{datetime.now():%Y%m%d-%H%M%S-%f}"
+    path = parent / stem
+    for index in range(0, 1000):
+        candidate = path if index == 0 else parent / f"{stem}-{index:03d}"
+        try:
+            candidate.mkdir(parents=True, exist_ok=False)
+            return candidate
+        except FileExistsError:
+            continue
+    raise FileExistsError(f"could not create a unique restore staging directory in {parent}")
+
+
+def _unique_restore_sibling(path: Path, suffix: str) -> Path:
+    stem = f".{path.name}-{suffix}-{datetime.now():%Y%m%d-%H%M%S-%f}"
+    candidate = path.parent / stem
+    if not candidate.exists():
+        return candidate
+    for index in range(1, 1000):
+        indexed = path.parent / f"{stem}-{index:03d}"
+        if not indexed.exists():
+            return indexed
+    raise FileExistsError(f"could not create a unique restore sibling name in {path.parent}")
+
+
+def _swap_restored_articles(articles_dir: Path, staged_articles: Path) -> None:
+    original_articles: Path | None = None
+    try:
+        if articles_dir.exists():
+            original_articles = _unique_restore_sibling(articles_dir, "restore-old")
+            articles_dir.rename(original_articles)
+        if staged_articles.exists():
+            staged_articles.rename(articles_dir)
+        else:
+            articles_dir.mkdir(parents=True, exist_ok=True)
+        if not articles_dir.exists():
+            raise FileNotFoundError(f"restored articles directory missing: {articles_dir}")
+    except Exception:
+        if original_articles is not None and original_articles.exists():
+            if articles_dir.exists():
+                shutil.rmtree(articles_dir)
+            original_articles.rename(articles_dir)
+        raise
+    if original_articles is not None:
+        shutil.rmtree(original_articles)
 
 
 def _unique_backup_path(backup_dir: Path, prefix: str) -> Path:
