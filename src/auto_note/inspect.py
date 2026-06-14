@@ -47,11 +47,38 @@ def inspect_article(article: Article, *, append_tags: bool = False) -> ArticleRe
     return ArticleReport(article=article, stats=stats, issues=issues)
 
 
+_INSPECT_CACHE: dict[tuple[str, int, int, bool], ArticleReport] = {}
+
+
+def clear_inspect_cache() -> None:
+    _INSPECT_CACHE.clear()
+
+
+def inspect_file_cached(file: Path, *, append_tags: bool = False) -> ArticleReport:
+    """inspect_article keyed by (path, mtime, size). A changed file invalidates
+    its entry automatically, so this never serves stale stats. Mirrors the
+    review.py file cache; cuts the per-article image scan repeated by
+    refresh_articles and inspect_path on every refresh."""
+    try:
+        stat = file.stat()
+    except OSError:
+        return inspect_article(load_article(file), append_tags=append_tags)
+    key = (str(file.resolve()), stat.st_mtime_ns, stat.st_size, append_tags)
+    cached = _INSPECT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    report = inspect_article(load_article(file), append_tags=append_tags)
+    for stale in [k for k in _INSPECT_CACHE if k[0] == key[0] and k != key]:
+        _INSPECT_CACHE.pop(stale, None)
+    _INSPECT_CACHE[key] = report
+    return report
+
+
 def inspect_path(path: Path, *, pattern: str = "*.md", append_tags: bool = False) -> list[ArticleReport]:
     files = _collect_markdown_files(path, pattern)
     if not files:
         raise ArticleError(f"No markdown files found in {path}.")
-    return [inspect_article(load_article(file), append_tags=append_tags) for file in files]
+    return [inspect_file_cached(file, append_tags=append_tags) for file in files]
 
 
 def format_reports(reports: list[ArticleReport]) -> str:

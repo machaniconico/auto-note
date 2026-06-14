@@ -83,7 +83,7 @@ from .images import (
     missing_images,
     set_article_cover,
 )
-from .inspect import format_reports, inspect_article, inspect_path
+from .inspect import format_reports, inspect_article, inspect_file_cached, inspect_path
 from .improvement_plan import (
     ImprovementPlan,
     build_improvement_plan,
@@ -4812,7 +4812,7 @@ class AutoNoteApp(tk.Tk):
                 article = load_article(path)
                 if not self.article_matches_filters(article):
                     continue
-                report = inspect_article(article, append_tags=self.settings.append_tags_by_default)
+                report = inspect_file_cached(path, append_tags=self.settings.append_tags_by_default)
                 values = (
                     STATUS_LABELS.get(article.status, article.status or "draft"),
                     _issue_summary(report),
