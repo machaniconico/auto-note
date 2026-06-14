@@ -26,8 +26,33 @@ class ArticleError(ValueError):
     pass
 
 
+_ARTICLE_CACHE: dict[tuple[str, int, int], Article] = {}
+
+
+def clear_article_cache() -> None:
+    _ARTICLE_CACHE.clear()
+
+
 def load_article(path: str | Path) -> Article:
     source = Path(path)
+    try:
+        stat = source.stat()
+    except OSError:
+        # Preserve original error semantics (FileNotFoundError etc. surface as before).
+        return _load_article_uncached(source)
+    key = (str(source.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _ARTICLE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    article = _load_article_uncached(source)
+    # Drop stale entries for the same path so the cache stays bounded across edits.
+    for stale in [k for k in _ARTICLE_CACHE if k[0] == key[0] and k != key]:
+        _ARTICLE_CACHE.pop(stale, None)
+    _ARTICLE_CACHE[key] = article
+    return article
+
+
+def _load_article_uncached(source: Path) -> Article:
     text = source.read_text(encoding="utf-8-sig")
     metadata, body = split_frontmatter(text)
 

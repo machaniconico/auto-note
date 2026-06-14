@@ -54,11 +54,34 @@ def review_article(article: Article, *, append_tags: bool = False) -> ArticleRev
     return ArticleReview(article=article, score=score, items=items)
 
 
+_REVIEW_CACHE: dict[tuple[str, int, int, bool], ArticleReview] = {}
+
+
+def clear_review_cache() -> None:
+    _REVIEW_CACHE.clear()
+
+
+def _review_file_cached(file: Path, *, append_tags: bool) -> ArticleReview:
+    try:
+        stat = file.stat()
+    except OSError:
+        return review_article(load_article(file), append_tags=append_tags)
+    key = (str(file.resolve()), stat.st_mtime_ns, stat.st_size, append_tags)
+    cached = _REVIEW_CACHE.get(key)
+    if cached is not None:
+        return cached
+    review = review_article(load_article(file), append_tags=append_tags)
+    for stale in [k for k in _REVIEW_CACHE if k[0] == key[0] and k != key]:
+        _REVIEW_CACHE.pop(stale, None)
+    _REVIEW_CACHE[key] = review
+    return review
+
+
 def review_path(path: Path, *, pattern: str = "*.md", append_tags: bool = False) -> list[ArticleReview]:
     files = _collect_markdown_files(path, pattern)
     if not files:
         raise ArticleError(f"No markdown files found in {path}.")
-    return [review_article(load_article(file), append_tags=append_tags) for file in files]
+    return [_review_file_cached(file, append_tags=append_tags) for file in files]
 
 
 def format_review_report(reviews: list[ArticleReview], *, include_private: bool = True) -> str:
