@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import shlex
+from typing import TYPE_CHECKING
 import zipfile
 
 from .commercial_setup import (
@@ -12,6 +13,10 @@ from .commercial_setup import (
     COMMERCIAL_SETUP_TEMPLATE_GUI,
 )
 from .paths import unique_path
+
+if TYPE_CHECKING:
+    from .acceptance import AcceptanceReport
+    from .privacy import PrivacyAuditReport
 
 
 @dataclass(frozen=True)
@@ -126,12 +131,18 @@ def _project_relative_path(path: Path, project_dir: Path) -> str:
         return path.name
 
 
-def run_commercial_readiness(project_dir: Path, *, include_sales_handoffs: bool = True) -> CommercialReadinessReport:
+def run_commercial_readiness(
+    project_dir: Path,
+    *,
+    include_sales_handoffs: bool = True,
+    acceptance: AcceptanceReport | None = None,
+    privacy: PrivacyAuditReport | None = None,
+) -> CommercialReadinessReport:
     project_dir = project_dir.resolve()
     items = [
         _release_item(project_dir),
-        _privacy_item(project_dir, include_sales_handoffs=include_sales_handoffs),
-        _acceptance_item(project_dir, include_sales_handoffs=include_sales_handoffs),
+        _privacy_item(project_dir, include_sales_handoffs=include_sales_handoffs, privacy=privacy),
+        _acceptance_item(project_dir, include_sales_handoffs=include_sales_handoffs, acceptance=acceptance),
         _seller_profile_item(project_dir),
         _commercial_docs_item(project_dir),
         _commercial_policy_item(project_dir),
@@ -514,11 +525,20 @@ def _release_item(project_dir: Path) -> CommercialReadinessItem:
     return CommercialReadinessItem("配布ZIP", "pass", f"{latest.name} verified")
 
 
-def _privacy_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> CommercialReadinessItem:
+def _privacy_item(
+    project_dir: Path,
+    *,
+    include_sales_handoffs: bool = True,
+    privacy: PrivacyAuditReport | None = None,
+) -> CommercialReadinessItem:
     from .privacy import run_privacy_audit
     from .privacy_actions import privacy_failed_cleanup_action
 
-    report = run_privacy_audit(project_dir, include_sales_handoffs=include_sales_handoffs)
+    report = (
+        privacy
+        if privacy is not None
+        else run_privacy_audit(project_dir, include_sales_handoffs=include_sales_handoffs)
+    )
     if report.status == "fail":
         failures = sum(1 for item in report.items if item.status == "fail")
         return CommercialReadinessItem(
@@ -541,11 +561,20 @@ def _privacy_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> 
     return CommercialReadinessItem("プライバシー監査", "pass", f"{len(report.items)} artifact(s) OK")
 
 
-def _acceptance_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> CommercialReadinessItem:
+def _acceptance_item(
+    project_dir: Path,
+    *,
+    include_sales_handoffs: bool = True,
+    acceptance: AcceptanceReport | None = None,
+) -> CommercialReadinessItem:
     from .acceptance import list_acceptance_reports, run_acceptance_check
 
     reports = list_acceptance_reports(project_dir)
-    current = run_acceptance_check(project_dir, include_sales_handoffs=include_sales_handoffs)
+    current = (
+        acceptance
+        if acceptance is not None
+        else run_acceptance_check(project_dir, include_sales_handoffs=include_sales_handoffs)
+    )
     if not current.ok:
         first_issue = next((item for item in current.items if item.status == "fail"), None)
         first_detail = (

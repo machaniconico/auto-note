@@ -12,6 +12,7 @@ from .paths import unique_path
 from .privacy import run_privacy_audit
 from .privacy_actions import privacy_failed_cleanup_action
 from .quickstart import ESSENTIAL_SETUP_ITEMS, QuickstartReport, run_quickstart
+from .readiness import ReadinessReport
 from .release import list_releases, verify_release_package
 from .setup_check import run_setup_check
 
@@ -61,13 +62,15 @@ def run_self_test(
     create: bool = False,
     gui_smoke: bool = False,
     include_sales_handoffs: bool = True,
+    readiness: ReadinessReport | None = None,
+    quickstart: QuickstartReport | None = None,
 ) -> SelfTestReport:
     project_dir = project_dir.resolve()
     items = [
         _setup_item(project_dir, create=create),
         _launcher_health_item(project_dir),
-        _quickstart_item(project_dir),
-        _action_plan_item(project_dir),
+        _quickstart_item(project_dir, quickstart=quickstart),
+        _action_plan_item(project_dir, readiness=readiness, quickstart=quickstart),
         _privacy_item(project_dir, include_sales_handoffs=include_sales_handoffs),
         _release_item(project_dir),
     ]
@@ -295,8 +298,9 @@ def _hidden_launcher_syntax_warning(path: Path) -> str:
     return ""
 
 
-def _quickstart_item(project_dir: Path) -> SelfTestItem:
-    return _self_test_quickstart_item(run_quickstart(project_dir))
+def _quickstart_item(project_dir: Path, *, quickstart: QuickstartReport | None = None) -> SelfTestItem:
+    report = quickstart if quickstart is not None else run_quickstart(project_dir)
+    return _self_test_quickstart_item(report)
 
 
 def _self_test_quickstart_item(report: QuickstartReport) -> SelfTestItem:
@@ -327,8 +331,13 @@ def _self_test_quickstart_item(report: QuickstartReport) -> SelfTestItem:
     return SelfTestItem("quickstart", "pass", f"{report.score}/100")
 
 
-def _action_plan_item(project_dir: Path) -> SelfTestItem:
-    report = build_action_plan(project_dir, limit=3)
+def _action_plan_item(
+    project_dir: Path,
+    *,
+    readiness: ReadinessReport | None = None,
+    quickstart: QuickstartReport | None = None,
+) -> SelfTestItem:
+    report = build_action_plan(project_dir, readiness=readiness, quickstart=quickstart, limit=3)
     top = report.steps[0] if report.steps else None
     detail = report.status if top is None else f"{report.status}, top: {top.title}"
     if report.status == "BLOCKED":

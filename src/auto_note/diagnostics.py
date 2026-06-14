@@ -213,28 +213,63 @@ def _commercial_setup_item(project_dir: Path) -> DiagnosticItem:
 
 
 def create_diagnostic_report(project_dir: Path, *, include_private: bool = False) -> Path:
+    from .acceptance import run_acceptance_check
+    from .action_plan import build_action_plan
+    from .commercial import run_commercial_readiness
+    from .first_run import run_first_run_checklist
+    from .privacy import run_privacy_audit
+    from .quickstart import run_quickstart
+    from .readiness import run_readiness
+    from .selftest import run_self_test
+
     reports_dir = project_dir / ".auto-note" / "diagnostics"
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = unique_path(reports_dir / f"auto-note-diagnostic-{datetime.now():%Y%m%d-%H%M%S}.zip")
 
+    shared_readiness = run_readiness(project_dir)
+    shared_quickstart = run_quickstart(project_dir)
+    shared_self_test = run_self_test(project_dir, readiness=shared_readiness, quickstart=shared_quickstart)
+    shared_first_run = run_first_run_checklist(
+        project_dir,
+        self_test=shared_self_test,
+        quickstart=shared_quickstart,
+        readiness=shared_readiness,
+    )
+    shared_acceptance = run_acceptance_check(
+        project_dir,
+        first_run=shared_first_run,
+        self_test=shared_self_test,
+    )
+    shared_action_plan = build_action_plan(project_dir, readiness=shared_readiness, quickstart=shared_quickstart)
+    shared_privacy = run_privacy_audit(project_dir)
+    shared_commercial = run_commercial_readiness(
+        project_dir,
+        acceptance=shared_acceptance,
+        privacy=shared_privacy,
+    )
+
     diagnostics = format_diagnostics(run_diagnostics(project_dir))
     article_index = _build_article_index(project_dir, include_private=include_private)
     article_review = _build_article_review_report(project_dir, include_private=include_private)
-    first_run = _build_first_run_report(project_dir)
-    acceptance = _build_acceptance_report(project_dir)
-    self_test = _build_self_test_report(project_dir)
-    action_plan = _build_action_plan_report(project_dir)
+    first_run = _build_first_run_report(project_dir, report=shared_first_run)
+    acceptance = _build_acceptance_report(project_dir, report=shared_acceptance)
+    self_test = _build_self_test_report(project_dir, report=shared_self_test)
+    action_plan = _build_action_plan_report(project_dir, report=shared_action_plan)
     overview = _build_overview_report(project_dir, include_private=include_private)
     calendar = _build_calendar_report(project_dir, include_private=include_private)
-    quickstart = _build_quickstart_report(project_dir, include_private=include_private)
+    quickstart = _build_quickstart_report(
+        project_dir,
+        include_private=include_private,
+        report=shared_quickstart,
+    )
     publish_ready = _build_publish_ready_report(project_dir, include_private=include_private)
     improvement_plan = _build_improvement_plan_report(project_dir, include_private=include_private)
     publish_queue = _build_publish_queue_report(project_dir, include_private=include_private)
     gui_smoke = _build_gui_smoke_report(project_dir)
     preflight = _build_preflight_report(project_dir)
     troubleshoot = _build_troubleshoot_report(project_dir)
-    readiness = _build_readiness_report(project_dir)
-    commercial_readiness = _build_commercial_readiness_report(project_dir)
+    readiness = _build_readiness_report(project_dir, report=shared_readiness)
+    commercial_readiness = _build_commercial_readiness_report(project_dir, report=shared_commercial)
     commercial_setup_template = _build_commercial_setup_template_report(project_dir)
     sales_plan = _build_sales_plan_report(project_dir)
     sales_materials = _build_sales_materials_report(project_dir)
@@ -768,16 +803,19 @@ def _build_troubleshoot_report(project_dir: Path) -> str:
     return format_troubleshoot_report(run_troubleshoot(project_dir))
 
 
-def _build_quickstart_report(project_dir: Path, *, include_private: bool = False) -> str:
+def _build_quickstart_report(project_dir: Path, *, include_private: bool = False, report=None) -> str:
     from .quickstart import format_quickstart_report, run_quickstart
 
-    return format_quickstart_report(run_quickstart(project_dir), include_private=include_private)
+    return format_quickstart_report(
+        report if report is not None else run_quickstart(project_dir),
+        include_private=include_private,
+    )
 
 
-def _build_action_plan_report(project_dir: Path) -> str:
+def _build_action_plan_report(project_dir: Path, report=None) -> str:
     from .action_plan import build_action_plan, format_action_plan
 
-    return format_action_plan(build_action_plan(project_dir))
+    return format_action_plan(report if report is not None else build_action_plan(project_dir))
 
 
 def _build_overview_report(project_dir: Path, *, include_private: bool = False) -> str:
@@ -799,22 +837,22 @@ def _build_calendar_report(project_dir: Path, *, include_private: bool = False) 
     )
 
 
-def _build_first_run_report(project_dir: Path) -> str:
+def _build_first_run_report(project_dir: Path, report=None) -> str:
     from .first_run import format_first_run_report, run_first_run_checklist
 
-    return format_first_run_report(run_first_run_checklist(project_dir))
+    return format_first_run_report(report if report is not None else run_first_run_checklist(project_dir))
 
 
-def _build_acceptance_report(project_dir: Path) -> str:
+def _build_acceptance_report(project_dir: Path, report=None) -> str:
     from .acceptance import format_acceptance_report, run_acceptance_check
 
-    return format_acceptance_report(run_acceptance_check(project_dir))
+    return format_acceptance_report(report if report is not None else run_acceptance_check(project_dir))
 
 
-def _build_self_test_report(project_dir: Path) -> str:
+def _build_self_test_report(project_dir: Path, report=None) -> str:
     from .selftest import format_self_test_report, run_self_test
 
-    return format_self_test_report(run_self_test(project_dir))
+    return format_self_test_report(report if report is not None else run_self_test(project_dir))
 
 
 def _build_publish_ready_report(project_dir: Path, *, include_private: bool = False) -> str:
@@ -904,16 +942,16 @@ def _build_gui_smoke_report(project_dir: Path) -> str:
     return "\n".join(lines)
 
 
-def _build_readiness_report(project_dir: Path) -> str:
+def _build_readiness_report(project_dir: Path, report=None) -> str:
     from .readiness import format_readiness_report, run_readiness
 
-    return format_readiness_report(run_readiness(project_dir))
+    return format_readiness_report(report if report is not None else run_readiness(project_dir))
 
 
-def _build_commercial_readiness_report(project_dir: Path) -> str:
+def _build_commercial_readiness_report(project_dir: Path, report=None) -> str:
     from .commercial import format_commercial_readiness_report, run_commercial_readiness
 
-    return format_commercial_readiness_report(run_commercial_readiness(project_dir))
+    return format_commercial_readiness_report(report if report is not None else run_commercial_readiness(project_dir))
 
 
 def _build_commercial_setup_template_report(project_dir: Path) -> str:

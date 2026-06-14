@@ -7,6 +7,7 @@ import shlex
 from .action_plan import ActionPlanReport, build_action_plan
 from .privacy_actions import privacy_failed_cleanup_target
 from .quickstart import QuickstartReport, run_quickstart
+from .readiness import ReadinessReport
 from .selftest import SelfTestReport, list_self_test_reports, run_self_test
 from .support import (
     SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS,
@@ -61,16 +62,29 @@ def run_first_run_checklist(
     gui_smoke: bool = False,
     smoke_helper: bool = False,
     include_sales_handoffs: bool = True,
+    self_test: SelfTestReport | None = None,
+    quickstart: QuickstartReport | None = None,
+    readiness: ReadinessReport | None = None,
 ) -> FirstRunReport:
     project_dir = project_dir.resolve()
-    self_test = run_self_test(
-        project_dir,
-        create=create,
-        gui_smoke=gui_smoke,
-        include_sales_handoffs=include_sales_handoffs,
+    self_test = (
+        self_test
+        if self_test is not None
+        else run_self_test(
+            project_dir,
+            create=create,
+            gui_smoke=gui_smoke,
+            include_sales_handoffs=include_sales_handoffs,
+            readiness=readiness,
+            quickstart=quickstart,
+        )
     )
-    quickstart = run_quickstart(project_dir, smoke_helper=smoke_helper)
-    action_plan = build_action_plan(project_dir, quickstart=quickstart)
+    quickstart = (
+        quickstart
+        if quickstart is not None
+        else run_quickstart(project_dir, smoke_helper=smoke_helper)
+    )
+    action_plan = build_action_plan(project_dir, readiness=readiness, quickstart=quickstart)
     items = [
         _setup_item(self_test),
         _self_test_item(self_test),

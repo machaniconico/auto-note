@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from .first_run import run_first_run_checklist
+from .first_run import FirstRunReport, run_first_run_checklist
 from .paths import unique_path
 from .privacy_actions import privacy_failed_cleanup_target
-from .selftest import run_self_test
+from .selftest import SelfTestReport, run_self_test
 from .support import (
     SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS,
     is_support_bundle_stale,
@@ -51,20 +51,26 @@ def run_acceptance_check(
     gui_smoke: bool = False,
     smoke_helper: bool = False,
     include_sales_handoffs: bool = True,
+    first_run: FirstRunReport | None = None,
+    self_test: SelfTestReport | None = None,
 ) -> AcceptanceReport:
     project_dir = project_dir.resolve()
-    first_run = run_first_run_checklist(
-        project_dir,
-        create=create,
-        gui_smoke=gui_smoke,
-        smoke_helper=smoke_helper,
-        include_sales_handoffs=include_sales_handoffs,
+    first_run = (
+        first_run
+        if first_run is not None
+        else run_first_run_checklist(
+            project_dir,
+            create=create,
+            gui_smoke=gui_smoke,
+            smoke_helper=smoke_helper,
+            include_sales_handoffs=include_sales_handoffs,
+        )
     )
     # Reuse the self-test run_first_run_checklist already computed (identical args)
     # to avoid a second privacy audit + release verification. Recompute only when
     # create=True, where the first pass may have created files and a fresh run is
     # the original behavior.
-    self_test = first_run.self_test
+    self_test = self_test or first_run.self_test
     if self_test is None or create:
         self_test = run_self_test(
             project_dir,
