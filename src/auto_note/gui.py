@@ -9378,7 +9378,11 @@ class AutoNoteApp(tk.Tk):
             self.run_diagnostics_to_tab()
         except (OSError, ValueError, zipfile.BadZipFile) as exc:
             self.notify("バックアップ復元に失敗しました", level="error")
-            messagebox.showerror("バックアップ復元エラー", str(exc))
+            detail = str(exc)
+            safety_backup = getattr(exc, "safety_backup", None)
+            if safety_backup:
+                detail += f"\n安全バックアップ: {safety_backup}"
+            messagebox.showerror("バックアップ復元エラー", detail)
             return
         detail = f"{len(result.restored_files)}件を復元しました。"
         if result.safety_backup:
@@ -11663,6 +11667,7 @@ def _article_selection_rank(article: Article) -> int:
 def _backup_restore_confirmation(inspection) -> str:
     lines = [
         "選択したバックアップから記事、設定、アイデアを復元します。",
+        "注意: 現在の articles/ はバックアップ内容で置き換わり、バックアップ後に追加したファイルは削除されます。",
         "",
         f"Restore status: {format_backup_restore_status(inspection)}",
         f"復元対象: {len(inspection.restorable_files)}件",

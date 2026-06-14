@@ -967,9 +967,12 @@ def _zip_privacy_item(path: Path, sensitive: list[SensitiveValue], *, name: str,
 
 def _file_privacy_item(path: Path, sensitive: list[SensitiveValue], *, name: str, action: str) -> PrivacyAuditItem:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        data = path.read_bytes()
     except OSError as exc:
         return PrivacyAuditItem(name, "fail", f"unreadable file: {exc}", action, path)
+    text = _decode_if_text(data, path.name)
+    if text is None:
+        return PrivacyAuditItem(name, "pass", "no raw private markers found", path=path)
     leaks = _text_leaks(_normalize_scan_text(text, path.name), path.name, sensitive)
     if leaks:
         summary = "; ".join(_leak_summary(leaks))
@@ -1017,11 +1020,17 @@ def _scan_zip(archive: zipfile.ZipFile, sensitive: list[SensitiveValue], *, pref
 
 def _decode_if_text(data: bytes, name: str) -> str | None:
     suffix = Path(name).suffix.lower()
-    if suffix and suffix not in {".txt", ".md", ".json", ".toml", ".log", ".csv", ".html", ".ics"}:
+    allow = {".txt", ".md", ".json", ".toml", ".log", ".csv", ".html", ".ics"}
+    if suffix and suffix not in allow:
         return None
-    if b"\x00" in data[:2048]:
+    if not suffix and b"\x00" in data[:2048]:
         return None
-    return data.decode("utf-8", errors="replace")
+    try:
+        return data.decode("utf-8").replace("\x00", "")
+    except UnicodeDecodeError:
+        utf8 = data.decode("utf-8", errors="replace").replace("\x00", "")
+        cp932 = data.decode("cp932", errors="replace").replace("\x00", "")
+        return utf8 + "\n" + cp932
 
 
 def _normalize_scan_text(text: str, location: str) -> str:

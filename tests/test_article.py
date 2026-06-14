@@ -343,6 +343,7 @@ from auto_note.troubleshoot import (
     run_troubleshoot,
 )
 from auto_note.workflow import (
+    _build_ics,
     add_idea,
     export_calendar,
     format_calendar,
@@ -4594,6 +4595,33 @@ tags: note
             self.assertTrue(result.safety_backup and result.safety_backup.exists())
             self.assertIn(f"articles/{article.name}", result.restored_files)
             self.assertIn("Restore status: ready", _backup_restore_confirmation(inspection))
+
+    def test_restore_backup_keeps_articles_when_corrupt_backup_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            articles = project / "articles"
+            articles.mkdir()
+            keep = articles / "keep.md"
+            keep.write_text("live article", encoding="utf-8")
+            backup = create_backup(project)
+            keep.write_text("live after backup", encoding="utf-8")
+
+            corrupt = project / "corrupt.zip"
+            with zipfile.ZipFile(corrupt, "w", compression=zipfile.ZIP_STORED) as archive:
+                archive.writestr("articles/keep.md", "corrupted backup article")
+            blob = bytearray(corrupt.read_bytes())
+            blob[blob.index(b"corrupted backup article")] = ord("C")
+            corrupt.write_bytes(blob)
+
+            with self.assertRaises(zipfile.BadZipFile) as raised:
+                restore_backup(project, corrupt, create_safety_backup=False)
+            self.assertTrue(getattr(raised.exception, "safety_backup", None))
+            self.assertTrue(keep.exists())
+            self.assertEqual(keep.read_text(encoding="utf-8"), "live after backup")
+
+            result = restore_backup(project, backup, create_safety_backup=False)
+            self.assertIn("articles/keep.md", result.restored_files)
+            self.assertEqual(keep.read_text(encoding="utf-8"), "live article")
 
     def test_restore_backup_rejects_unsafe_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -9611,6 +9639,21 @@ publish: false
         self.assertEqual(code, 0)
         self.assertIn("Calendar export / 予定ICS", cli_output.getvalue())
         self.assertTrue(exports)
+
+    def test_build_ics_emits_utc_dtstart_dtend(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            scheduled = create_article("UTC予定", articles_dir=project / "articles", tags=["note"])
+            set_article_schedule(scheduled, "2026-01-01 09:00")
+
+            text = _build_ics([load_article(scheduled)], include_private=False)
+
+        dtstart = next(line for line in text.splitlines() if line.startswith("DTSTART:"))
+        dtend = next(line for line in text.splitlines() if line.startswith("DTEND:"))
+        self.assertTrue(dtstart.endswith("Z"))
+        self.assertTrue(dtend.endswith("Z"))
+        self.assertEqual(dtstart, "DTSTART:20260101T000000Z")
+        self.assertEqual(dtend, "DTEND:20260101T003000Z")
 
     def test_publish_queue_orders_articles_and_saves_privacy_safe_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

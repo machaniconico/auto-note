@@ -15,6 +15,14 @@ COMMERCIAL_SETUP_TEMPLATE_GUI = "設定 > 販売者テンプレ"
 COMMERCIAL_SETUP_APPLY_GUI = "設定 > テンプレ適用"
 COMMERCIAL_SETUP_REVIEW_GUI = "設定 > 販売者情報確認"
 COMMERCIAL_SETUP_READY_GUI = "診断 > 販売素材作成 / 販売ナビ"
+_COMMERCIAL_SETUP_FIELDS = (
+    ("seller_name", "seller name / 販売者・屋号"),
+    ("sales_channel_url", "sales page URL / 販売ページURL"),
+    ("refund_policy_url", "refund policy URL / 返金方針URL"),
+    ("support_contact", "support contact / サポート連絡先"),
+    ("commercial_terms_reviewed", "terms reviewed / 利用条件・商用方針確認"),
+    ("commercial_support_scope_confirmed", "support scope confirmed / サポート範囲確認"),
+)
 
 
 @dataclass(frozen=True)
@@ -353,30 +361,20 @@ def format_commercial_setup_apply_error(template_path: Path, error: Exception, p
 
 
 def commercial_setup_missing_count(settings: AppSettings) -> int:
-    return len(commercial_setup_missing_fields(settings))
+    # Completion counts a field only when it is VALID (validated URLs, non-raw email),
+    # so an invalid-but-present value no longer reports 6/6 complete.
+    return sum(1 for field, _label in _COMMERCIAL_SETUP_FIELDS if not _field_is_complete(settings, field))
 
 
 def commercial_setup_completion(settings: AppSettings) -> tuple[int, int]:
-    total = 6
+    total = len(_COMMERCIAL_SETUP_FIELDS)
     return total - commercial_setup_missing_count(settings), total
 
 
 def commercial_setup_next_field(settings: AppSettings) -> str:
-    if not settings.seller_name.strip():
-        return "seller_name"
-    sales_url = settings.sales_channel_url.strip()
-    if not sales_url or not _is_public_url(sales_url):
-        return "sales_channel_url"
-    refund_url = settings.refund_policy_url.strip()
-    if not refund_url or not _is_public_url(refund_url):
-        return "refund_policy_url"
-    support_contact = settings.support_contact.strip()
-    if not support_contact or _has_raw_email(support_contact) or not _is_public_url(support_contact):
-        return "support_contact"
-    if not settings.commercial_terms_reviewed:
-        return "commercial_terms_reviewed"
-    if not settings.commercial_support_scope_confirmed:
-        return "commercial_support_scope_confirmed"
+    for field, _label in _COMMERCIAL_SETUP_FIELDS:
+        if not _field_is_complete(settings, field):
+            return field
     return ""
 
 
@@ -405,20 +403,48 @@ def commercial_setup_next_focus(settings: AppSettings) -> CommercialSetupFocus:
 
 
 def commercial_setup_missing_fields(settings: AppSettings) -> list[str]:
+    # Empty fields only (the "fill in seller info" prompt). Present-but-invalid
+    # values are surfaced separately by commercial_setup_warnings ("confirm URL").
     missing: list[str] = []
-    if not settings.seller_name.strip():
-        missing.append("seller name / 販売者・屋号")
-    if not settings.sales_channel_url.strip():
-        missing.append("sales page URL / 販売ページURL")
-    if not settings.refund_policy_url.strip():
-        missing.append("refund policy URL / 返金方針URL")
-    if not settings.support_contact.strip():
-        missing.append("support contact / サポート連絡先")
-    if not settings.commercial_terms_reviewed:
-        missing.append("terms reviewed / 利用条件・商用方針確認")
-    if not settings.commercial_support_scope_confirmed:
-        missing.append("support scope confirmed / サポート範囲確認")
+    for field, label in _COMMERCIAL_SETUP_FIELDS:
+        if not _field_is_present(settings, field):
+            missing.append(label)
     return missing
+
+
+def _field_is_complete(settings: AppSettings, field: str) -> bool:
+    if field == "seller_name":
+        return bool(settings.seller_name.strip())
+    if field == "sales_channel_url":
+        value = settings.sales_channel_url.strip()
+        return bool(value) and _is_public_url(value)
+    if field == "refund_policy_url":
+        value = settings.refund_policy_url.strip()
+        return bool(value) and _is_public_url(value)
+    if field == "support_contact":
+        value = settings.support_contact.strip()
+        return bool(value) and not _has_raw_email(value) and _is_public_url(value)
+    if field == "commercial_terms_reviewed":
+        return bool(settings.commercial_terms_reviewed)
+    if field == "commercial_support_scope_confirmed":
+        return bool(settings.commercial_support_scope_confirmed)
+    raise KeyError(field)
+
+
+def _field_is_present(settings: AppSettings, field: str) -> bool:
+    if field == "seller_name":
+        return bool(settings.seller_name.strip())
+    if field == "sales_channel_url":
+        return bool(settings.sales_channel_url.strip())
+    if field == "refund_policy_url":
+        return bool(settings.refund_policy_url.strip())
+    if field == "support_contact":
+        return bool(settings.support_contact.strip())
+    if field == "commercial_terms_reviewed":
+        return bool(settings.commercial_terms_reviewed)
+    if field == "commercial_support_scope_confirmed":
+        return bool(settings.commercial_support_scope_confirmed)
+    raise KeyError(field)
 
 
 def commercial_setup_warnings(settings: AppSettings) -> list[str]:

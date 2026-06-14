@@ -4,9 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from pathlib import PurePosixPath
+import os
 import shutil
 import stat
 import zipfile
+
+
+_MAX_MEMBER_BYTES = 200 * 1024 * 1024
+_MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,9 @@ def inspect_backup(backup_path: Path) -> BackupInspection:
             total_files += 1
             total_bytes += max(info.file_size, 0)
             normalized = _normalize_member_name(info.filename)
+            if info.file_size > _MAX_MEMBER_BYTES:
+                unsafe_files.append(f"oversized: {normalized} ({info.file_size} bytes)")
+                continue
             if not _safe_member_name(normalized):
                 unsafe_files.append(normalized or info.filename)
                 continue
@@ -101,6 +109,8 @@ def inspect_backup(backup_path: Path) -> BackupInspection:
                     has_ideas = True
             else:
                 ignored_files.append(normalized)
+    if total_bytes > _MAX_TOTAL_BYTES:
+        unsafe_files.append(f"oversized total: {total_bytes} bytes")
 
     return BackupInspection(
         backup=backup_path,
@@ -212,26 +222,79 @@ def restore_backup(project_dir: Path, backup_path: Path, *, create_safety_backup
 
     with zipfile.ZipFile(backup_path) as archive:
         members = [info for info in archive.infolist() if _restorable_member(info.filename)]
+        clears_articles = any(
+            _normalize_member_name(info.filename) == "articles/"
+            or _normalize_member_name(info.filename).startswith("articles/")
+            for info in members
+        )
 
-        safety_backup = create_backup(project_dir) if create_safety_backup and _has_project_data(project_dir) else None
-        if any(info.filename == "articles/" or info.filename.startswith("articles/") for info in members):
-            articles_dir = project_dir / "articles"
-            if articles_dir.exists():
-                shutil.rmtree(articles_dir)
-            articles_dir.mkdir(parents=True, exist_ok=True)
-
+        safety_backup = (
+            create_backup(project_dir)
+            if (create_safety_backup or clears_articles) and _has_project_data(project_dir)
+            else None
+        )
+        staging = project_dir / ".auto-note" / f".restore-tmp-{datetime.now():%Y%m%d-%H%M%S}"
         restored: list[str] = []
-        for info in members:
-            if info.is_dir():
-                continue
-            normalized = _normalize_member_name(info.filename)
-            target = _restore_target(project_dir, normalized)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with archive.open(info) as source, target.open("wb") as destination:
-                shutil.copyfileobj(source, destination)
-            restored.append(normalized)
+        try:
+            staging.mkdir(parents=True, exist_ok=False)
+            for info in members:
+                if info.is_dir():
+                    continue
+                normalized = _normalize_member_name(info.filename)
+                target = _restore_target(staging, normalized)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(info) as source, target.open("wb") as destination:
+                    _bounded_extract(source, destination, max_bytes=max(info.file_size, 0) + 64)
+                restored.append(normalized)
+
+            try:
+                if clears_articles:
+                    articles_dir = project_dir / "articles"
+                    staged_articles = staging / "articles"
+                    if articles_dir.exists():
+                        shutil.rmtree(articles_dir)
+                    if staged_articles.exists():
+                        shutil.move(str(staged_articles), str(articles_dir))
+                    else:
+                        articles_dir.mkdir(parents=True, exist_ok=True)
+                for normalized in restored:
+                    if normalized.startswith("articles/"):
+                        continue
+                    staged_path = _restore_target(staging, normalized)
+                    target = _restore_target(project_dir, normalized)
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    os.replace(staged_path, target)
+            except Exception:
+                if safety_backup is not None:
+                    shutil.rmtree(staging, ignore_errors=True)
+                    try:
+                        restore_backup(project_dir, safety_backup, create_safety_backup=False)
+                    except Exception:
+                        pass
+                raise
+        except Exception as exc:
+            if safety_backup is not None:
+                try:
+                    setattr(exc, "safety_backup", safety_backup)
+                except Exception:
+                    pass
+            raise
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
 
     return BackupRestoreResult(backup=backup_path, safety_backup=safety_backup, restored_files=restored)
+
+
+def _bounded_extract(source, destination, *, max_bytes: int) -> None:
+    written = 0
+    while True:
+        chunk = source.read(65536)
+        if not chunk:
+            break
+        written += len(chunk)
+        if written > max_bytes:
+            raise ValueError("backup member is larger than its declared size; aborting restore")
+        destination.write(chunk)
 
 
 def _add_tree(archive: zipfile.ZipFile, root: Path, archive_root: str) -> None:

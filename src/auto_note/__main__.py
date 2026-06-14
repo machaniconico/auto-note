@@ -929,14 +929,21 @@ def main(argv: list[str] | None = None) -> int:
                     print("restore status: blocked until the unsafe/no-restorable entries above are fixed.")
                     return 1
             elif args.restore:
+                print(
+                    "warning: restore replaces the current articles/ with the backup contents; "
+                    "files added after the backup will be removed."
+                )
                 try:
                     result = restore_backup(
                         args.project_dir.resolve(),
                         args.restore,
                         create_safety_backup=not args.no_safety_backup,
                     )
-                except (OSError, ValueError) as exc:
+                except (OSError, ValueError, zipfile.BadZipFile) as exc:
                     print(f"backup restore aborted: {exc}")
+                    safety_backup = getattr(exc, "safety_backup", None)
+                    if safety_backup:
+                        print(f"安全バックアップ: {safety_backup}")
                     print(f"hint: run `auto-note backup --inspect {args.restore}` before restoring this backup.")
                     return 1
                 print(f"backup restored: {result.backup}")
@@ -1754,7 +1761,7 @@ def build_parser() -> argparse.ArgumentParser:
     backup.add_argument(
         "--no-safety-backup",
         action="store_true",
-        help="Do not create a safety backup before restore.",
+        help="Do not create a safety backup before restore. Restore replaces the existing articles/ with the backup contents.",
     )
 
     release = subparsers.add_parser("release", help="Create or list distribution zip packages.")

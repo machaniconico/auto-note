@@ -15,6 +15,7 @@ from .scaffold import create_article
 
 
 STATUSES = {"draft", "ready", "scheduled", "published"}
+JST = timezone(timedelta(hours=9))
 
 
 @dataclass(frozen=True)
@@ -376,15 +377,15 @@ def _build_ics(articles: list[Article], *, include_private: bool) -> str:
         "X-WR-CALNAME:auto-note publishing plan",
     ]
     for index, article in enumerate(articles, start=1):
-        start = _parse_schedule(article.scheduled)
+        start = _parse_schedule(article.scheduled).replace(tzinfo=JST)
         end = start + timedelta(minutes=30)
         lines.extend(
             [
                 "BEGIN:VEVENT",
                 f"UID:{_event_uid(article)}",
                 f"DTSTAMP:{now}",
-                f"DTSTART:{start:%Y%m%dT%H%M%S}",
-                f"DTEND:{end:%Y%m%dT%H%M%S}",
+                f"DTSTART:{start.astimezone(timezone.utc):%Y%m%dT%H%M%SZ}",
+                f"DTEND:{end.astimezone(timezone.utc):%Y%m%dT%H%M%SZ}",
                 f"SUMMARY:{_ical_escape(_event_summary(article, index=index, include_private=include_private))}",
                 f"DESCRIPTION:{_ical_escape(_event_description(article, index=index, include_private=include_private))}",
                 "CATEGORIES:auto-note,note",
