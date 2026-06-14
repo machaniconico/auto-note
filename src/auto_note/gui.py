@@ -5877,7 +5877,13 @@ class AutoNoteApp(tk.Tk):
                 self.home_primary_button_var.set(_home_primary_button_label(self._home_primary_step))
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
-        first_run_report = run_first_run_checklist(self.project_dir)
+        # Reuse the readiness/quickstart reports already computed above instead of
+        # letting run_first_run_checklist -> run_self_test recompute them a second
+        # time on the Tk thread (~47% of this refresh's wall time). The reuse
+        # params have existed since ad0a663; this wires them into the GUI call.
+        first_run_report = run_first_run_checklist(
+            self.project_dir, readiness=readiness, quickstart=quickstart
+        )
         self._refresh_home_first_run_summary(first_run_report)
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
         self._refresh_home_gui_log_status()

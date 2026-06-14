@@ -7,7 +7,7 @@ from pathlib import Path
 from .article import Article, load_article
 from .paths import unique_path
 from .publish_ready import PublishReadyReport, run_publish_ready
-from .review import ArticleReview, review_article
+from .review import ArticleReview, _review_file_cached
 
 
 SEVERITY_ORDER = {"fix": 0, "warn": 1, "improve": 2, "info": 3}
@@ -65,7 +65,10 @@ def build_improvement_plan(
     limit: int = 10,
 ) -> ImprovementPlan:
     article = load_article(file)
-    review = review_article(article, append_tags=append_tags)
+    # Use the file-keyed review cache (path+mtime+size) instead of re-analysing the
+    # article on every selection. review_path() already shares this cache; routing
+    # build_improvement_plan through it makes rapid re-selection near-instant.
+    review = _review_file_cached(file, append_tags=append_tags)
     publish_ready = run_publish_ready(file, append_tags=append_tags, smoke_helper=False)
     steps = _steps_from_review(review)
     steps.extend(_steps_from_publish_ready(publish_ready))
