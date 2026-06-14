@@ -75,7 +75,31 @@ def list_releases(project_dir: Path) -> list[Path]:
     return sorted(release_dir.glob("*.zip"), key=lambda path: path.stat().st_mtime, reverse=True)
 
 
+_RELEASE_VERIFY_CACHE: dict[tuple[str, int, int], list[str]] = {}
+
+
+def clear_release_verify_cache() -> None:
+    _RELEASE_VERIFY_CACHE.clear()
+
+
 def verify_release_package(package_path: Path) -> list[str]:
+    package_path = Path(package_path)
+    try:
+        stat = package_path.stat()
+    except OSError:
+        return _verify_release_package_uncached(package_path)
+    key = (str(package_path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _RELEASE_VERIFY_CACHE.get(key)
+    if cached is not None:
+        return list(cached)
+    result = _verify_release_package_uncached(package_path)
+    for stale in [k for k in _RELEASE_VERIFY_CACHE if k[0] == key[0] and k != key]:
+        _RELEASE_VERIFY_CACHE.pop(stale, None)
+    _RELEASE_VERIFY_CACHE[key] = result
+    return list(result)
+
+
+def _verify_release_package_uncached(package_path: Path) -> list[str]:
     errors: list[str] = []
     if not package_path.exists():
         return [f"package not found: {package_path}"]

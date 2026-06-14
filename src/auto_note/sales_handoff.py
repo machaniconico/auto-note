@@ -435,7 +435,31 @@ def verify_buyer_delivery(directory: Path) -> list[str]:
     return errors
 
 
+_BUYER_VERIFY_CACHE: dict[tuple[str, int, int], list[str]] = {}
+
+
+def clear_buyer_verify_cache() -> None:
+    _BUYER_VERIFY_CACHE.clear()
+
+
 def verify_buyer_delivery_package(package_path: Path) -> list[str]:
+    package_path = Path(package_path)
+    try:
+        stat = package_path.stat()
+    except OSError:
+        return _verify_buyer_delivery_package_uncached(package_path)
+    key = (str(package_path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _BUYER_VERIFY_CACHE.get(key)
+    if cached is not None:
+        return list(cached)
+    result = _verify_buyer_delivery_package_uncached(package_path)
+    for stale in [k for k in _BUYER_VERIFY_CACHE if k[0] == key[0] and k != key]:
+        _BUYER_VERIFY_CACHE.pop(stale, None)
+    _BUYER_VERIFY_CACHE[key] = result
+    return list(result)
+
+
+def _verify_buyer_delivery_package_uncached(package_path: Path) -> list[str]:
     errors: list[str] = []
     if not package_path.exists():
         return [f"buyer delivery zip not found: {package_path}"]
