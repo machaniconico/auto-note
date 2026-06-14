@@ -3,8 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .commercial_setup import commercial_setup_missing_fields, commercial_setup_warnings
+from .commercial_setup import (
+    commercial_setup_missing_fields,
+    commercial_setup_next_actions,
+    commercial_setup_next_focus,
+    commercial_setup_warnings,
+)
 from .publish_queue import PublishQueueEntry, build_publish_queue
+from .privacy_actions import privacy_failed_cleanup_action, privacy_failed_cleanup_target
 from .quickstart import QuickstartReport, run_quickstart
 from .readiness import ReadinessReport, run_readiness
 from .settings import load_settings
@@ -30,6 +36,7 @@ class ActionPlanReport:
     quickstart_score: int
     status: str
     steps: list[ActionPlanStep]
+    all_steps: tuple[ActionPlanStep, ...] = ()
 
 
 def build_action_plan(
@@ -116,21 +123,26 @@ def build_action_plan(
     if troubleshooting_failures or troubleshooting_warnings:
         issue = (troubleshooting_failures or troubleshooting_warnings)[0]
         blocked = bool(troubleshooting_failures)
+        title, gui, command = _troubleshoot_action_target(issue, blocked=blocked)
         add(
-            "troubleshoot",
+            "privacy_cleanup" if title == "危険生成物を確認する" else "troubleshoot",
             25 if blocked else 72,
             severity="blocker" if blocked else "warning",
-            title="トラブル診断のNGを確認する" if blocked else "トラブル診断を確認する",
+            title=title,
             reason=issue.detail,
-            action=issue.action or "起動ログ、ログイン案内、プライバシー監査、配布ZIP状態を確認してください。",
-            gui="診断 > トラブル診断",
-            command="auto-note troubleshoot --project-dir .",
+            action=_troubleshoot_action_message(
+                issue,
+                fallback="起動ログ、ログイン案内、プライバシー監査、配布ZIP状態を確認してください。",
+            ),
+            gui=gui,
+            command=command,
             source="troubleshoot",
         )
 
     settings = load_settings(project_dir)
     commercial_missing = commercial_setup_missing_fields(settings)
     commercial_warnings = commercial_setup_warnings(settings)
+    commercial_focus = commercial_setup_next_focus(settings)
     if commercial_missing:
         add(
             "commercial_setup_missing",
@@ -138,9 +150,9 @@ def build_action_plan(
             severity="warning",
             title="販売者情報を埋める",
             reason=f"未入力 {len(commercial_missing)}件: {', '.join(commercial_missing)}",
-            action="販売者/屋号、販売ページURL、返金方針URL、サポート連絡先、販売前確認を埋めてください。",
-            gui="設定 > 次の不足へ",
-            command="auto-note commercial-setup --project-dir . --template",
+            action=_commercial_setup_action_summary(settings),
+            gui=commercial_focus.gui or "設定 > 次の不足へ",
+            command=commercial_focus.cli or "auto-note commercial-setup --project-dir . --template",
             source="commercial_setup",
         )
     elif commercial_warnings:
@@ -150,9 +162,9 @@ def build_action_plan(
             severity="warning",
             title="販売者情報の公開URLを確認する",
             reason=f"確認事項 {len(commercial_warnings)}件: {', '.join(commercial_warnings)}",
-            action="販売ページURL、返金方針URL、サポート連絡先を購入者が開ける公開URLにしてください。",
-            gui="設定 > 次の不足へ",
-            command="auto-note commercial-setup --project-dir .",
+            action=_commercial_setup_action_summary(settings),
+            gui=commercial_focus.gui or "設定 > 次の不足へ",
+            command=commercial_focus.cli or "auto-note commercial-setup --project-dir .",
             source="commercial_setup",
         )
 
@@ -260,9 +272,9 @@ def build_action_plan(
             "backup",
             60 if backup_item.status == "fail" else 70,
             severity="blocker" if backup_item.status == "fail" else "warning",
-            title="バックアップを作成する",
+            title=_backup_action_title(backup_item.detail),
             reason=backup_item.detail,
-            action="編集や配布前に記事と設定のバックアップを残してください。",
+            action=_backup_action_text(backup_item.detail),
             gui="ホーム > バックアップ作成",
             command="auto-note backup --project-dir .",
             source="readiness",
@@ -349,13 +361,15 @@ def build_action_plan(
         source="readiness",
     )
 
-    steps = [step for _priority, step in sorted(candidates, key=lambda item: item[0])][: max(1, limit)]
+    all_steps = [step for _priority, step in sorted(candidates, key=lambda item: item[0])]
+    steps = all_steps[: max(1, limit)]
     return ActionPlanReport(
         project_dir=project_dir,
         readiness_score=readiness.score,
         quickstart_score=quickstart.score,
-        status=_plan_status(readiness, quickstart, steps),
+        status=_plan_status(readiness, quickstart, all_steps),
         steps=steps,
+        all_steps=tuple(all_steps),
     )
 
 
@@ -363,10 +377,13 @@ def format_action_plan(report: ActionPlanReport) -> str:
     lines = [
         "Action plan / 次の一手",
         f"Status: {report.status}",
+        f"RC target / 販売RC目途: {_action_plan_rc_milestone(report)}",
+        f"RC path / 残り作業: {_action_plan_rc_path_summary(report)}",
+        f"RC checkpoint / 今回の目途: {_action_plan_rc_checkpoint(report)}",
         f"Readiness: {report.readiness_score}/100",
         f"Quickstart: {report.quickstart_score}/100",
         "",
-        "Priority actions",
+        _action_plan_priority_heading(report),
     ]
     for index, step in enumerate(report.steps, start=1):
         label = _severity_label(step.severity)
@@ -378,6 +395,112 @@ def format_action_plan(report: ActionPlanReport) -> str:
         if step.command:
             lines.append(f"   cli: {step.command}")
     return "\n".join(lines)
+
+
+def _action_plan_rc_milestone(report: ActionPlanReport) -> str:
+    steps = _action_plan_all_steps(report)
+    blockers = [step for step in steps if step.severity == "blocker"]
+    if blockers:
+        return (
+            f"BLOCKED: NG {len(blockers)}件を0件にすると販売RC判定へ進めます"
+            f"（先頭: {blockers[0].title}）。"
+        )
+    attention = [step for step in steps if step.severity in {"warning", "maintenance"}]
+    if report.status == "BLOCKED":
+        return "BLOCKED: 未解消NGがあります。上の優先アクションを確認してください。"
+    if attention:
+        return (
+            f"NEAR RC: NG 0件、確認 {len(attention)}件。確認を保存すればREADYです"
+            f"（先頭: {attention[0].title}）。"
+        )
+    return "READY: 優先アクションを確認済みです。販売RCとして固定できます。"
+
+
+def _action_plan_rc_path_summary(report: ActionPlanReport) -> str:
+    steps = _action_plan_all_steps(report)
+    blockers = [step for step in steps if step.severity == "blocker"]
+    attention = [step for step in steps if step.severity in {"warning", "maintenance"}]
+    work = _action_plan_unique_work_items([*blockers, *attention])
+    if blockers:
+        return (
+            f"BLOCKED: {len(work)}優先作業（NG {len(blockers)}件 -> 確認 {len(attention)}件）"
+            f" / 先頭: {_action_plan_step_target(work[0])}"
+        )
+    if report.status == "BLOCKED":
+        return "BLOCKED: 優先表示外のNGがあります。件数を増やすか診断を確認してください。"
+    if attention:
+        return (
+            f"NEAR RC: {len(work)}優先作業（確認 {len(attention)}件）"
+            f" / 先頭: {_action_plan_step_target(work[0])}"
+        )
+    return "READY: 優先残件0件。出荷前チェックで固定できます。"
+
+
+def _action_plan_rc_checkpoint(report: ActionPlanReport) -> str:
+    steps = _action_plan_all_steps(report)
+    blockers = [step for step in steps if step.severity == "blocker"]
+    attention = [step for step in steps if step.severity in {"warning", "maintenance"}]
+    if blockers:
+        first_work = _action_plan_unique_work_items(blockers)[0]
+        return f"{_action_plan_step_target(first_work)} -> commercial-readiness再判定でNG 0件"
+    if report.status == "BLOCKED":
+        return "診断の未解消NGを確認 -> commercial-readiness再判定でNG 0件"
+    if attention:
+        first_work = _action_plan_unique_work_items(attention)[0]
+        return f"{_action_plan_step_target(first_work)} -> 確認を保存してREADY判定"
+    return "auto-note preflight --project-dir . --gui-smoke -> 販売RC固定"
+
+
+def _action_plan_priority_heading(report: ActionPlanReport) -> str:
+    total = len(_action_plan_all_steps(report))
+    visible = len(report.steps)
+    if total > visible:
+        return f"Priority actions ({visible}/{total} shown)"
+    return "Priority actions"
+
+
+def _action_plan_all_steps(report: ActionPlanReport) -> tuple[ActionPlanStep, ...]:
+    return report.all_steps or tuple(report.steps)
+
+
+def _action_plan_unique_work_items(steps: list[ActionPlanStep]) -> list[ActionPlanStep]:
+    result: list[ActionPlanStep] = []
+    seen: set[str] = set()
+    for step in steps:
+        key = step.command or step.gui or step.title
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(step)
+    return result
+
+
+def _action_plan_step_target(step: ActionPlanStep) -> str:
+    return step.command or step.gui or step.title
+
+
+def _commercial_setup_action_summary(settings) -> str:
+    actions = commercial_setup_next_actions(settings)
+    if not actions:
+        return "販売者情報を確認し、販売素材と販売ナビへ反映してください。"
+    summaries: list[str] = []
+    commands: list[str] = []
+    for action in actions:
+        if " / CLI: " in action:
+            summary, command = action.split(" / CLI: ", 1)
+            summaries.append(summary)
+            _append_unique(commands, command)
+        else:
+            summaries.append(action)
+    text = "。".join(summaries)
+    if commands:
+        text += "。CLI: " + " / ".join(commands)
+    return text + "。"
+
+
+def _append_unique(values: list[str], value: str) -> None:
+    if value not in values:
+        values.append(value)
 
 
 def _first_readiness_item(report: ReadinessReport, prefix: str, statuses: set[str]):
@@ -414,6 +537,37 @@ def _serious_troubleshoot_warnings(items) -> list:
         for item in items
         if item.status == "warn" and item.name != "privacy cleanup candidates"
     ]
+
+
+def _troubleshoot_action_target(item, *, blocked: bool) -> tuple[str, str, str]:
+    action = item.action or ""
+    if item.name == "privacy audit" and "--privacy-failed" in action:
+        gui, command = privacy_failed_cleanup_target(action)
+        return "危険生成物を確認する", gui, command
+    return (
+        "トラブル診断のNGを確認する" if blocked else "トラブル診断を確認する",
+        "診断 > トラブル診断",
+        "auto-note troubleshoot --project-dir .",
+    )
+
+
+def _troubleshoot_action_message(item, *, fallback: str) -> str:
+    action = item.action or ""
+    if item.name == "privacy audit" and "--privacy-failed" in action:
+        return privacy_failed_cleanup_action(action, fallback=fallback)
+    return action or fallback
+
+
+def _backup_action_title(detail: str) -> str:
+    if "restore status blocked" in detail:
+        return "復元できるバックアップを作り直す"
+    return "バックアップを作成する"
+
+
+def _backup_action_text(detail: str) -> str:
+    if "restore status blocked" in detail:
+        return "危険または壊れたバックアップは使わず、新しいバックアップを作成して復元可否を確認してください。"
+    return "編集や配布前に記事と設定のバックアップを残してください。"
 
 
 def _plan_status(readiness: ReadinessReport, quickstart: QuickstartReport, steps: list[ActionPlanStep]) -> str:

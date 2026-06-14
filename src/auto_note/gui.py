@@ -30,7 +30,15 @@ from .acceptance import (
 from .article import Article, ArticleError, body_with_tags, hashtags_for, load_article, text_bundle, write_text_atomic
 from .app_info import collect_app_info, format_app_info
 from .autosave import autosave_state, clear_autosave, has_newer_autosave, read_autosave, write_autosave
-from .backup import create_backup, format_backup_inspection, inspect_backup, list_backups, restore_backup
+from .backup import (
+    backup_restore_blockers,
+    create_backup,
+    format_backup_inspection,
+    format_backup_restore_status,
+    inspect_backup,
+    list_backups,
+    restore_backup,
+)
 from .commercial import (
     format_commercial_policy_review,
     format_commercial_readiness_report,
@@ -43,10 +51,12 @@ from .commercial_setup import (
     apply_commercial_setup_template,
     commercial_setup_completion,
     commercial_setup_missing_fields,
+    commercial_setup_next_actions,
     commercial_setup_next_field,
     commercial_setup_next_focus,
     commercial_setup_warnings,
     create_commercial_setup_template,
+    format_commercial_setup_apply_error,
     format_commercial_setup_apply_result,
     format_commercial_settings,
     list_commercial_setup_templates,
@@ -87,6 +97,7 @@ from .overview import build_overview, format_overview_report, list_overview_repo
 from .paths import unique_path
 from .preflight import format_preflight_report, run_preflight
 from .privacy import format_privacy_audit_report, has_privacy_audit_blockers, run_privacy_audit
+from .privacy_actions import privacy_failed_cleanup_apply_command
 from .publish_ready import PublishReadyItem, PublishReadyReport, format_publish_ready_report, run_publish_ready
 from .publish_queue import (
     PublishQueueReport,
@@ -6404,6 +6415,9 @@ class AutoNoteApp(tk.Tk):
             materials=materials,
             screenshot_packs=screenshot_packs,
             listing_packages=listing_packages,
+            privacy_cleanup_needed=(
+                getattr(self._home_primary_step, "title", "") == "危険生成物を確認する"
+            ),
         )
         buyer_package_text = "NG" if buyer_package_errors else ("あり" if buyer_packages else "なし")
         freshness_text = _home_sales_freshness_text(
@@ -6419,9 +6433,16 @@ class AutoNoteApp(tk.Tk):
             handoffs,
         )
         screenshot_text = _home_sales_screenshot_text(screenshot_packs)
+        rc_target_text = _home_sales_rc_target_text(
+            status,
+            seller_remaining=seller_remaining,
+            artifact_remaining=artifact_remaining,
+            artifact_ng_count=artifact_ng_count,
+            artifact_stale_count=artifact_stale_count,
+        )
         self.home_sales_status_var.set(f"販売準備: {status} / 軽量 {score}/100")
         self.home_sales_detail_var.set(
-            f"販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
+            f"{rc_target_text} / 販売者情報 {complete}/{total} / 販売者残件 {seller_remaining} / "
             f"生成物不足 {artifact_remaining} / 生成物NG {artifact_ng_count} / "
             f"生成物更新 {freshness_text} / "
             f"{artifact_text} / 掲載画像 {screenshot_text} / "
@@ -6839,14 +6860,24 @@ class AutoNoteApp(tk.Tk):
         materials: list[Path],
         screenshot_packs: list[Path],
         listing_packages: list[Path],
+        privacy_cleanup_needed: bool = False,
     ) -> SalesPlanStep:
+        if privacy_cleanup_needed:
+            return SalesPlanStep(
+                title="危険生成物を確認する",
+                status="fail",
+                detail="privacy audit NG artifact remains",
+                action="プライバシー監査NGの生成物を削除前に確認し、販売RCを再判定します。",
+                gui="診断 > 危険生成物確認",
+                category="tool",
+            )
         if missing or warnings:
             detail = missing[0] if missing else warnings[0]
             return SalesPlanStep(
                 title="販売者情報を整える",
                 status="warning",
                 detail=detail,
-                action="未入力または公開URLの確認が必要な販売者情報を整えます。",
+                action="販売者設定をまとめて保存できます。未入力の欄に進み、販売ナビで統合CLIも確認できます。",
                 gui="設定 > 次の不足へ",
                 category="seller",
             )
@@ -7008,7 +7039,9 @@ class AutoNoteApp(tk.Tk):
             self.run_sales_plan_to_tab()
             return
         title = step.title
-        if step.category == "seller":
+        if title == "危険生成物を確認する":
+            self.preview_privacy_failed_cleanup_action()
+        elif step.category == "seller":
             self.focus_next_commercial_missing_field()
         elif "配布ZIP" in title or "インストール" in title:
             self.run_preflight_create_release_to_tab()
@@ -7574,8 +7607,8 @@ class AutoNoteApp(tk.Tk):
             ("最新復旧レポート", "保存済みの最新復旧レポートを表示", self.show_latest_recovery_kit_report_action),
             ("復旧レポートコピー", "最新復旧レポートをクリップボードへコピー", self.copy_latest_recovery_kit_report_action),
             ("復旧レポート場所", "復旧レポート保存フォルダを開く", self.open_recovery_kit_reports_folder_action),
-            ("自動修復", "基本フォルダ/設定を安全に再作成し、整理候補を確認", self.run_repair_to_tab),
-            ("トラブル診断", "起動、ログイン、プライバシー、配布ZIPの詰まりどころを確認", self.run_troubleshoot_to_tab),
+            ("自動修復", "基本フォルダ/設定と壊れたインストール記録を安全に修復し、整理候補を確認", self.run_repair_to_tab),
+            ("トラブル診断", "起動、インストール記録、ログイン、プライバシー、配布ZIPの詰まりどころを確認", self.run_troubleshoot_to_tab),
             ("出荷前チェック", "販売/配布前の総合チェックを表示", self.run_preflight_to_tab),
             ("出荷ZIP作成", "総合チェック後に配布ZIPを作成/検証", self.run_preflight_create_release_to_tab),
             ("RC引き渡し", "販売候補版の固定点、実機確認、停止条件を開く", self.open_rc_handoff),
@@ -8497,6 +8530,11 @@ class AutoNoteApp(tk.Tk):
         try:
             result = apply_commercial_setup_template(self.project_dir, latest)
         except (ArticleError, OSError) as exc:
+            self._set_text(
+                self.diagnostics_text,
+                format_commercial_setup_apply_error(latest, exc, self.project_dir),
+            )
+            self.notebook.select(self.diagnostics_tab)
             self.notify("販売者テンプレートの適用に失敗しました", level="error")
             messagebox.showerror("テンプレ適用エラー", str(exc))
             return
@@ -8787,18 +8825,39 @@ class AutoNoteApp(tk.Tk):
                 "販売直前チェックにNGがあります。先にNGを解消してから、実画面確認後に記録してください。",
             )
             return
+        expected_values = ""
+        buyer_package = report.sales_review.buyer_delivery_package_path
+        if buyer_package is not None:
+            try:
+                buyer_sha = hashlib.sha256(buyer_package.read_bytes()).hexdigest()
+            except OSError:
+                buyer_sha = ""
+            if buyer_sha:
+                expected_values = (
+                    f"\n\n最新の購入者ZIP名: {buyer_package.name}"
+                    f"\nSHA-256: {buyer_sha}"
+                )
         note = simpledialog.askstring(
             "販売確認記録",
-            "販売ページのプレビュー/テスト購入相当で確認したメモを入力してください。空欄でも保存できます。",
+            "販売ページのプレビュー/テスト購入相当で確認したメモを1行以上入力してください。"
+            "最新の購入者ZIP名とSHA-256をそのまま含めてください。"
+            f"{expected_values}",
             parent=self,
         )
         if note is None:
             self.notify("販売確認記録をキャンセルしました", level="info")
             return
+        if not note.strip():
+            self.notify("販売確認記録には確認メモが必要です", level="warning")
+            messagebox.showwarning(
+                "販売確認記録",
+                "販売確認記録には、確認した画面、最新の購入者ZIP名、完全なSHA-256、プレビュー/テスト購入結果のメモが必要です。",
+            )
+            return
         try:
             path = write_sales_launch_confirmation(self.project_dir, report=report, note=note)
             text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             self.notify("販売確認記録の保存に失敗しました", level="error")
             messagebox.showerror("販売確認記録エラー", str(exc))
             return
@@ -9231,7 +9290,8 @@ class AutoNoteApp(tk.Tk):
     def run_repair_to_tab(self) -> None:
         if not messagebox.askyesno(
             "自動修復",
-            "基本フォルダ、設定、アイデア保存を安全に再作成します。\n\n"
+            "基本フォルダ、設定、アイデア保存を安全に再作成します。\n"
+            "壊れた install-info.json は install-info.invalid-*.json として退避します。\n\n"
             "記事は変更しません。古い生成物やプライバシー監査NG生成物の削除は、この操作では行いません。",
         ):
             report = run_repair(self.project_dir)
@@ -9304,7 +9364,7 @@ class AutoNoteApp(tk.Tk):
             self.notify("このバックアップは復元できません", level="error")
             messagebox.showerror(
                 "バックアップ復元エラー",
-                "このZIPは復元できません。診断タブのバックアップ確認結果を見てください。",
+                _backup_restore_blocked_message(inspection),
             )
             return
         if not messagebox.askyesno(
@@ -10239,7 +10299,10 @@ class AutoNoteApp(tk.Tk):
 
     def preview_cleanup_action(self) -> None:
         result = cleanup_generated_files(self.project_dir, dry_run=True)
-        self._set_text(self.diagnostics_text, format_cleanup_report(result, dry_run=True))
+        self._set_text(
+            self.diagnostics_text,
+            format_cleanup_report(result, dry_run=True, project_dir=self.project_dir),
+        )
         self.notebook.select(self.diagnostics_tab)
         self.notify("古い生成物候補を表示しました", level="success")
 
@@ -10250,7 +10313,17 @@ class AutoNoteApp(tk.Tk):
             include_releases=True,
             privacy_failed=True,
         )
-        self._set_text(self.diagnostics_text, format_cleanup_report(result, dry_run=True))
+        self._set_text(
+            self.diagnostics_text,
+            format_cleanup_report(
+                result,
+                dry_run=True,
+                privacy_failed=True,
+                include_releases=True,
+                project_dir=self.project_dir,
+                apply_command=privacy_failed_cleanup_apply_command(include_releases=True),
+            ),
+        )
         self.notebook.select(self.diagnostics_tab)
         self.notify(
             "プライバシー監査NGの生成物候補を表示しました",
@@ -10260,14 +10333,20 @@ class AutoNoteApp(tk.Tk):
     def apply_cleanup_action(self) -> None:
         preview = cleanup_generated_files(self.project_dir, dry_run=True)
         if not preview.items:
-            self._set_text(self.diagnostics_text, format_cleanup_report(preview, dry_run=True))
+            self._set_text(
+                self.diagnostics_text,
+                format_cleanup_report(preview, dry_run=True, project_dir=self.project_dir),
+            )
             self.notebook.select(self.diagnostics_tab)
             self.notify("整理対象はありません", level="success")
             return
         if not messagebox.askyesno("生成物整理", format_cleanup_confirmation(preview)):
             return
         result = cleanup_generated_files(self.project_dir, dry_run=False)
-        self._set_text(self.diagnostics_text, format_cleanup_report(result, dry_run=False))
+        self._set_text(
+            self.diagnostics_text,
+            format_cleanup_report(result, dry_run=False, project_dir=self.project_dir),
+        )
         self.notebook.select(self.diagnostics_tab)
         self.notify("古い生成物を整理しました", level="success")
 
@@ -10279,7 +10358,16 @@ class AutoNoteApp(tk.Tk):
             privacy_failed=True,
         )
         if not preview.items:
-            self._set_text(self.diagnostics_text, format_cleanup_report(preview, dry_run=True))
+            self._set_text(
+                self.diagnostics_text,
+                format_cleanup_report(
+                    preview,
+                    dry_run=True,
+                    privacy_failed=True,
+                    include_releases=True,
+                    project_dir=self.project_dir,
+                ),
+            )
             self.notebook.select(self.diagnostics_tab)
             self.notify("プライバシー監査NGの生成物はありません", level="success")
             return
@@ -10294,7 +10382,16 @@ class AutoNoteApp(tk.Tk):
             include_releases=True,
             privacy_failed=True,
         )
-        self._set_text(self.diagnostics_text, format_cleanup_report(result, dry_run=False))
+        self._set_text(
+            self.diagnostics_text,
+            format_cleanup_report(
+                result,
+                dry_run=False,
+                privacy_failed=True,
+                include_releases=True,
+                project_dir=self.project_dir,
+            ),
+        )
         self.notebook.select(self.diagnostics_tab)
         self.notify("プライバシー監査NGの生成物を整理しました", level="success")
 
@@ -10931,6 +11028,39 @@ def _home_sales_indicator_style(state: str) -> tuple[str, str, str]:
     }.get(state, ("CHECK", "#334155", "#ffffff"))
 
 
+def _home_sales_rc_target_text(
+    status: str,
+    *,
+    seller_remaining: int,
+    artifact_remaining: int,
+    artifact_ng_count: int,
+    artifact_stale_count: int,
+) -> str:
+    if artifact_ng_count:
+        return (
+            f"販売RC目途: BLOCKED / 生成物NG {artifact_ng_count}件を0件へ / "
+            "今回の目途: 危険生成物確認後に再判定 / 次: 危険生成物確認"
+        )
+    if artifact_remaining:
+        return (
+            f"販売RC目途: BLOCKED / 生成物不足 {artifact_remaining}件を作成 / "
+            "今回の目途: 販売一式作成まで / 次: 販売一括作成"
+        )
+    if seller_remaining:
+        return (
+            f"販売RC目途: NEAR RC / 販売者残件 {seller_remaining}件を保存 / "
+            "今回の目途: テンプレ適用で保存 / 次: テンプレ適用"
+        )
+    if artifact_stale_count:
+        return (
+            f"販売RC目途: NEAR RC / 更新待ち {artifact_stale_count}件を作り直し / "
+            "今回の目途: 販売一式更新 / 次: 販売一式更新"
+        )
+    if status == "READY TO VERIFY":
+        return "販売RC目途: READY / 今回の目途: 一括チェックで固定 / 次: 販売前一括チェック"
+    return "販売RC目途: NEAR RC / 今回の目途: 販売ナビ確認 / 次: 販売ナビ"
+
+
 def _support_bundle_indicator_style(text: str) -> tuple[str, str, str]:
     if text == "OK":
         return ("OK", "#047857", "#ffffff")
@@ -11092,7 +11222,33 @@ def _home_commercial_focus_text(settings: AppSettings) -> str:
     detail = _home_snapshot_brief(focus.detail, 54)
     if focus.status == "ready":
         return f"販売者次項目: {focus.label} / {label} - {detail}"
-    return f"販売者次項目: {focus.label} / {label} - {detail} / {focus.gui}"
+    action_summary = _home_commercial_focus_action_summary(settings)
+    return f"販売者次項目: {focus.label} / {label} - {detail} / {focus.gui}{action_summary}"
+
+
+def _home_commercial_focus_action_summary(settings: AppSettings) -> str:
+    labels: list[str] = []
+    for action in commercial_setup_next_actions(settings):
+        label = _home_commercial_action_label(action)
+        if label and label not in labels:
+            labels.append(label)
+    if not labels:
+        return ""
+    return " / 次: " + " + ".join(labels[:3])
+
+
+def _home_commercial_action_label(action: str) -> str:
+    if "販売者テンプレート" in action:
+        return "販売者テンプレート作成"
+    if "--terms-reviewed" in action or "--support-scope-confirmed" in action or "確認してから保存" in action:
+        return "確認フラグ保存"
+    if "https://" in action or "公開URL" in action:
+        return "公開URL修正"
+    if "販売素材へ反映" in action:
+        return "販売素材へ反映"
+    if "販売ナビ" in action:
+        return "販売ナビ確認"
+    return _home_snapshot_brief(action.split(" / CLI: ", 1)[0], 20)
 
 
 def _home_commercial_focus_button_label(status: str) -> str:
@@ -11533,6 +11689,7 @@ def _backup_restore_confirmation(inspection) -> str:
     lines = [
         "選択したバックアップから記事、設定、アイデアを復元します。",
         "",
+        f"Restore status: {format_backup_restore_status(inspection)}",
         f"復元対象: {len(inspection.restorable_files)}件",
         f"記事: {len(inspection.article_files)}件",
         f"設定: {'あり' if inspection.has_settings else 'なし'}",
@@ -11540,6 +11697,25 @@ def _backup_restore_confirmation(inspection) -> str:
     ]
     if inspection.ignored_files:
         lines.append(f"復元対象外: {len(inspection.ignored_files)}件")
+    return "\n".join(lines)
+
+
+def _backup_restore_blocked_message(inspection) -> str:
+    lines = [
+        "このバックアップは復元できません。",
+        "",
+        f"Restore status: {format_backup_restore_status(inspection)}",
+    ]
+    blockers = backup_restore_blockers(inspection)
+    if blockers:
+        lines.append("復元ブロッカー:")
+        lines.extend(f"- {blocker}" for blocker in blockers)
+    lines.extend(
+        [
+            "",
+            "診断タブのバックアップ確認結果を確認し、別のバックアップを選ぶか、新しいバックアップを作成してください。",
+        ]
+    )
     return "\n".join(lines)
 
 

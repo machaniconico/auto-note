@@ -12,6 +12,7 @@ import tempfile
 import zipfile
 
 from . import __version__
+from .archive_safety import verify_zip_member_names, verify_zip_regular_entries
 from .commercial import format_commercial_readiness_report, run_commercial_readiness
 from .paths import unique_path
 from .privacy import format_privacy_audit_report, has_privacy_audit_blockers, run_privacy_audit
@@ -147,6 +148,7 @@ def verify_sales_handoff(handoff_path: Path) -> list[str]:
         with zipfile.ZipFile(handoff_path) as archive:
             names = archive.namelist()
             errors.extend(_verify_names(names))
+            errors.extend(_verify_archive_entries(archive))
             for required in (
                 "README.txt",
                 "BUYER_HANDOFF.txt",
@@ -258,14 +260,14 @@ def format_buyer_delivery_result(result: BuyerDeliveryResult) -> str:
     return "\n".join(
         [
             f"buyer delivery extracted: {result.directory}",
-            f"- release package to send: {result.release_path.name}",
+            f"- release package included in buyer ZIP: {result.release_path.name}",
             f"- buyer start guide: {result.buyer_start_path.name}",
             f"- buyer handoff note: {result.buyer_handoff_path.name}",
             f"- buyer support guide: {result.buyer_support_guide_path.name}",
             f"- buyer support request template: {result.buyer_support_request_path.name}",
             f"- manifest file: {result.manifest_path.name}",
             f"- checksum file: {result.checksum_path.name}",
-            f"- buyer delivery zip: {result.package_path.name}",
+            f"- buyer delivery zip to send after verification: {result.package_path.name}",
             "- keep the original auto-note-sales-handoff-*.zip as seller evidence.",
         ]
     )
@@ -441,8 +443,10 @@ def verify_buyer_delivery_package(package_path: Path) -> list[str]:
         return [f"buyer delivery zip path is not a file: {package_path}"]
     try:
         with zipfile.ZipFile(package_path) as archive:
-            names = [name for name in archive.namelist() if not name.endswith("/")]
-            errors.extend(_verify_names(names))
+            archive_names = archive.namelist()
+            errors.extend(_verify_names(archive_names))
+            errors.extend(_verify_archive_entries(archive))
+            names = [name for name in archive_names if not name.endswith("/")]
             release_entries = [
                 name
                 for name in names
@@ -523,19 +527,28 @@ def format_buyer_delivery_package_verification(package_path: Path, errors: list[
             files = []
         lines = [f"[OK] buyer delivery zip verified: {package_path}", "Files:"]
         lines.extend(f"- {name}" for name in files)
-        try:
-            package_bytes = package_path.read_bytes()
-        except OSError:
-            package_bytes = b""
-        if package_bytes:
-            lines.append(f"Package bytes: {len(package_bytes)}")
-            lines.append(f"Package SHA-256: {hashlib.sha256(package_bytes).hexdigest()}")
+        lines.extend(_buyer_delivery_package_identity_lines(package_path))
         lines.append("Upload this ZIP as the buyer-facing delivery package, and keep the sales handoff ZIP as seller evidence.")
         lines.append("Tell the buyer to open START_HERE_FOR_BUYER.txt first.")
         return "\n".join(lines)
     lines = [f"[NG] buyer delivery zip verification failed: {package_path}"]
+    lines.extend(_buyer_delivery_package_identity_lines(package_path))
+    lines.append("Do not send this ZIP. Recreate the buyer delivery package after fixing the errors below.")
     lines.extend(f"- {error}" for error in errors)
     return "\n".join(lines)
+
+
+def _buyer_delivery_package_identity_lines(package_path: Path) -> list[str]:
+    try:
+        package_bytes = package_path.read_bytes()
+    except OSError:
+        return []
+    if not package_bytes:
+        return []
+    return [
+        f"Package bytes: {len(package_bytes)}",
+        f"Package SHA-256: {hashlib.sha256(package_bytes).hexdigest()}",
+    ]
 
 
 def format_sales_handoff_verification(handoff_path: Path, errors: list[str]) -> str:
@@ -552,7 +565,7 @@ def _build_readme(release_name: str, readiness_status: str) -> str:
         f"Release package: release/{release_name}\n"
         f"Commercial readiness status: {readiness_status}\n\n"
         "Files:\n"
-        "- release/: Buyer-facing auto-note release zip.\n"
+        "- release/: Source release ZIP that is included inside the buyer delivery package.\n"
         "- BUYER_HANDOFF.txt: Short handoff note you can paste into the delivery message.\n"
         "- BUYER_SUPPORT_GUIDE.txt: What the buyer should send if they need support.\n"
         "- BUYER_SUPPORT_REQUEST.txt: Fillable support request template for the buyer.\n"
@@ -569,29 +582,34 @@ def _build_readme(release_name: str, readiness_status: str) -> str:
         "Before delivery:\n"
         "- Open COMMERCIAL_READINESS.txt and resolve or consciously accept remaining warnings.\n"
         "- Confirm your sales page, refund terms, and support scope match the saved commercial setup.\n"
-        "- Send the release zip under release/ to the buyer. Keep this handoff zip as your seller evidence.\n"
+        "- Send only the verified auto-note-buyer-delivery-*.zip to the buyer.\n"
+        "- Keep this handoff ZIP and release/ as seller evidence.\n"
     )
 
 
 def _build_buyer_handoff(release_name: str) -> str:
     return (
         "auto-note buyer handoff / 購入者向け納品メモ\n\n"
-        f"Attached release package: {release_name}\n"
-        f"添付する配布ZIP: {release_name}\n\n"
+        "Attached buyer delivery ZIP: auto-note-buyer-delivery-*.zip\n"
+        "添付する納品ZIP: auto-note-buyer-delivery-*.zip\n"
+        f"Included release package / 同梱されている配布ZIP: {release_name}\n\n"
         "Suggested delivery note / 納品メッセージ案:\n"
-        "ご購入ありがとうございます。添付の配布ZIPを展開し、まず START_HERE.txt を開いてください。"
-        "その後 shortcuts\\install-auto-note.bat を実行し、デスクトップまたはスタートメニューの auto-note を起動します。"
+        "ご購入ありがとうございます。添付の auto-note-buyer-delivery-*.zip を展開し、まず START_HERE_FOR_BUYER.txt を開いてください。"
+        f"案内に沿って同梱の配布ZIP（{release_name}）を展開し、START_HERE.txt を確認してから "
+        "shortcuts\\install-auto-note.bat を実行します。"
+        "その後、デスクトップまたはスタートメニューの auto-note を起動します。"
         "起動後は 受入チェック と スターター一式 で最初の動作確認を行ってください。"
         "もし起動しない場合は auto-note-gui.bat を直接開き、表示された内容と ヘルプ > 問い合わせ一式 で作成したZIPを共有してください。\n\n"
         "Buyer first 10 minutes / 購入者の最初の10分:\n"
-        "1. 配布ZIPを展開します。\n"
-        "2. START_HERE.txt を開きます。\n"
-        "3. shortcuts\\install-auto-note.bat を実行します。\n"
-        "4. auto-note を開き、受入チェックを実行します。\n"
-        "5. スターター一式でサンプル記事、予定、アイデアを作ります。\n"
-        "6. 投稿ヘルパーを開き、タイトル/本文/タグをコピーできることを確認します。\n"
-        "7. 普段使うブラウザでnote.comにログインし、貼り付け運用を確認します。\n"
-        "8. 困った時は ヘルプ > 問い合わせ一式 を作成します。\n"
+        "1. auto-note-buyer-delivery-*.zip を展開します。\n"
+        "2. START_HERE_FOR_BUYER.txt を開きます。\n"
+        "3. 同梱の配布ZIPを展開し、START_HERE.txt を開きます。\n"
+        "4. shortcuts\\install-auto-note.bat を実行します。\n"
+        "5. auto-note を開き、受入チェックを実行します。\n"
+        "6. スターター一式でサンプル記事、予定、アイデアを作ります。\n"
+        "7. 投稿ヘルパーを開き、タイトル/本文/タグをコピーできることを確認します。\n"
+        "8. 普段使うブラウザでnote.comにログインし、貼り付け運用を確認します。\n"
+        "9. 困った時は ヘルプ > 問い合わせ一式 を作成します。\n"
     )
 
 
@@ -927,15 +945,11 @@ def _build_checksums(records: list[dict[str, object]]) -> str:
 
 
 def _verify_names(names: list[str]) -> list[str]:
-    errors: list[str] = []
-    for name in names:
-        normalized = name.replace("\\", "/")
-        parts = PurePosixPath(normalized).parts
-        if not normalized or normalized.startswith("/") or ".." in parts or any(":" in part for part in parts):
-            errors.append(f"unsafe file name: {name}")
-        if normalized != name:
-            errors.append(f"non-normalized file name: {name}")
-    return errors
+    return verify_zip_member_names(names, unsafe_label="unsafe file name", duplicate_label="duplicate file name")
+
+
+def _verify_archive_entries(archive: zipfile.ZipFile) -> list[str]:
+    return verify_zip_regular_entries(archive)
 
 
 def _verify_checksums(archive: zipfile.ZipFile) -> list[str]:

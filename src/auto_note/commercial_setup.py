@@ -11,6 +11,12 @@ from .paths import unique_path
 from .settings import AppSettings, load_settings, save_settings
 
 
+COMMERCIAL_SETUP_TEMPLATE_GUI = "設定 > 販売者テンプレ"
+COMMERCIAL_SETUP_APPLY_GUI = "設定 > テンプレ適用"
+COMMERCIAL_SETUP_REVIEW_GUI = "設定 > 販売者情報確認"
+COMMERCIAL_SETUP_READY_GUI = "診断 > 販売素材作成 / 販売ナビ"
+
+
 @dataclass(frozen=True)
 class CommercialSetupTemplateResult:
     path: Path
@@ -34,6 +40,26 @@ class CommercialSetupFocus:
     detail: str
     gui: str
     cli: str
+
+
+def commercial_setup_placeholder_errors(
+    *,
+    seller_name: str | None = None,
+    sales_channel_url: str | None = None,
+    refund_policy_url: str | None = None,
+    support_contact: str | None = None,
+) -> list[str]:
+    placeholders = {
+        "--seller-name": (seller_name, "Your Shop"),
+        "--sales-url": (sales_channel_url, "https://example.com"),
+        "--refund-url": (refund_policy_url, "https://example.com/refund"),
+        "--support-contact": (support_contact, "https://example.com/support"),
+    }
+    errors: list[str] = []
+    for option, (value, placeholder) in placeholders.items():
+        if value is not None and value.strip() == placeholder:
+            errors.append(f'{option} "{placeholder}"')
+    return errors
 
 
 def update_commercial_settings(
@@ -105,7 +131,13 @@ def apply_commercial_setup_template(project_dir: Path, template_path: Path) -> C
 
     values, warnings = parse_commercial_setup_template(text)
     if not values:
-        raise ArticleError("販売者テンプレートから保存できる項目が見つかりません。")
+        raise ArticleError(
+            "販売者テンプレートから保存できる項目が見つかりません。"
+            f"対象テンプレート: {_commercial_setup_template_display_path(template_path, project_dir)}。"
+            "未入力のプレースホルダーを実際の販売者情報に置き換え、"
+            "確認済みの項目は yes にしてから "
+            "`auto-note commercial-setup --project-dir . --apply-latest-template` を実行してください。"
+        )
 
     settings = update_commercial_settings(
         project_dir,
@@ -149,6 +181,8 @@ def parse_commercial_setup_template(text: str) -> tuple[dict[str, object], list[
         boolean = _parse_bool(value)
         if boolean is None:
             warnings.append(f"{raw_key} could not be parsed as yes/no: {raw_value}")
+            continue
+        if not boolean:
             continue
         values[f"{key}_bool"] = boolean
     return values, warnings
@@ -301,6 +335,23 @@ def format_commercial_setup_apply_result(result: CommercialSetupApplyResult) -> 
     return "\n".join(lines)
 
 
+def format_commercial_setup_apply_error(template_path: Path, error: Exception, project_dir: Path) -> str:
+    template_label = _commercial_setup_template_display_path(template_path, project_dir)
+    return "\n".join(
+        [
+            "Commercial setup template apply error / 販売者テンプレート適用エラー",
+            f"template: {template_label}",
+            "",
+            f"[NG] {error}",
+            "",
+            "next actions / 次の操作:",
+            "- テンプレート内の Fill Values を実際の販売者情報に置き換えてください。",
+            "- 未確認の項目は yes にせず、確認済みの項目だけ yes にしてください。",
+            "- GUIの「テンプレ適用」、または CLI: auto-note commercial-setup --project-dir . --apply-latest-template を再実行してください。",
+        ]
+    )
+
+
 def commercial_setup_missing_count(settings: AppSettings) -> int:
     return len(commercial_setup_missing_fields(settings))
 
@@ -387,31 +438,68 @@ def commercial_setup_warnings(settings: AppSettings) -> list[str]:
 
 def commercial_setup_next_actions(settings: AppSettings) -> list[str]:
     actions: list[str] = []
-    if not settings.seller_name.strip():
-        actions.append('設定 > 販売者/屋号 を入力する / CLI: --seller-name "Your Shop"')
-    if not settings.sales_channel_url.strip():
-        actions.append('設定 > 販売ページURL を入力する / CLI: --sales-url "https://example.com"')
-    elif not _is_public_url(settings.sales_channel_url):
+    missing_profile_fields = _missing_commercial_profile_fields(settings)
+    if missing_profile_fields:
+        actions.append(_commercial_setup_template_action(missing_profile_fields))
+    if settings.sales_channel_url.strip() and not _is_public_url(settings.sales_channel_url):
         actions.append("販売ページURLを https:// で始まる公開URLに直す")
-    if not settings.refund_policy_url.strip():
-        actions.append('設定 > 返金方針URL を入力する / CLI: --refund-url "https://example.com/refund"')
-    elif not _is_public_url(settings.refund_policy_url):
+    if settings.refund_policy_url.strip() and not _is_public_url(settings.refund_policy_url):
         actions.append("返金方針URLを https:// で始まる公開URLに直す")
     support_contact = settings.support_contact.strip()
-    if not support_contact:
-        actions.append('設定 > サポート連絡先 を入力する / CLI: --support-contact "https://example.com/support"')
-    elif _has_raw_email(support_contact):
+    if support_contact and _has_raw_email(support_contact):
         actions.append("サポート連絡先はメール直書きではなく、問い合わせフォームなどの公開URLにする")
-    elif not _is_public_url(support_contact):
+    elif support_contact and not _is_public_url(support_contact):
         actions.append("サポート連絡先を https:// で始まる公開サポートURLに直す")
-    if not settings.commercial_terms_reviewed:
-        actions.append("設定 > 利用条件/商用方針を販売前に確認済み をONにする / CLI: --terms-reviewed")
-    if not settings.commercial_support_scope_confirmed:
-        actions.append("設定 > サポート範囲と返金条件を販売ページに明記済み をONにする / CLI: --support-scope-confirmed")
+    review_action = _commercial_setup_review_action(settings)
+    if review_action:
+        actions.append(review_action)
     if not actions:
-        actions.append("販売素材へ反映する: auto-note sales-materials --project-dir .")
-        actions.append("販売ナビで最終確認する: auto-note sales-plan --project-dir .")
+        actions.append(f"販売素材へ反映する: auto-note sales-materials --project-dir . / GUI: {COMMERCIAL_SETUP_READY_GUI}")
+        actions.append(f"販売ナビで最終確認する: auto-note sales-plan --project-dir . / GUI: {COMMERCIAL_SETUP_READY_GUI}")
     return actions
+
+
+def _missing_commercial_profile_fields(settings: AppSettings) -> list[str]:
+    fields: list[str] = []
+    if not settings.seller_name.strip():
+        fields.append("販売者/屋号")
+    if not settings.sales_channel_url.strip():
+        fields.append("販売ページURL")
+    if not settings.refund_policy_url.strip():
+        fields.append("返金方針URL")
+    support_contact = settings.support_contact.strip()
+    if not support_contact:
+        fields.append("サポート連絡先")
+    return fields
+
+
+def _commercial_setup_template_action(fields: list[str]) -> str:
+    field_text = "、".join(fields)
+    return (
+        f"販売者テンプレートで {field_text} をまとめて入力し、編集後に反映する / "
+        f"GUI: {COMMERCIAL_SETUP_TEMPLATE_GUI} -> {COMMERCIAL_SETUP_APPLY_GUI} / "
+        "CLI: auto-note commercial-setup --project-dir . --template / "
+        "apply: auto-note commercial-setup --project-dir . --apply-latest-template"
+    )
+
+
+def _commercial_setup_review_action(settings: AppSettings) -> str:
+    labels: list[str] = []
+    flags: list[str] = []
+    if not settings.commercial_terms_reviewed:
+        labels.append("利用条件/商用方針")
+        flags.append("--terms-reviewed")
+    if not settings.commercial_support_scope_confirmed:
+        labels.append("サポート範囲")
+        flags.append("--support-scope-confirmed")
+    if not flags:
+        return ""
+    label_text = "と".join(labels)
+    return (
+        f"{label_text}を確認してから保存する / "
+        f"GUI: {COMMERCIAL_SETUP_REVIEW_GUI} / "
+        f"CLI: auto-note commercial-setup --project-dir . {' '.join(flags)}"
+    )
 
 
 def _missing_text(fields: list[str]) -> str:
@@ -516,32 +604,32 @@ _FOCUS_GUIDE = {
     "seller_name": (
         "販売者/屋号",
         "設定 > 販売者/屋号",
-        '--seller-name "Your Shop"',
+        "auto-note commercial-setup --project-dir . --template",
     ),
     "sales_channel_url": (
         "販売ページURL",
         "設定 > 販売ページURL",
-        '--sales-url "https://example.com"',
+        "auto-note commercial-setup --project-dir . --template",
     ),
     "refund_policy_url": (
         "返金方針URL",
         "設定 > 返金方針URL",
-        '--refund-url "https://example.com/refund"',
+        "auto-note commercial-setup --project-dir . --template",
     ),
     "support_contact": (
         "サポート連絡先",
         "設定 > サポート連絡先",
-        '--support-contact "https://example.com/support"',
+        "auto-note commercial-setup --project-dir . --template",
     ),
     "commercial_terms_reviewed": (
         "利用条件/商用方針確認",
         "設定 > 利用条件/商用方針を販売前に確認済み",
-        "--terms-reviewed",
+        "auto-note commercial-setup --project-dir . --terms-reviewed",
     ),
     "commercial_support_scope_confirmed": (
         "サポート範囲確認",
         "設定 > サポート範囲と返金条件を販売ページに明記済み",
-        "--support-scope-confirmed",
+        "auto-note commercial-setup --project-dir . --support-scope-confirmed",
     ),
 }
 
@@ -581,6 +669,13 @@ def _clean_template_value(value: str) -> str:
     if value.startswith("[") and value.endswith("]"):
         return ""
     return value
+
+
+def _commercial_setup_template_display_path(template_path: Path, project_dir: Path) -> str:
+    try:
+        return str(template_path.resolve().relative_to(project_dir.resolve()))
+    except ValueError:
+        return template_path.name
 
 
 def _parse_bool(value: str) -> bool | None:

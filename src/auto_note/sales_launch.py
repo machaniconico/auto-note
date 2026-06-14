@@ -57,6 +57,20 @@ class SalesLaunchConfirmation:
     report_path: Path | None = None
 
 
+SALES_LAUNCH_CONFIRMATION_NOTE_GUIDANCE = (
+    "sales launch confirmation note is required. "
+    "Add the marketplace screen, buyer delivery ZIP name/SHA-256, and preview or test-purchase result you checked."
+)
+SALES_LAUNCH_CONFIRMATION_BLOCKER_GUIDANCE = (
+    "sales launch confirmation requires zero launch blockers. "
+    "Run `auto-note sales-launch --project-dir .` and fix the NG items before saving confirmation evidence."
+)
+SALES_LAUNCH_CONFIRMATION_MATCH_GUIDANCE = (
+    "sales launch confirmation note must include the latest buyer delivery ZIP name and full SHA-256. "
+    "Copy them from the Buyer delivery copy sheet after checking the marketplace preview or test-purchase screen."
+)
+
+
 def run_sales_launch_check(project_dir: Path) -> SalesLaunchReport:
     project_dir = project_dir.resolve()
     settings = load_settings(project_dir)
@@ -214,7 +228,7 @@ def format_sales_launch_confirmation(confirmation: SalesLaunchConfirmation) -> s
         "Seller note / 販売者メモ",
     ]
     note = confirmation.note.strip()
-    lines.append(note if note else "- none")
+    lines.append(note if note else "- missing confirmation note")
     lines.extend(
         [
             "",
@@ -236,6 +250,9 @@ def write_sales_launch_confirmation(
 ) -> Path:
     project_dir = project_dir.resolve()
     report = report or run_sales_launch_check(project_dir)
+    _ensure_sales_launch_confirmation_ready(report)
+    note = _normalize_sales_launch_confirmation_note(note)
+    _validate_sales_launch_confirmation_note_matches_delivery(report, note)
     sales_dir = project_dir / ".auto-note" / "sales"
     sales_dir.mkdir(parents=True, exist_ok=True)
     path = unique_path(sales_dir / f"sales-launch-confirmation-{datetime.now():%Y%m%d-%H%M%S}.txt")
@@ -249,6 +266,40 @@ def write_sales_launch_confirmation(
     )
     write_text_atomic(path, format_sales_launch_confirmation(confirmation) + "\n")
     return path
+
+
+def _normalize_sales_launch_confirmation_note(note: str) -> str:
+    cleaned = note.strip()
+    if not cleaned:
+        raise ValueError(SALES_LAUNCH_CONFIRMATION_NOTE_GUIDANCE)
+    return cleaned
+
+
+def _ensure_sales_launch_confirmation_ready(report: SalesLaunchReport) -> None:
+    blockers = [check.name for check in report.checks if check.status == "fail"]
+    if blockers:
+        examples = "; ".join(blockers[:3])
+        if len(blockers) > 3:
+            examples += f"; ... {len(blockers) - 3} more"
+        raise ValueError(f"{SALES_LAUNCH_CONFIRMATION_BLOCKER_GUIDANCE} Blockers: {examples}")
+
+
+def _validate_sales_launch_confirmation_note_matches_delivery(report: SalesLaunchReport, note: str) -> None:
+    package_path = report.sales_review.buyer_delivery_package_path
+    if package_path is None:
+        raise ValueError(f"{SALES_LAUNCH_CONFIRMATION_MATCH_GUIDANCE} Missing buyer delivery ZIP.")
+    package_sha = _sha256(package_path)
+    if not package_sha:
+        raise ValueError(
+            f"{SALES_LAUNCH_CONFIRMATION_MATCH_GUIDANCE} Latest buyer delivery ZIP is unreadable: {package_path.name}"
+        )
+    missing: list[str] = []
+    if package_path.name not in note:
+        missing.append(f"buyer delivery ZIP name `{package_path.name}`")
+    if package_sha not in note:
+        missing.append(f"full SHA-256 `{package_sha}`")
+    if missing:
+        raise ValueError(f"{SALES_LAUNCH_CONFIRMATION_MATCH_GUIDANCE} Missing: {', '.join(missing)}.")
 
 
 def list_sales_launch_checklists(project_dir: Path) -> list[Path]:

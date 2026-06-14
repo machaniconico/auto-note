@@ -3,8 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import shlex
 import zipfile
 
+from .commercial_setup import (
+    COMMERCIAL_SETUP_APPLY_GUI,
+    COMMERCIAL_SETUP_REVIEW_GUI,
+    COMMERCIAL_SETUP_TEMPLATE_GUI,
+)
 from .paths import unique_path
 
 
@@ -58,6 +64,21 @@ DRAFT_MARKERS = (
     "サポート方針案",
 )
 
+_COMMERCIAL_SETUP_TEMPLATE_COMMAND = "auto-note commercial-setup --project-dir . --template"
+_COMMERCIAL_SETUP_APPLY_LATEST_TEMPLATE_COMMAND = "auto-note commercial-setup --project-dir . --apply-latest-template"
+_COMMERCIAL_TERMS_REVIEW_COMMAND = "auto-note commercial-setup --project-dir . --terms-reviewed"
+_ACCEPTANCE_REPORT_COMMAND = "auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report"
+_ACCEPTANCE_GUI = "診断 > 受入チェック"
+_PREFLIGHT_CREATE_RELEASE_GUI = "診断 > 出荷ZIP作成"
+_COMMERCIAL_SETUP_VALUE_OPTIONS = {
+    "--project-dir",
+    "--seller-name",
+    "--sales-url",
+    "--refund-url",
+    "--support-contact",
+}
+_COMMERCIAL_SETUP_FLAG_OPTIONS = {"--terms-reviewed", "--support-scope-confirmed"}
+
 
 def _value(value: str) -> str:
     value = value.strip()
@@ -66,6 +87,43 @@ def _value(value: str) -> str:
 
 def _yes_no(value: bool) -> str:
     return "yes" if value else "no"
+
+
+def _commercial_final_review_command(settings) -> str:
+    flags: list[str] = []
+    if not settings.commercial_terms_reviewed:
+        flags.append("--terms-reviewed")
+    if not settings.commercial_support_scope_confirmed:
+        flags.append("--support-scope-confirmed")
+    if not flags:
+        return ""
+    return f"auto-note commercial-setup --project-dir . {' '.join(flags)}"
+
+
+def _commercial_setup_template_action(project_dir: Path) -> str:
+    from .commercial_setup import list_commercial_setup_templates
+
+    templates = list_commercial_setup_templates(project_dir)
+    if templates:
+        latest = _project_relative_path(templates[0], project_dir)
+        return (
+            f"最新の販売者テンプレート `{latest}` を編集し、"
+            f"`{_COMMERCIAL_SETUP_APPLY_LATEST_TEMPLATE_COMMAND}` で販売者情報を反映してください。"
+            f"GUIでは「{COMMERCIAL_SETUP_APPLY_GUI}」を開いてください。"
+            f"新しく作る場合は「{COMMERCIAL_SETUP_TEMPLATE_GUI}」または `{_COMMERCIAL_SETUP_TEMPLATE_COMMAND}` を使えます。"
+        )
+    return (
+        f"GUIでは「{COMMERCIAL_SETUP_REVIEW_GUI}」で直接入力するか、"
+        f"「{COMMERCIAL_SETUP_TEMPLATE_GUI}」または `{_COMMERCIAL_SETUP_TEMPLATE_COMMAND}` "
+        "で販売者情報をまとめて保存してください。"
+    )
+
+
+def _project_relative_path(path: Path, project_dir: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(project_dir.resolve()))
+    except ValueError:
+        return path.name
 
 
 def run_commercial_readiness(project_dir: Path, *, include_sales_handoffs: bool = True) -> CommercialReadinessReport:
@@ -108,9 +166,12 @@ def format_commercial_readiness_report(report: CommercialReadinessReport) -> str
         f"Verdict: {verdict}",
         f"Score: {report.score}/100",
         f"Items: {counts['pass']} OK, {counts['info']} INFO, {counts['warn']} WARN, {counts['fail']} NG",
+        f"RC target / 販売RC目途: {_commercial_rc_milestone(report.items)}",
+        f"RC path / 残り作業: {_commercial_rc_path_summary(report.items)}",
+        f"RC checkpoint / 今回の目途: {_commercial_rc_checkpoint(report.items)}",
         "",
     ]
-    next_actions: list[str] = []
+    next_actions: list[tuple[str, str]] = []
     for item in report.items:
         label = {"pass": "OK", "info": "INFO", "warn": "WARN", "fail": "NG"}.get(
             item.status,
@@ -119,11 +180,201 @@ def format_commercial_readiness_report(report: CommercialReadinessReport) -> str
         lines.append(f"[{label}] {item.name}: {item.detail}")
         if item.action:
             lines.append(f"  next: {item.action}")
-            next_actions.append(f"- {item.name}: {item.action}")
+            next_actions.append((item.name, item.action))
     if next_actions:
         lines.extend(["", "Next actions"])
-        lines.extend(next_actions)
+        lines.extend(_format_next_actions(next_actions))
     return "\n".join(lines)
+
+
+def _format_next_actions(actions: list[tuple[str, str]]) -> list[str]:
+    grouped: dict[str, list[str]] = {}
+    ordered_actions: list[str] = []
+    for name, action in actions:
+        action_key = _next_action_key(action)
+        if not action_key:
+            continue
+        contained_by = next((existing for existing in ordered_actions if _action_subsumes(existing, action_key)), "")
+        if contained_by:
+            _append_unique(grouped[contained_by], name)
+            continue
+        contained_actions = [existing for existing in ordered_actions if _action_subsumes(action_key, existing)]
+        if contained_actions:
+            insert_at = min(ordered_actions.index(existing) for existing in contained_actions)
+            titles: list[str] = []
+            for existing in contained_actions:
+                for existing_title in grouped.pop(existing):
+                    _append_unique(titles, existing_title)
+                ordered_actions.remove(existing)
+            ordered_actions.insert(insert_at, action_key)
+            grouped[action_key] = titles
+            _append_unique(grouped[action_key], name)
+            continue
+        if action_key not in grouped:
+            grouped[action_key] = []
+            ordered_actions.append(action_key)
+        _append_unique(grouped[action_key], name)
+    return [
+        f"- {' / '.join(grouped[action])}: {action}{_next_action_gui_suffix(action)}"
+        for action in ordered_actions
+    ]
+
+
+def _next_action_key(action: str) -> str:
+    command = _first_backticked_command(action)
+    return command or action.strip()
+
+
+def _next_action_gui_suffix(action: str) -> str:
+    gui = _next_action_gui_target(action)
+    return f" / GUI: {gui}" if gui else ""
+
+
+def _next_action_gui_target(action: str) -> str:
+    tokens = _action_tokens(action)
+    if _action_command_prefix(tokens) == ("auto-note", "cleanup") and "--privacy-failed" in tokens:
+        return "診断 > 危険生成物確認"
+    if _action_command_prefix(tokens) == ("auto-note", "commercial-setup"):
+        if "--apply-latest-template" in tokens or "--apply-template" in tokens:
+            return "設定 > テンプレ適用"
+        if "--template" in tokens:
+            return "設定 > 販売者テンプレ"
+        if any(option in tokens for option in _COMMERCIAL_SETUP_FLAG_OPTIONS):
+            return "設定 > 販売者情報確認"
+        return "設定 > 販売者情報"
+    if _action_command_prefix(tokens) == ("auto-note", "preflight"):
+        if "--create-release" in tokens:
+            return "診断 > 出荷ZIP作成"
+        return "診断 > 出荷前チェック"
+    if _action_command_prefix(tokens) == ("auto-note", "acceptance"):
+        return "診断 > 受入チェック"
+    if _action_command_prefix(tokens) == ("auto-note", "release"):
+        return "診断 > 出荷前チェック"
+    return ""
+
+
+def _commercial_rc_milestone(items: list[CommercialReadinessItem]) -> str:
+    fail_items = [item for item in items if item.status == "fail"]
+    warn_items = [item for item in items if item.status == "warn"]
+    if fail_items:
+        first = fail_items[0]
+        return (
+            f"BLOCKED: NG {len(fail_items)}件を0件にすると販売RC判定へ進めます"
+            f"（先頭: {first.name}）。"
+        )
+    if warn_items:
+        first = warn_items[0]
+        return (
+            f"NEAR RC: NG 0件、WARN {len(warn_items)}件。"
+            f"WARNを確認または保存すればREADYです（先頭: {first.name}）。"
+        )
+    return "READY: NG 0件、WARN 0件。販売RCとして固定できます。"
+
+
+def _commercial_rc_path_summary(items: list[CommercialReadinessItem]) -> str:
+    fail_count = sum(1 for item in items if item.status == "fail")
+    warn_count = sum(1 for item in items if item.status == "warn")
+    blocking_actions = [
+        (item.name, item.action)
+        for item in items
+        if item.status in {"fail", "warn"} and item.action
+    ]
+    action_count = len(_format_next_actions(blocking_actions))
+    first_action = _next_action_key(blocking_actions[0][1]) if blocking_actions else ""
+    first_suffix = f" / 先頭: {first_action}" if first_action else ""
+    if fail_count:
+        if action_count:
+            return (
+                f"BLOCKED: {action_count}作業（NG {fail_count}件 -> WARN {warn_count}件）"
+                f"{first_suffix}"
+            )
+        return f"BLOCKED: NG {fail_count}件、WARN {warn_count}件。詳細項目を確認してください。"
+    if warn_count:
+        if action_count:
+            return f"NEAR RC: {action_count}作業（WARN {warn_count}件）を確認/保存"
+        return f"NEAR RC: WARN {warn_count}件。詳細項目を確認してください。"
+    return "READY: 必須残件0件。販売前一括チェックで固定できます。"
+
+
+def _commercial_rc_checkpoint(items: list[CommercialReadinessItem]) -> str:
+    fail_count = sum(1 for item in items if item.status == "fail")
+    warn_count = sum(1 for item in items if item.status == "warn")
+    blocking_actions = [
+        (item.name, item.action)
+        for item in items
+        if item.status in {"fail", "warn"} and item.action
+    ]
+    first_action = _next_action_key(blocking_actions[0][1]) if blocking_actions else ""
+    if fail_count:
+        first_target = first_action or "未解消NG"
+        return f"{first_target} -> commercial-readiness再判定でNG 0件"
+    if warn_count:
+        first_target = first_action or "WARN項目"
+        return f"{first_target} -> 確認/保存してREADY判定"
+    return "auto-note preflight --project-dir . --gui-smoke -> 販売RC固定"
+
+
+def _first_backticked_command(action: str) -> str:
+    for index, segment in enumerate(action.split("`")):
+        if index % 2 == 0:
+            continue
+        command = segment.strip()
+        if command.startswith("auto-note "):
+            return command
+    return ""
+
+
+def _action_subsumes(candidate: str, action: str) -> bool:
+    candidate_tokens = _action_tokens(candidate)
+    action_tokens = _action_tokens(action)
+    if not candidate_tokens or not action_tokens:
+        return candidate == action
+    if _action_command_prefix(candidate_tokens) != _action_command_prefix(action_tokens):
+        return False
+    if _action_command_prefix(candidate_tokens) == ("auto-note", "commercial-setup"):
+        candidate_options = _commercial_setup_options(candidate)
+        action_options = _commercial_setup_options(action)
+        if candidate_options is None or action_options is None:
+            return candidate == action
+        return set(action_options).issubset(set(candidate_options))
+    return set(action_tokens).issubset(set(candidate_tokens))
+
+
+def _commercial_setup_options(command: str) -> list[tuple[str, str | None]] | None:
+    tokens = _action_tokens(command)
+    if _action_command_prefix(tokens) != ("auto-note", "commercial-setup"):
+        return None
+    options: list[tuple[str, str | None]] = []
+    index = 2
+    while index < len(tokens):
+        option = tokens[index]
+        if option in _COMMERCIAL_SETUP_VALUE_OPTIONS:
+            if index + 1 >= len(tokens):
+                return None
+            options.append((option, tokens[index + 1]))
+            index += 2
+        elif option in _COMMERCIAL_SETUP_FLAG_OPTIONS:
+            options.append((option, None))
+            index += 1
+        else:
+            return None
+    return options
+
+
+def _action_command_prefix(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    return tokens[:2] if len(tokens) >= 2 else tokens
+
+
+def _action_tokens(action: str) -> tuple[str, ...]:
+    try:
+        return tuple(shlex.split(action))
+    except ValueError:
+        return tuple(action.split())
+
+
+def _append_unique(values: list[str], value: str) -> None:
+    if value not in values:
+        values.append(value)
 
 
 def write_commercial_readiness_report(
@@ -265,6 +516,7 @@ def _release_item(project_dir: Path) -> CommercialReadinessItem:
 
 def _privacy_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> CommercialReadinessItem:
     from .privacy import run_privacy_audit
+    from .privacy_actions import privacy_failed_cleanup_action
 
     report = run_privacy_audit(project_dir, include_sales_handoffs=include_sales_handoffs)
     if report.status == "fail":
@@ -273,7 +525,10 @@ def _privacy_item(project_dir: Path, *, include_sales_handoffs: bool = True) -> 
             "プライバシー監査",
             "fail",
             f"{failures} NG artifact(s)",
-            "`auto-note privacy-audit --project-dir .` と `auto-note repair --project-dir . --cleanup-privacy` を確認してください。",
+            privacy_failed_cleanup_action(
+                "`auto-note sales-handoff --project-dir .` で販売用一式を作り直してください。",
+                include_releases=True,
+            ),
         )
     if report.status == "warn":
         warnings = sum(1 for item in report.items if item.status == "warn")
@@ -292,18 +547,33 @@ def _acceptance_item(project_dir: Path, *, include_sales_handoffs: bool = True) 
     reports = list_acceptance_reports(project_dir)
     current = run_acceptance_check(project_dir, include_sales_handoffs=include_sales_handoffs)
     if not current.ok:
+        first_issue = next((item for item in current.items if item.status == "fail"), None)
+        first_detail = (
+            f"; first NG: {first_issue.name}: {first_issue.detail}"
+            if first_issue is not None
+            else ""
+        )
+        action = (
+            first_issue.action
+            if first_issue is not None and first_issue.action
+            else (
+                f"GUIでは「{_ACCEPTANCE_GUI}」で受入チェックを保存してください。"
+                f"`{_ACCEPTANCE_REPORT_COMMAND}` を実行することもできます。"
+            )
+        )
         return CommercialReadinessItem(
             "受入チェック",
             "fail",
-            f"current status {current.status}, saved reports {len(reports)}",
-            "`auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report` を実行してください。",
+            f"current status {current.status}, saved reports {len(reports)}{first_detail}",
+            action,
         )
     if not reports:
         return CommercialReadinessItem(
             "受入チェック",
             "warn",
             f"current status {current.status}, no saved acceptance report",
-            "`auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report` で納品確認を保存してください。",
+            f"GUIでは「{_ACCEPTANCE_GUI}」で納品確認を保存してください。"
+            f"`{_ACCEPTANCE_REPORT_COMMAND}` を実行することもできます。",
         )
     latest = reports[0]
     if current.has_warnings:
@@ -311,7 +581,7 @@ def _acceptance_item(project_dir: Path, *, include_sales_handoffs: bool = True) 
             "受入チェック",
             "warn",
             f"current status {current.status}, latest saved {latest.name}",
-            "受入チェックのWARNを確認し、必要に応じて保存し直してください。",
+            f"GUIでは「{_ACCEPTANCE_GUI}」で受入チェックのWARNを確認し、必要に応じて保存し直してください。",
         )
     return CommercialReadinessItem("受入チェック", "pass", f"{latest.name} saved")
 
@@ -355,7 +625,9 @@ def _commercial_policy_item(project_dir: Path) -> CommercialReadinessItem:
             "利用条件/商用方針",
             "warn",
             f"draft markers present: {', '.join(markers[:3])}",
-            "販売ページ、決済方法、返金条件、サポート範囲に合わせて文書を最終レビューしてください。",
+            f"販売ページ、決済方法、返金条件、サポート範囲に合わせて文書を最終レビューし、"
+            f"GUIでは「{COMMERCIAL_SETUP_REVIEW_GUI}」を開いてください。"
+            f"`{_COMMERCIAL_TERMS_REVIEW_COMMAND}` で確認を保存することもできます。",
         )
     return CommercialReadinessItem("利用条件/商用方針", "pass", "no draft markers found")
 
@@ -377,7 +649,7 @@ def _seller_profile_item(project_dir: Path) -> CommercialReadinessItem:
             "販売者プロフィール",
             "warn",
             f"missing: {', '.join(missing)}",
-            "GUIの設定タブ、または `auto-note commercial-setup --help` で販売者情報を保存してください。",
+            _commercial_setup_template_action(project_dir),
         )
     warnings = commercial_setup_warnings(settings)
     if warnings:
@@ -385,7 +657,8 @@ def _seller_profile_item(project_dir: Path) -> CommercialReadinessItem:
             "販売者プロフィール",
             "warn",
             f"warnings: {', '.join(warnings)}",
-            "販売ページURL、返金方針URL、サポート連絡先を公開URL形式で保存してください。",
+            f"販売ページURL、返金方針URL、サポート連絡先を公開URL形式で保存してください。"
+            f"{_commercial_setup_template_action(project_dir)}",
         )
     return CommercialReadinessItem("販売者プロフィール", "pass", "seller profile is set")
 
@@ -400,11 +673,14 @@ def _commercial_final_review_item(project_dir: Path) -> CommercialReadinessItem:
     if not settings.commercial_support_scope_confirmed:
         missing.append("support scope")
     if missing:
+        command = _commercial_final_review_command(settings)
         return CommercialReadinessItem(
             "販売最終確認",
             "warn",
             f"missing: {', '.join(missing)}",
-            "販売ページ、利用条件、返金条件、サポート範囲を確認し、設定タブで最終確認を保存してください。",
+            f"販売ページ、利用条件、返金条件、サポート範囲を確認し、"
+            f"GUIでは「{COMMERCIAL_SETUP_REVIEW_GUI}」を開いてください。"
+            f"`{command}` で最終確認を保存することもできます。",
         )
     suffix = f" at {settings.commercial_reviewed_at}" if settings.commercial_reviewed_at else ""
     return CommercialReadinessItem("販売最終確認", "pass", f"seller review confirmed{suffix}")
@@ -423,13 +699,16 @@ def _support_contact_item(project_dir: Path) -> CommercialReadinessItem:
             "サポート連絡先",
             "warn",
             "; ".join(support_warnings),
-            "販売素材にそのまま載せられる公開サポートURLを設定してください。",
+            f"販売素材にそのまま載せられる公開サポートURLを設定してください。"
+            f"{_commercial_setup_template_action(project_dir)}",
         )
     return CommercialReadinessItem(
         "サポート連絡先",
         "warn",
         "support contact is not set",
-        "GUIの設定タブでサポート連絡先を設定し、販売ページにも問い合わせ方法を明記してください。",
+        f"GUIでは「{COMMERCIAL_SETUP_REVIEW_GUI}」でサポート連絡先を設定し、"
+        "販売ページにも問い合わせ方法を明記してください。"
+        f"{_commercial_setup_template_action(project_dir)}",
     )
 
 
@@ -446,7 +725,9 @@ def _install_smoke_item(project_dir: Path) -> CommercialReadinessItem:
         "インストール導線",
         "info",
         "local smoke script is present",
-        "販売直前は `auto-note preflight --project-dir . --create-release --install-smoke --gui-smoke` と実機確認を実行してください。",
+        f"販売直前は、GUIでは「{_PREFLIGHT_CREATE_RELEASE_GUI}」を開き、"
+        "`auto-note preflight --project-dir . --create-release --install-smoke --gui-smoke` "
+        "と実機確認を実行してください。",
     )
 
 

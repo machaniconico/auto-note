@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .first_run import run_first_run_checklist
 from .paths import unique_path
+from .privacy_actions import privacy_failed_cleanup_target
 from .selftest import run_self_test
 from .support import (
     SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS,
@@ -164,23 +165,33 @@ def has_acceptance_blockers(report: AcceptanceReport, *, strict: bool = False) -
 def _first_run_item(report) -> AcceptanceItem:
     if report.status == "fail":
         issue = _first_report_issue(report.items, "fail")
+        gui, command = _issue_target(
+            issue,
+            default_gui="初回 > 初回チェック",
+            default_command="auto-note first-run --project-dir . --create --gui-smoke --smoke-helper",
+        )
         return AcceptanceItem(
             "初回チェック",
             "fail",
             _score_issue_detail(report.score, issue, "NG"),
             _issue_action(issue, "初回チェックのNG項目を先に解消してください。"),
-            "初回 > 初回チェック",
-            "auto-note first-run --project-dir . --create --gui-smoke --smoke-helper",
+            gui,
+            command,
         )
     if report.status == "warn":
         issue = _first_report_issue(report.items, "warn")
+        gui, command = _issue_target(
+            issue,
+            default_gui="初回 > 初回チェック",
+            default_command="auto-note first-run --project-dir . --create --gui-smoke --smoke-helper",
+        )
         return AcceptanceItem(
             "初回チェック",
             "warn",
             _score_issue_detail(report.score, issue, "WARN"),
             _issue_action(issue, "WARN項目を確認し、必要なものだけ先に片付けてください。"),
-            "初回 > 初回チェック",
-            "auto-note first-run --project-dir . --create --gui-smoke --smoke-helper",
+            gui,
+            command,
         )
     return AcceptanceItem("初回チェック", "pass", f"{report.score}/100")
 
@@ -188,23 +199,33 @@ def _first_run_item(report) -> AcceptanceItem:
 def _self_test_item(report) -> AcceptanceItem:
     if report.status == "fail":
         issue = _first_report_issue(report.items, "fail")
+        gui, command = _issue_target(
+            issue,
+            default_gui="診断 > セルフテスト",
+            default_command="auto-note self-test --project-dir . --create --gui-smoke --report",
+        )
         return AcceptanceItem(
             "セルフテスト",
             "fail",
             _score_issue_detail(report.score, issue, "NG"),
             _issue_action(issue, "セルフテストのNG項目を確認してください。"),
-            "診断 > セルフテスト",
-            "auto-note self-test --project-dir . --create --gui-smoke --report",
+            gui,
+            command,
         )
     if report.status == "warn":
         issue = _first_report_issue(report.items, "warn")
+        gui, command = _issue_target(
+            issue,
+            default_gui="診断 > セルフテスト",
+            default_command="auto-note self-test --project-dir . --create --gui-smoke --report",
+        )
         return AcceptanceItem(
             "セルフテスト",
             "warn",
             _score_issue_detail(report.score, issue, "WARN"),
             _issue_action(issue, "WARN項目を確認してください。"),
-            "診断 > セルフテスト",
-            "auto-note self-test --project-dir . --create --gui-smoke --report",
+            gui,
+            command,
         )
     return AcceptanceItem("セルフテスト", "pass", f"{report.score}/100")
 
@@ -215,32 +236,47 @@ def _troubleshoot_item(report) -> AcceptanceItem:
     serious = [item for item in warnings if item.name != "privacy cleanup candidates"]
     if failures:
         issue = failures[0]
+        gui, command = _issue_target(
+            issue,
+            default_gui="診断 > トラブル診断",
+            default_command="auto-note troubleshoot --project-dir .",
+        )
         return AcceptanceItem(
             "トラブル診断",
             "fail",
             issue.detail,
             issue.action or "トラブル診断のNG項目を確認してください。",
-            "診断 > トラブル診断",
-            "auto-note troubleshoot --project-dir .",
+            gui,
+            command,
         )
     if serious:
         issue = serious[0]
+        gui, command = _issue_target(
+            issue,
+            default_gui="診断 > トラブル診断",
+            default_command="auto-note troubleshoot --project-dir .",
+        )
         return AcceptanceItem(
             "トラブル診断",
             "warn",
             issue.detail,
             issue.action or "トラブル診断のWARN項目を確認してください。",
-            "診断 > トラブル診断",
-            "auto-note troubleshoot --project-dir .",
+            gui,
+            command,
         )
     if warnings:
+        gui, command = _issue_target(
+            warnings[0],
+            default_gui="診断 > トラブル診断",
+            default_command="auto-note troubleshoot --project-dir .",
+        )
         return AcceptanceItem(
             "トラブル診断",
             "info",
             "maintenance warning(s) only",
             warnings[0].action,
-            "診断 > トラブル診断",
-            "auto-note troubleshoot --project-dir .",
+            gui,
+            command,
         )
     return AcceptanceItem("トラブル診断", "pass", f"{len(report.items)} item(s) checked")
 
@@ -415,6 +451,15 @@ def _issue_action(issue, fallback: str) -> str:
     if issue is not None and issue.action:
         return issue.action
     return fallback
+
+
+def _issue_target(issue, *, default_gui: str, default_command: str) -> tuple[str, str]:
+    action = getattr(issue, "action", "") or ""
+    if "--privacy-failed" in action:
+        return privacy_failed_cleanup_target(action)
+    gui = getattr(issue, "gui", "") or default_gui
+    command = getattr(issue, "command", "") or default_command
+    return gui, command
 
 
 def _gui_smoke_summary(detail: str) -> str:

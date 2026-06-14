@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import shlex
 
 from .action_plan import ActionPlanReport, build_action_plan
+from .privacy_actions import privacy_failed_cleanup_target
 from .quickstart import QuickstartReport, run_quickstart
 from .selftest import SelfTestReport, list_self_test_reports, run_self_test
 from .support import (
@@ -111,7 +113,7 @@ def format_first_run_report(report: FirstRunReport) -> str:
         f"Items: {counts['pass']} OK, {counts['info']} INFO, {counts['warn']} WARN, {counts['fail']} NG",
         "",
     ]
-    next_actions: list[str] = []
+    next_actions: list[tuple[str, str, str]] = []
     for index, item in enumerate(report.items, start=1):
         label = {"pass": "OK", "info": "INFO", "warn": "WARN", "fail": "NG"}.get(
             item.status,
@@ -120,15 +122,109 @@ def format_first_run_report(report: FirstRunReport) -> str:
         lines.append(f"[{label}] {index}. {item.name}: {item.detail}")
         if item.action:
             lines.append(f"  next: {item.action}")
-            next_actions.append(f"- {item.name}: {item.action}")
+            next_actions.append((item.name, item.command or item.action, item.gui))
         if item.gui:
             lines.append(f"  gui: {item.gui}")
         if item.command:
             lines.append(f"  cli: {item.command}")
     if next_actions:
         lines.extend(["", "Next actions"])
-        lines.extend(next_actions)
+        lines.extend(_format_next_actions(next_actions))
     return "\n".join(lines)
+
+
+def _format_next_actions(actions: list[tuple[str, str, str]]) -> list[str]:
+    grouped: dict[str, list[str]] = {}
+    gui_targets: dict[str, list[str]] = {}
+    ordered_actions: list[str] = []
+    for name, action, gui in actions:
+        action_key = _next_action_key(action)
+        if not action_key:
+            continue
+        contained_by = next((existing for existing in ordered_actions if _action_subsumes(existing, action_key)), "")
+        if contained_by:
+            _append_unique(grouped[contained_by], name)
+            _append_unique_gui(gui_targets[contained_by], gui)
+            continue
+        contained_actions = [existing for existing in ordered_actions if _action_subsumes(action_key, existing)]
+        if contained_actions:
+            insert_at = min(ordered_actions.index(existing) for existing in contained_actions)
+            titles: list[str] = []
+            guis: list[str] = []
+            for existing in contained_actions:
+                for existing_title in grouped.pop(existing):
+                    _append_unique(titles, existing_title)
+                for existing_gui in gui_targets.pop(existing, []):
+                    _append_unique_gui(guis, existing_gui)
+                ordered_actions.remove(existing)
+            ordered_actions.insert(insert_at, action_key)
+            grouped[action_key] = titles
+            gui_targets[action_key] = guis
+            _append_unique(grouped[action_key], name)
+            _append_unique_gui(gui_targets[action_key], gui)
+            continue
+        if action_key not in grouped:
+            grouped[action_key] = []
+            gui_targets[action_key] = []
+            ordered_actions.append(action_key)
+        _append_unique(grouped[action_key], name)
+        _append_unique_gui(gui_targets[action_key], gui)
+    return [
+        f"- {' / '.join(grouped[action])}: {action}{_next_action_gui_suffix(gui_targets[action])}"
+        for action in ordered_actions
+    ]
+
+
+def _next_action_gui_suffix(gui_targets: list[str]) -> str:
+    if not gui_targets:
+        return ""
+    return f" / GUI: {' / '.join(gui_targets)}"
+
+
+def _next_action_key(action: str) -> str:
+    command = _first_backticked_command(action)
+    return command or action.strip()
+
+
+def _first_backticked_command(action: str) -> str:
+    for index, segment in enumerate(action.split("`")):
+        if index % 2 == 0:
+            continue
+        command = segment.strip()
+        if command.startswith("auto-note "):
+            return command
+    return ""
+
+
+def _action_subsumes(candidate: str, action: str) -> bool:
+    candidate_tokens = _action_tokens(candidate)
+    action_tokens = _action_tokens(action)
+    if not candidate_tokens or not action_tokens:
+        return candidate == action
+    if _action_command_prefix(candidate_tokens) != _action_command_prefix(action_tokens):
+        return False
+    return set(action_tokens).issubset(set(candidate_tokens))
+
+
+def _action_command_prefix(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    return tokens[:2] if len(tokens) >= 2 else tokens
+
+
+def _action_tokens(action: str) -> tuple[str, ...]:
+    try:
+        return tuple(shlex.split(action))
+    except ValueError:
+        return tuple(action.split())
+
+
+def _append_unique(values: list[str], value: str) -> None:
+    if value not in values:
+        values.append(value)
+
+
+def _append_unique_gui(values: list[str], value: str) -> None:
+    if value:
+        _append_unique(values, value)
 
 
 def has_first_run_blockers(report: FirstRunReport, *, strict: bool = False) -> bool:
@@ -163,6 +259,7 @@ def _setup_item(self_test: SelfTestReport) -> FirstRunItem:
 
 
 def _self_test_item(self_test: SelfTestReport) -> FirstRunItem:
+    issue = None
     status = "pass" if self_test.status == "pass" else self_test.status
     if self_test.status == "fail":
         issue = _first_report_issue(self_test.items, "fail")
@@ -175,13 +272,18 @@ def _self_test_item(self_test: SelfTestReport) -> FirstRunItem:
     else:
         detail = f"{self_test.score}/100"
         action = ""
+    gui, command = _issue_target(
+        issue,
+        default_gui="診断 > セルフテスト",
+        default_command="auto-note self-test --project-dir .",
+    )
     return FirstRunItem(
         "セルフテスト",
         status,
         detail,
         action,
-        "診断 > セルフテスト",
-        "auto-note self-test --project-dir .",
+        gui,
+        command,
     )
 
 
@@ -385,6 +487,13 @@ def _issue_action(issue, fallback: str) -> str:
     if issue is not None and issue.action:
         return issue.action
     return fallback
+
+
+def _issue_target(issue, *, default_gui: str, default_command: str) -> tuple[str, str]:
+    action = getattr(issue, "action", "") or ""
+    if getattr(issue, "name", "") == "privacy audit" and "--privacy-failed" in action:
+        return privacy_failed_cleanup_target(action)
+    return default_gui, default_command
 
 
 def _self_test_item_by_name(report: SelfTestReport, name: str):

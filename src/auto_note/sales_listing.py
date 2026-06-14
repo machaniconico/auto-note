@@ -9,6 +9,7 @@ import shutil
 import zipfile
 
 from . import __version__
+from .archive_safety import verify_zip_member_names, verify_zip_regular_entries
 from .article import write_text_atomic
 from .paths import unique_path
 from .sales_materials import (
@@ -304,7 +305,10 @@ def _verify_listing_zip(path: Path, *, strict: bool, project_dir: Path | None) -
     errors: list[str] = []
     try:
         with zipfile.ZipFile(path) as archive:
-            names = {name for name in archive.namelist() if not name.endswith("/")}
+            all_names = archive.namelist()
+            errors.extend(_verify_listing_zip_names(all_names))
+            errors.extend(_verify_listing_zip_entries(archive))
+            names = {name for name in all_names if not name.endswith("/")}
             for name in (*REQUIRED_LISTING_KIT_FILES, *REQUIRED_LISTING_IMAGE_FILES):
                 if name not in names:
                     errors.append(f"missing required file: {name}")
@@ -317,6 +321,14 @@ def _verify_listing_zip(path: Path, *, strict: bool, project_dir: Path | None) -
         return [f"sales listing zip unreadable: {exc}"]
     errors.extend(_verify_listing_bytes(data, strict=strict, project_dir=project_dir))
     return errors
+
+
+def _verify_listing_zip_names(names: list[str]) -> list[str]:
+    return verify_zip_member_names(names, unsafe_label="unsafe file name", duplicate_label="duplicate file name")
+
+
+def _verify_listing_zip_entries(archive: zipfile.ZipFile) -> list[str]:
+    return verify_zip_regular_entries(archive)
 
 
 def _verify_listing_bytes(

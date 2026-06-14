@@ -5,7 +5,7 @@ auto-note のサポート時に確認する情報と、ユーザーに依頼す�
 ## 最初に確認すること
 
 - `auto-note.lnk` または `auto-note-gui.bat` から起動できるか
-- GUIの `診断` タブの `初回チェック` と `セルフテスト保存`、または `auto-note first-run --project-dir . --gui-smoke` と `auto-note self-test --project-dir . --gui-smoke --report` を実行できるか。セルフテストの `launcher health` では `auto-note-gui.bat`、隠しGUIランチャー、ショートカット、起動ログ/復旧導線をまとめて確認できます
+- GUIの `診断` タブの `初回チェック` と `セルフテスト保存`、または `auto-note first-run --project-dir . --gui-smoke` と `auto-note self-test --project-dir . --gui-smoke --report` を実行できるか。セルフテストの `launcher health` では `auto-note-gui.bat`、隠しGUIランチャー、ショートカット、`auto-note safe display.lnk`、インストール/アンインストール補助ファイル、起動ログ/復旧導線をまとめて確認できます。プライバシー監査NGが古い生成物由来なら `auto-note cleanup --project-dir . --privacy-failed --include-releases` で削除前に候補を確認できます
 - GUIのホーム/初回/診断/ヘルプ/コマンド検索の `受入チェック` と `受入保存`、または `auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report` を実行できるか
 - GUIのホーム/初回/診断/ヘルプ/コマンド検索の `販売準備` と `販売準備保存`、または `auto-note commercial-readiness --project-dir . --report` を実行できるか
 - GUIの `販売ナビ`、または `auto-note sales-plan --project-dir .` で販売前の残タスクを確認できるか
@@ -27,8 +27,8 @@ auto-note のサポート時に確認する情報と、ユーザーに依頼す�
 - GUIの `診断` タブまたは `ヘルプ` タブで `出荷ZIP作成` が実行できるか
 - GUIの `診断` タブで `準備度` が実行できるか
 - GUIの `診断` タブで `セットアップ確認` が実行できるか
-- GUIの `診断` タブ、`ヘルプ` タブ、コマンド検索の `自動修復`、または `auto-note repair --project-dir .` で基本修復プレビューを確認できるか
-- GUIのホーム/診断/ヘルプ/コマンド検索の `トラブル診断`、または `auto-note troubleshoot --project-dir .` で起動ログ、noteログイン、プライバシー監査、最新配布ZIPの状態を確認できるか
+- GUIの `診断` タブ、`ヘルプ` タブ、コマンド検索の `自動修復`、または `auto-note repair --project-dir .` で基本修復プレビューと壊れた `install-info.json` の退避候補を確認できるか
+- GUIのホーム/診断/ヘルプ/コマンド検索の `トラブル診断`、または `auto-note troubleshoot --project-dir .` で起動ログ、インストール記録、noteログイン、プライバシー監査、最新配布ZIPの状態を確認できるか
 - `.auto-note/settings.json` が壊れている場合は、GUIが既定値で起動し、診断の `settings file` とセットアップ確認の `settings readable` にNGが出るか
 - `.auto-note/ideas.json` が壊れている場合は、アイデア箱が空として起動し、診断の `ideas file` とセットアップ確認の `ideas readable` にNGが出るか
 - GUI操作中にエラーが出た場合は `.auto-note/gui-error.log` が更新されているか。GUIの `診断` / `ヘルプ` / コマンド検索の `GUIログ表示` で内容を確認し、`GUIログコピー` で問い合わせ用にコピーし、`GUIログ場所` で保存フォルダを開けます。解決済みのログは `GUIログクリア` で `gui-error-cleared-*.log` に退避し、復旧ステータスをOKに戻せます。復旧セットを実行した後は `最新復旧レポート` で内容を確認し、`復旧レポートコピー` で共有用にコピーできます
@@ -81,13 +81,13 @@ auto-note のサポート時に確認する情報と、ユーザーに依頼す�
 - `.auto-note/reports/workflow-smoke-*.txt`: 一時プロジェクトでの簡易E2Eチェック結果
 - `.auto-note/releases`: 配布ZIP
 - 診断レポートの `maintenance-summary.txt`: バックアップ、診断ZIP、問い合わせ一式の件数/最新名/検証状態/鮮度、販売一式、販売素材、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポート、配布ZIP、プライバシー監査NG生成物候補の件数
-- `auto-note cleanup --project-dir .`: 古い投稿ヘルパーHTML、診断ZIP、問い合わせ一式、販売一式、販売素材、記事CSV、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポートの整理候補を表示
+- `auto-note cleanup --project-dir .`: 古い投稿ヘルパーHTML、診断ZIP、問い合わせ一式、販売一式、販売素材、記事CSV、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポートの整理候補を表示。候補が多い場合は先頭候補、種類別サマリー、残件数で確認できます
 - `auto-note support --project-dir .`: 問い合わせテンプレートを作成
 - `auto-note support --project-dir . --bundle`: 問い合わせテンプレートと診断レポートZIPを1つにまとめる
 - `auto-note support --verify <zip>`: 問い合わせ一式ZIPのmanifest/checksum、表示診断の有無、鮮度を検証
 - `auto-note privacy-audit --project-dir .`: 最新の診断ZIP、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポート、問い合わせMarkdown、問い合わせ一式ZIP、配布ZIPに生の個人情報/記事情報が残っていないか確認
-- `auto-note privacy-audit --project-dir . --all`: 古い生成物も含めて監査。NGが古い生成物なら `auto-note cleanup --project-dir . --privacy-failed --include-releases` で該当候補だけを確認
-- `auto-note cleanup --project-dir . --privacy-failed --apply`: プレビューで確認したプライバシーNG生成物だけを削除。配布ZIPも対象にする場合は `--include-releases` を追加
+- `auto-note privacy-audit --project-dir . --all`: 古い生成物も含めて監査。NGが古い生成物なら `auto-note cleanup --project-dir . --privacy-failed --include-releases` で該当候補だけを確認。`auto-note troubleshoot --project-dir . --include-releases` でも配布ZIPを含む整理候補サマリーを確認できます
+- `auto-note cleanup --project-dir . --privacy-failed --apply`: プレビューで確認したプライバシーNG生成物だけを削除。配布ZIPも対象にする場合は `--include-releases` を追加。大量に見つかった場合も、個別一覧は短く抑えて残件数を表示します
 - `auto-note version --project-dir .`: バージョンと環境概要を表示
 - `auto-note first-run --project-dir . --gui-smoke`: 導入後10分の確認項目を順番に表示
 - `auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report`: 購入/納品後の受入チェックを保存
@@ -102,7 +102,8 @@ auto-note のサポート時に確認する情報と、ユーザーに依頼す�
 - `auto-note practice --project-dir . --open`: 投稿ヘルパー確認用の練習記事を作成
 - `auto-note quickstart --project-dir . --smoke-helper`: ブラウザを開かずに投稿ヘルパーHTML生成まで確認
 - `auto-note gui --project-dir . --smoke`: GUIを表示せず、初期化途中で落ちないか確認
-- `auto-note troubleshoot --project-dir .`: セットアップ、GUIログ、noteログイン詰まり、プライバシー監査、最新配布ZIPをまとめて確認
+- `auto-note troubleshoot --project-dir .`: セットアップ、インストール記録、GUIログ、noteログイン詰まり、プライバシー監査、最新配布ZIPをまとめて確認。`install-info.json` の破損や更新前バックアップの参照切れがある場合は次アクションも表示
+- `auto-note diagnose --project-dir .`: インストール/アンインストール補助ファイル、`auto-note safe display.lnk`、GUI起動ファイル、Python環境、設定/アイデア/インストール記録をまとめて確認
 - `auto-note readiness --project-dir .`: 準備度スコアと次の対応を表示
 - `auto-note preflight --project-dir .`: 販売/配布前の総合チェックを表示。トラブル診断を含め、記事レビューは通常INFOとして表示
 - `auto-note preflight --project-dir . --gui-smoke`: 総合チェックにGUI初期化スモークを含める
@@ -132,7 +133,7 @@ auto-note のサポート時に確認する情報と、ユーザーに依頼す�
 - Markdown記事の作成、チェック、コピー補助
 - note投稿画面への手動貼り付け補助
 - GUI起動、GUI操作中エラーのログ確認、ローカルインストール/アンインストール、設定、バックアップ、診断、配布ZIP作成
-- 基本フォルダ、設定、アイデア保存の安全な自動修復
+- 基本フォルダ、設定、アイデア保存の安全な自動修復と、壊れた `install-info.json` の退避
 - 起動、ログイン、問い合わせ前のトラブル診断
 - バックアップ内容の確認と、バックアップからの記事、設定、アイデア復元
 - 古い投稿ヘルパーHTML、診断ZIP、問い合わせ一式、記事CSV、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポートの整理

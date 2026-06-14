@@ -19,7 +19,7 @@ $env:PYTHONPATH='src'; python -m auto_note troubleshoot --project-dir .
 $env:PYTHONPATH='src'; python -m auto_note first-run --project-dir . --create --gui-smoke
 $env:PYTHONPATH='src'; python -m auto_note acceptance --project-dir . --create --gui-smoke --smoke-helper --report
 $env:PYTHONPATH='src'; python -m auto_note commercial-readiness --project-dir . --report
-$env:PYTHONPATH='src'; python -m auto_note sales-launch --project-dir . --confirm-preview --note "checked"
+$env:PYTHONPATH='src'; python -m auto_note sales-launch --project-dir . --confirm-preview --note "checkout preview checked: <buyer ZIP name> / <full SHA-256>"
 $env:PYTHONPATH='src'; python -m auto_note quickstart --project-dir .
 $starter = Join-Path $env:TEMP "auto-note-starter-check"; New-Item -ItemType Directory -Force $starter | Out-Null; $env:PYTHONPATH='src'; python -m auto_note starter-pack --project-dir $starter --no-calendar
 $env:PYTHONPATH='src'; python -m auto_note starter-clean --project-dir $starter
@@ -116,6 +116,7 @@ $env:PYTHONPATH='src'; python -m auto_note preflight --project-dir . --create-re
 - `shortcuts/install-auto-note.bat` で `%LOCALAPPDATA%\auto-note` にインストールできる
 - デスクトップまたはスタートメニューの `auto-note` から起動できる
 - 更新時に `.auto-note\install-info.json` と `.auto-note\install-backups` が作成される
+- インストール済みコピーで `auto-note version --project-dir .` と `auto-note diagnose --project-dir .` を実行し、`install-info.json` と更新前バックアップ参照がOKとして読める
 - スタートメニューまたは `shortcuts/uninstall-auto-note.bat` からアンインストールできる
 - 既存の `articles` と `.auto-note` が削除されない
 

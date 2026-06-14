@@ -4,11 +4,19 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 
+from .app_info import InstallInfoStatus, inspect_install_info
 from .gui_errors import gui_error_log_path
 from .maintenance import collect_privacy_failed_artifacts
 from .privacy import has_privacy_audit_blockers, run_privacy_audit
+from .privacy_actions import PRIVACY_FAILED_CLEANUP_GUI, privacy_failed_cleanup_action
 from .release import list_releases, verify_release_package
 from .setup_check import run_setup_check
+
+
+PRIVACY_FAILED_CLEANUP_ACTION = (
+    "`auto-note cleanup --project-dir . --privacy-failed --include-releases` "
+    "でNG生成物だけを削除前に確認できます。"
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +50,7 @@ def run_troubleshoot(
     project_dir = project_dir.resolve()
     items = [
         _setup_item(project_dir),
+        _install_info_item(project_dir),
         _gui_log_item(project_dir),
         _note_login_item(),
         _privacy_audit_item(project_dir, include_sales_handoffs=include_sales_handoffs),
@@ -100,6 +109,42 @@ def _setup_item(project_dir: Path) -> TroubleshootItem:
         "warn",
         f"{len(warnings)} setup warning(s): {names}",
         "GUI の 自動修復、または `auto-note repair --project-dir . --apply` を実行してください。",
+    )
+
+
+def _install_info_item(project_dir: Path) -> TroubleshootItem:
+    status = inspect_install_info(project_dir)
+    detail = _sanitize(_install_info_detail(status), project_dir)
+    if status.ok:
+        return TroubleshootItem("install info", "pass", detail)
+    return TroubleshootItem(
+        "install info",
+        "warn",
+        detail,
+        _install_info_action(status),
+    )
+
+
+def _install_info_detail(status: InstallInfoStatus) -> str:
+    info = status.info
+    if info is None:
+        return status.detail
+    backup = info.preinstall_backup or "(none)"
+    return (
+        f"version={info.version or '(unknown)'}, installed_at={info.installed_at or '(unknown)'}, "
+        f"backup={backup}, status={status.detail}"
+    )
+
+
+def _install_info_action(status: InstallInfoStatus) -> str:
+    if "preinstall backup missing" in status.detail:
+        return (
+            "`auto-note backup --project-dir .` で現状バックアップを作成し、更新直後なら "
+            "`shortcuts\\install-auto-note.bat` を再実行して install-info.json と更新前バックアップを作り直してください。"
+        )
+    return (
+        "`auto-note version --project-dir .` と `auto-note diagnose --project-dir .` で状態を確認し、"
+        "更新時は `shortcuts\\install-auto-note.bat` を再実行してください。"
     )
 
 
@@ -172,8 +217,14 @@ def _first_privacy_failure(report):
 
 def _privacy_failure_action(item) -> str:
     if item is not None and item.action:
-        return item.action
-    return "`auto-note privacy-audit --project-dir .` を確認し、NG生成物は `auto-note repair --project-dir . --cleanup-privacy` で候補確認してください。"
+        action = item.action
+    else:
+        action = "`auto-note privacy-audit --project-dir .` を確認し、NG生成物は `auto-note repair --project-dir . --cleanup-privacy` で候補確認してください。"
+    if item is not None and item.path is not None:
+        return privacy_failed_cleanup_action(action, include_releases=True)
+    if "--privacy-failed" in action:
+        return privacy_failed_cleanup_action(action)
+    return action
 
 
 def _privacy_cleanup_item(project_dir: Path, *, include_releases: bool) -> TroubleshootItem:
@@ -185,14 +236,22 @@ def _privacy_cleanup_item(project_dir: Path, *, include_releases: bool) -> Troub
     categories = _category_counts(project_dir, items)
     category_text = ", ".join(f"{name} {amount}" for name, amount in categories.items())
     release_note = "" if include_releases else "; release packages excluded"
-    command = "auto-note repair --project-dir . --cleanup-privacy"
+    command = "auto-note cleanup --project-dir . --privacy-failed"
     if include_releases:
         command += " --include-releases"
+    release_guidance = ""
+    if not include_releases:
+        release_guidance = (
+            "配布ZIPも含めて確認する場合は "
+            "`auto-note cleanup --project-dir . --privacy-failed --include-releases` を使ってください。"
+        )
     return TroubleshootItem(
         "privacy cleanup candidates",
         "warn",
         f"{len(items)} candidate(s), {_format_bytes(total_size)}, {category_text}{release_note}",
-        f"`{command}` で削除前の候補を確認できます。削除する時だけ `--apply` を追加してください。",
+        f"`{command}` で削除前の候補一覧を確認できます。"
+        f"GUIでは「{PRIVACY_FAILED_CLEANUP_GUI}」を開いてください。"
+        f"削除する時だけ同じコマンドに `--apply` を追加してください。{release_guidance}",
     )
 
 

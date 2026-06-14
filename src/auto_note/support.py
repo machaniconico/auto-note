@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from pathlib import PurePosixPath
 from typing import Any, Mapping
 import hashlib
 import json
@@ -10,6 +9,7 @@ import zipfile
 
 from . import __version__
 from .article import write_text_atomic
+from .archive_safety import verify_zip_member_names, verify_zip_regular_entries
 from .diagnostics import (
     create_support_diagnostic_report,
     mask_text,
@@ -95,6 +95,7 @@ def verify_support_bundle(bundle_path: Path) -> list[str]:
         with zipfile.ZipFile(bundle_path) as archive:
             names = archive.namelist()
             errors = _verify_bundle_names(names)
+            errors.extend(_verify_bundle_entries(archive))
             for required in (
                 "README.txt",
                 "SUPPORT_SEND_CHECKLIST.txt",
@@ -462,15 +463,11 @@ def _build_checksums(records: list[dict[str, object]]) -> str:
 
 
 def _verify_bundle_names(names: list[str]) -> list[str]:
-    errors: list[str] = []
-    for name in names:
-        normalized = name.replace("\\", "/")
-        parts = PurePosixPath(normalized).parts
-        if not normalized or normalized.startswith("/") or ".." in parts or any(":" in part for part in parts):
-            errors.append(f"unsafe file name: {name}")
-        if normalized != name:
-            errors.append(f"non-normalized file name: {name}")
-    return errors
+    return verify_zip_member_names(names, unsafe_label="unsafe file name", duplicate_label="duplicate file name")
+
+
+def _verify_bundle_entries(archive: zipfile.ZipFile) -> list[str]:
+    return verify_zip_regular_entries(archive)
 
 
 def _verify_checksums(archive: zipfile.ZipFile) -> list[str]:

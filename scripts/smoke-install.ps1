@@ -42,6 +42,38 @@ function Assert-UninstallShortcut([string]$Path) {
   }
 }
 
+function Assert-TextContains([string]$Text, [string]$Expected, [string]$Context) {
+  if (-not $Text.Contains($Expected)) {
+    throw "Expected $Context to include '$Expected'. Output:`n$Text"
+  }
+}
+
+function Invoke-InstalledAutoNote([string]$ProjectDir, [string[]]$Arguments) {
+  $oldPythonPath = $env:PYTHONPATH
+  try {
+    $env:PYTHONPATH = Join-Path $ProjectDir "src"
+    $output = & python -m auto_note @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+    $text = ($output | Out-String)
+    if ($exitCode -ne 0) {
+      throw "auto-note CLI failed ($exitCode): python -m auto_note $($Arguments -join ' ')`n$text"
+    }
+    return $text
+  } finally {
+    $env:PYTHONPATH = $oldPythonPath
+  }
+}
+
+function Assert-InstalledDiagnosticsOk([string]$ProjectDir, [string]$ExpectedInstallStatus) {
+  $versionText = Invoke-InstalledAutoNote $ProjectDir @("version", "--project-dir", $ProjectDir)
+  Assert-TextContains $versionText "Install info status: OK" "auto-note version"
+  Assert-TextContains $versionText $ExpectedInstallStatus "auto-note version"
+
+  $diagnoseText = Invoke-InstalledAutoNote $ProjectDir @("diagnose", "--project-dir", $ProjectDir)
+  Assert-TextContains $diagnoseText "[OK] install info" "auto-note diagnose"
+  Assert-TextContains $diagnoseText $ExpectedInstallStatus "auto-note diagnose"
+}
+
 $source = [System.IO.Path]::GetFullPath($SourceDir)
 $install = Join-Path ([System.IO.Path]::GetTempPath()) ("auto-note-smoke-" + [guid]::NewGuid().ToString("N"))
 $shortcutRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("auto-note-shortcuts-smoke-" + [guid]::NewGuid().ToString("N"))
@@ -70,6 +102,7 @@ Assert-GuiShortcut (Join-Path $desktopShortcuts "auto-note safe display.lnk") $t
 Assert-GuiShortcut (Join-Path $startShortcuts "auto-note.lnk") $false
 Assert-GuiShortcut (Join-Path $startShortcuts "auto-note safe display.lnk") $true
 Assert-UninstallShortcut (Join-Path $startShortcuts "auto-note uninstall.lnk")
+Assert-InstalledDiagnosticsOk $install "ok, no preinstall backup recorded"
 
 $article = Join-Path $install "articles\keep.md"
 "keep" | Set-Content -LiteralPath $article -Encoding UTF8
@@ -91,6 +124,7 @@ $installInfo = Get-Content -LiteralPath (Join-Path $install ".auto-note\install-
 if (-not $installInfo.preinstall_backup) {
   throw "Expected install-info.json to record preinstall_backup."
 }
+Assert-InstalledDiagnosticsOk $install ("preinstall backup found: " + $installInfo.preinstall_backup)
 
 & (Join-Path $source "scripts\install-auto-note.ps1") `
   -SourceDir $source `
@@ -107,6 +141,8 @@ $backupNames = @($backups | ForEach-Object { $_.Name } | Sort-Object -Unique)
 if ($backupNames.Count -ne $backups.Count) {
   throw "Expected pre-install backup names to be unique."
 }
+$installInfo = Get-Content -LiteralPath (Join-Path $install ".auto-note\install-info.json") -Raw | ConvertFrom-Json
+Assert-InstalledDiagnosticsOk $install ("preinstall backup found: " + $installInfo.preinstall_backup)
 
 & (Join-Path $source "scripts\uninstall-auto-note.ps1") `
   -InstallDir $install `

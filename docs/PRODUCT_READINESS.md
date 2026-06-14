@@ -28,27 +28,27 @@ auto-noteを販売できるレベルに近づけるための品質メモです�
 - GUIの設定タブと `auto-note commercial-setup` で、販売者/屋号、販売ページURL、返金方針URL、サポート連絡先、利用条件/商用方針レビュー、サポート範囲確認を保存でき、設定タブ上で6項目の完了数、不足件数、確認件数、次に直す内容を入力中に表示できる。GUIの `次の不足へ` とコマンド検索の `販売者情報へ` で未入力または確認が必要な欄へ移動でき、設定保存時にも販売者情報の不足/警告件数を通知し、GUIの `販売者情報確認` では未保存の入力欄も含めて未入力項目、非URL形式、メールアドレス直書き、次に入力するGUI位置、CLIフラグ、販売素材/販売ナビへの次アクションを項目名付きで確認できる
 - GUIの `販売者テンプレ` と `auto-note commercial-setup --project-dir . --template` で、販売者情報と販売前確認のMarkdown下書きを `.auto-note\sales` に作成でき、未入力プレースホルダーが残る場合は直接保存コマンドを出さず、編集後にテンプレート適用する安全な導線を表示できる
 - GUIの `テンプレ適用` と `auto-note commercial-setup --project-dir . --apply-latest-template` / `--apply-template <path>` で、編集済み販売者テンプレートの値を設定へ取り込める。`terms_reviewed` と `support_scope_confirmed` は、利用条件、商用方針、サポート範囲、返金条件を販売ページに合わせて確認してから `yes` として扱える
-- GUIのホーム/初回/診断/ヘルプ/コマンド検索と `auto-note commercial-readiness` で、販売前の配布ZIP、プライバシー監査、受入証跡、販売者プロフィール、販売文書、利用条件/商用方針、販売最終確認、サポート連絡先、インストール導線を1枚のレポートにまとめ、`販売準備保存` / `--report` で証跡として残せる
+- GUIのホーム/初回/診断/ヘルプ/コマンド検索と `auto-note commercial-readiness` で、販売前の配布ZIP、プライバシー監査、受入証跡、販売者プロフィール、販売文書、利用条件/商用方針、販売最終確認、サポート連絡先、インストール導線を1枚のレポートにまとめ、`販売準備保存` / `--report` で証跡として残せる。`RC target / 販売RC目途`、`RC path / 残り作業`、`RC checkpoint / 今回の目途` で、BLOCKED時も次の再判定までの区切りを確認できる
 - GUIの `方針レビュー` と `auto-note commercial-readiness --project-dir . --policy-review` で、返金/キャンセル条件、ライセンス/利用条件、サポート範囲、送付前証跡の販売者向け最終確認を `.auto-note\sales\commercial-policy-review-*.txt` に保存できる。購入者向けZIPや問い合わせ一式には含めない販売者専用メモとして扱える
 - GUIの `販売ナビ` と `auto-note sales-plan` で、販売前に残るタスクと最新の配布ZIP/販売用一式ZIP/購入者向けZIP/販売素材のそろい具合を優先順、GUI位置、CLIコマンド付きで確認できる。購入者向けZIPは `Buyer delivery readiness` として検証状態、サイズ、SHA-256を販売者TODOとは別に確認でき、`Seller setup remaining`、`Tool/artifact actions remaining`、`Upload guidance` で販売者判断待ちとツール側の再生成残件を分けて見られる。GUIの `販売ナビ保存` と `auto-note sales-plan --project-dir . --report` で、販売ナビを `.auto-note\sales\sales-plan-*.txt` に証跡保存できる
 - GUIの `最終レビュー` / `レビュー保存` と `auto-note sales-review` / `auto-note sales-review --project-dir . --report` で、最新販売素材、最新配布ZIP、掲載キットZIP、販売者設定、購入者向け送付文、購入者ZIP、送付記録を販売ページ/決済後メッセージ目線で照合し、販売者用の最終確認証跡を `.auto-note\sales\sales-review-*.txt` に保存できる
-- GUIの `販売直前` / `直前保存` と `auto-note sales-launch` / `auto-note sales-launch --project-dir . --report` で、最終レビュー後に販売ページ公開直前の掲載キットZIP、決済後メッセージ、添付ZIP、返金/サポート表示、販売者専用証跡、最新配布ZIP名、購入者向けZIPのファイル名/サイズ/SHA-256/送付文ファイル、マーケットプレイスの目視確認項目を1枚にまとめ、掲載キットZIPは販売ページ作成用で購入者向け添付欄に入れないことも確認できる。販売ページURLから note / BOOTH / Gumroad / STORES / 汎用販売ページ向けの販売先別チェックも出し分け、`.auto-note\sales\sales-launch-checklist-*.txt` に販売者専用チェックリストとして保存できる。GUIの `販売確認記録` と `auto-note sales-launch --project-dir . --confirm-preview --note "checked"` で、実際の販売ページプレビュー/テスト購入相当を見た後の販売者専用証跡を `.auto-note\sales\sales-launch-confirmation-*.txt` に保存でき、GUIの `販売確認コピー` または `auto-note sales-launch --project-dir . --latest-confirmation` で最新記録を再表示/コピーできる。購入者ZIPや問い合わせ一式には含めない
+- GUIの `販売直前` / `直前保存` と `auto-note sales-launch` / `auto-note sales-launch --project-dir . --report` で、最終レビュー後に販売ページ公開直前の掲載キットZIP、決済後メッセージ、添付ZIP、返金/サポート表示、販売者専用証跡、最新配布ZIP名、購入者向けZIPのファイル名/サイズ/SHA-256/送付文ファイル、マーケットプレイスの目視確認項目を1枚にまとめ、掲載キットZIPは販売ページ作成用で購入者向け添付欄に入れないことも確認できる。販売ページURLから note / BOOTH / Gumroad / STORES / 汎用販売ページ向けの販売先別チェックも出し分け、`.auto-note\sales\sales-launch-checklist-*.txt` に販売者専用チェックリストとして保存できる。GUIの `販売確認記録` と `auto-note sales-launch --project-dir . --confirm-preview --note "checkout preview checked: <buyer ZIP name> / <full SHA-256>"` で、実際の販売ページプレビュー/テスト購入相当を見た後の販売者専用証跡を `.auto-note\sales\sales-launch-confirmation-*.txt` に保存できる。確認記録には、確認した画面、最新の購入者ZIP名、完全なSHA-256、プレビュー/テスト購入結果のメモが必要で、メモ内のZIP名/SHA-256が最新の購入者向けZIPと一致しない場合は保存しない。GUIの `販売確認コピー` または `auto-note sales-launch --project-dir . --latest-confirmation` で最新記録を再表示/コピーできる。購入者ZIPや問い合わせ一式には含めない
 - GUIの `販売前一括チェック` で `scripts\check-release.ps1 -Full` をバックグラウンド実行し、構文チェック、全unittest、製品品質ゲート、VBSランチャー、GUI smoke、GUI safe display smoke、プライバシー監査、販売準備、preflight、インストール/アンインストールスモーク、販売納品スモークをまとめて確認し、`.auto-note\reports\release-check-*.txt` に販売前の実行証跡として保存できる。最新結果はホームの販売準備サマリーにも未実行/確認/NG/OKの状態バッジ付きで表示され、24時間超のOKは再実行推奨として扱い、同じ行のボタンも `再実行` に切り替わるため、古い証跡の表示ではなく最新化へ直接進める
 - GUIの `販売素材作成` / `販売素材検証` と `auto-note sales-materials` / `auto-note sales-materials --project-dir . --verify <path> --strict` で、販売ページ文案、購入者の最初の10分、納品メッセージ、FAQ、サポート範囲、返金方針要約、掲載前チェックリストのMarkdown生成と未設定項目検出ができる
 - GUIの `掲載画像作成` / `掲載画像検証` と `auto-note sales-screenshots` / `auto-note sales-screenshots --project-dir . --verify <folder>` で、販売ページ掲載用の5枚のSVG画像、キャプションMarkdown、HTMLプレビューを `.auto-note\sales\screenshots` に生成し、画像パックの不足ファイルや壊れたSVGを確認できる
 - GUIの `掲載キット作成` / `掲載キット検証` と `auto-note sales-listing` / `auto-note sales-listing --project-dir . --verify <folder-or-zip> --strict` で、販売ページへ貼る文案、掲載画像、キャプション、HTMLプレビュー、アップロード前チェック表、manifest、checksumを販売者専用ZIPとしてまとめ、購入者向け納品物ではないことを検証できる
 - GUIの診断/ヘルプ/コマンド検索と `auto-note sales-handoff` で、最新配布ZIP、販売素材Markdown、販売ページ掲載画像パック、販売準備、プライバシー監査、配布ZIP検証結果、購入者向け納品文、購入者の最初の10分、購入者へ送るもの/販売者が保管するものを分けた納品チェックリスト、販売者向け納品記録テンプレ、販売者最終チェックリスト、サポート返信テンプレをmanifest/checksum付きの販売用一式ZIPにまとめられる。ホームは販売用一式ZIP内のmanifestと最新配布ZIP名を照合し、古い配布ZIP由来なら要更新として扱える。販売者証跡ZIP内の `sales_screenshots/index.html` と `sales_screenshots/SCREENSHOT_CAPTIONS.md` で掲載画像とキャプションも確認できる
 - GUIの `購入者ZIP抽出` と `auto-note sales-handoff --extract-buyer <販売一式ZIP>` で、販売者用の証跡ZIPから購入者へ送る配布ZIP、`START_HERE_FOR_BUYER.txt`、納品メモ、購入者向けサポートガイド、記入式の `BUYER_SUPPORT_REQUEST.txt`、`BUYER_DELIVERY_MANIFEST.json`、`SHA256SUMS.txt` だけを別フォルダへ取り出し、同時に購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip` を作成できる。GUIの `問い合わせ票` で最新の購入者向け抽出フォルダにある `BUYER_SUPPORT_REQUEST.txt` を直接開ける。GUIの `購入者ZIP検証`、`auto-note sales-handoff --verify-buyer <抽出フォルダ>`、`auto-note sales-handoff --verify-buyer-package <購入者向けZIP>` で、送付前に余計なファイル混入、最初に読むメモ不足、納品メモのZIP名不一致、問い合わせ票不足、配布ZIP破損、manifest不一致、チェックサム不一致を確認できる。既存フォルダから単体ZIPを作り直す場合は `auto-note sales-handoff --package-buyer <抽出フォルダ>` を使える
-- GUIの `販売一括作成` と `auto-note sales-finalize` で、新しい配布ZIP、販売者テンプレート、販売素材Markdown、販売ページ掲載画像パック、販売ページ掲載キット、販売用一式ZIP、チェックサム付き購入者向け抽出フォルダ、購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip`、最新ZIP名/サイズ/SHA-256入りの購入者向け送付文、販売ナビレポート、販売者送付前チェックリスト、販売証跡JSONマニフェスト `sales-evidence-manifest-*.json`、受入チェック証跡、診断ZIP、プライバシー監査、最終出荷前チェック、販売一括レポートを一度に作成できる。購入者向け抽出フォルダと単体ZIPも同時に検証し、掲載画像パックは `.auto-note\sales\screenshots\auto-note-sales-screenshots-*` に、掲載キットZIPは `.auto-note\sales\auto-note-sales-listing-kit-*.zip` に保管され、販売ナビは `.auto-note\sales\sales-plan-*.txt` に保管され、販売証跡JSONにも送付ZIP名・サイズ・SHA-256・掲載画像パック・掲載キットZIP・チェック結果を残し、購入者向けZIP/掲載キットZIP/販売者証跡ZIP/配布ZIPのサイズとSHA-256も記録するため、送付物や掲載素材の取り違えを減らせる。GUIの `送付前チェック` では、最新送付文、購入者向けZIP、最新配布ZIP由来か、販売者チェックリスト、販売証跡JSONのZIP名とSHA-256を照合できる。GUIの `送付前保存` と `auto-note sales-finalize --project-dir . --send-check --send-check-report` では、最新配布ZIP名も含む同じ照合結果を `.auto-note\sales\buyer-send-readiness-*.txt` に保存できる。GUIの `送付記録` と `auto-note sales-finalize --project-dir . --delivery-receipt` では、送付前チェック証跡、送付時点の最新配布ZIP名、注文管理へ控える `seller-delivery-receipt-*.txt` を保存できる。GUIの `送付記録コピー` では最新の送付記録をそのままクリップボードへ戻せる。GUIの `送付文コピー` では、最新送付文に書かれた購入者向けZIPを検証してからクリップボードへ入れ、検証NGならコピーせず診断タブに理由を出せる。販売者送付前チェックリストでは、購入者へ送るZIP、販売者が保管するZIP、販売ナビ証跡、掲載画像パック、掲載キットZIP、販売証跡JSON、通常送ってはいけないファイルを一枚で確認できる。掲載キットZIPは販売ページ作成用で、購入者へ送る納品ZIPではないことも同じチェックリストで確認できる。古い販売一式ZIPが残っていても再生成できるため、販売素材の必須項目を追加した後も詰まりにくい。GUIの `テンプレ取込一括` と `auto-note sales-finalize --project-dir . --apply-latest-template` では、編集済み最新販売者テンプレートを設定へ取り込んでから同じ一括作成へ進め、未入力項目や受入チェックのWARN/NGも項目名付きで表示できる
+- GUIの `販売一括作成` と `auto-note sales-finalize` で、新しい配布ZIP、販売者テンプレート、販売素材Markdown、販売ページ掲載画像パック、販売ページ掲載キット、販売用一式ZIP、チェックサム付き購入者向け抽出フォルダ、購入者へそのまま添付できる `auto-note-buyer-delivery-*.zip`、最新ZIP名/サイズ/SHA-256入りの購入者向け送付文、販売ナビレポート、販売者送付前チェックリスト、販売証跡JSONマニフェスト `sales-evidence-manifest-*.json`、受入チェック証跡、診断ZIP、プライバシー監査、最終出荷前チェック、販売一括レポートを一度に作成できる。購入者向け抽出フォルダと単体ZIPも同時に検証し、掲載画像パックは `.auto-note\sales\screenshots\auto-note-sales-screenshots-*` に、掲載キットZIPは `.auto-note\sales\auto-note-sales-listing-kit-*.zip` に保管され、販売ナビは `.auto-note\sales\sales-plan-*.txt` に保管され、販売証跡JSONにも送付ZIP名・サイズ・SHA-256・掲載画像パック・掲載キットZIP・チェック結果を残し、購入者向けZIP/掲載キットZIP/販売者証跡ZIP/配布ZIPのサイズとSHA-256も記録するため、送付物や掲載素材の取り違えを減らせる。GUIの `送付前チェック` では、最新送付文、購入者向けZIP、最新配布ZIP由来か、販売者チェックリスト、販売証跡JSONのZIP名とSHA-256を照合できる。GUIの `送付前保存` と `auto-note sales-finalize --project-dir . --send-check --send-check-report` では、最新配布ZIP名も含む同じ照合結果を `.auto-note\sales\buyer-send-readiness-*.txt` に保存できる。GUIの `送付記録` と `auto-note sales-finalize --project-dir . --delivery-receipt` では、送付前チェック証跡、送付時点の最新配布ZIP名、注文管理へ控える `seller-delivery-receipt-*.txt` を保存できる。GUIの `送付記録コピー` では最新の送付記録をそのままクリップボードへ戻せる。GUIの `送付文コピー` では、最新送付文に書かれた購入者向けZIPを検証してからクリップボードへ入れ、検証NGならコピーせず診断タブに理由を出せる。販売者送付前チェックリストでは、購入者へ送るZIP、販売者が保管するZIP、販売ナビ証跡、掲載画像パック、掲載キットZIP、販売証跡JSON、元の配布ZIPを別添しないこと、通常送ってはいけないファイルを一枚で確認できる。掲載キットZIPは販売ページ作成用で、購入者へ送る納品ZIPではないことも同じチェックリストで確認できる。古い販売一式ZIPが残っていても再生成できるため、販売素材の必須項目を追加した後も詰まりにくい。GUIの `テンプレ取込一括` と `auto-note sales-finalize --project-dir . --apply-latest-template` では、編集済み最新販売者テンプレートを設定へ取り込んでから同じ一括作成へ進め、未入力項目や受入チェックのWARN/NGも項目名付きで表示できる
 - GUIの `送付記録コピー` の送付記録には `注文管理コピー欄` があり、ZIP名、SHA-256、送付文、最新配布ZIP名を販売サイト側の注文メモへ貼り直せる。GUIの `注文控えコピー` では、その短い欄だけをコピーできるため、販売者専用の長い記録を注文画面へ貼り過ぎるミスを減らせる。CLIだけで作業する場合は `sales-finalize --project-dir . --order-note` で最新送付記録から同じ短い控え欄だけを出力できる
 - GUIの `購入者ZIP場所` で、送付前チェックと購入者向けZIP検証を通過したZIPの保存フォルダを直接開ける。GUIの `ZIPパスコピー` で、同じガードを通過したZIPの絶対パスだけをコピーできる。GUIの `送付情報コピー` では、ZIP名、絶対パス、サイズ、SHA-256、送付文ファイルを1枚の照合値としてコピーできる。`送付文コピー` と同じ送付前ガードを通すため、販売ページや注文管理画面へ添付する直前の取り違えを減らせる
-- GUIと `auto-note self-test` で、導入後のセットアップ、ランチャー健康チェック、クイック確認、アクションプラン、プライバシー監査、最新配布ZIP検証をまとめて確認できる。ランチャー健康チェックでは `auto-note-gui.bat`、隠しGUIランチャー、ショートカット、起動ログ/復旧導線を確認し、ショートカットで起動しない場合は `auto-note-gui.bat` を直接開く案内を出せる。記事チェック/レビューだけのWARNは投稿前の磨き込みINFOとして整理し、`セルフテスト保存` / `--report` でテキストレポートを残せる
+- GUIと `auto-note self-test` で、導入後のセットアップ、ランチャー健康チェック、クイック確認、アクションプラン、プライバシー監査、最新配布ZIP検証をまとめて確認できる。ランチャー健康チェックでは `auto-note-gui.bat`、隠しGUIランチャー、ショートカット、`auto-note safe display.lnk`、インストール/アンインストール補助ファイル、起動ログ/復旧導線を確認し、ショートカットで起動しない場合は `auto-note-gui.bat` を直接開く案内を出せる。プライバシー監査NGが古い生成物由来のときは `auto-note cleanup --project-dir . --privacy-failed --include-releases` でNG生成物だけを削除前に確認でき、候補が多い場合も種類別サマリーと残件数で確認しやすい。記事チェック/レビューだけのWARNは投稿前の磨き込みINFOとして整理し、`セルフテスト保存` / `--report` でテキストレポートを残せる
 - GUIの `E2E確認` と `auto-note workflow-smoke --report` で、一時プロジェクトを使った練習記事作成、公開前チェック、記事レビュー、投稿準備、投稿ヘルパーHTML生成、バックアップまでの簡易E2Eを確認できる
-- ホームとCLIで準備度スコア、警告、次の対応を確認できる。製品品質と記事の仕上がり、プライバシー監査NG生成物候補は別枠で表示される
+- ホームとCLIで準備度スコア、警告、次の対応を確認できる。製品品質と記事の仕上がり、プライバシー監査NG生成物候補は別枠で表示され、古い生成物由来のプライバシーNGはアクションプランのトップから削除前プレビューへ直接進める
 - GUIと `auto-note preflight` で販売/配布前の総合チェックを実行でき、トラブル診断も含めて確認できる。アクションプランと記事レビューは通常INFOとして確認でき、`--content-strict` では記事の改善項目も警告扱いにでき、GUIの `出荷ZIP作成` または `--create-release` で新しい配布ZIP作成と検証までまとめられる
 - `auto-note preflight --install-smoke` で、一時フォルダへのインストール、更新、アンインストール導線を確認できる
 - `auto-note gui --smoke` と `auto-note preflight --gui-smoke` で、GUIが初期化途中に落ちないかを出荷前に確認できる
-- 設定、診断、バックアップ、診断レポート、GUI起動ログがある
+- 設定、診断、バックアップ、診断レポート、GUI起動ログがある。診断では `install-info.json` の破損、記録された更新前バックアップの参照切れ、インストール/アンインストール補助ファイルと `auto-note safe display.lnk` の欠品も検知できる
 - 壊れた `.auto-note/settings.json` でも既定値で起動し、診断とセットアップ確認で検知できる。修復時は破損ファイルを `.auto-note/settings.invalid-*.json` に退避できる
 - 壊れた `.auto-note/ideas.json` でもアイデア箱を空として起動し、診断とセットアップ確認で検知できる。修復時は破損ファイルを `.auto-note/ideas.invalid-*.json` に退避できる
 - GUI操作中の予期しないエラーをログに残し、画面上で案内できる。復旧セットの結果は `.auto-note/reports/recovery-kit-*.txt` に保存でき、GUIの `最新復旧レポート` / `復旧レポートコピー` / `復旧レポート場所` から確認できる
@@ -56,8 +56,8 @@ auto-noteを販売できるレベルに近づけるための品質メモです�
 - 準備度と診断レポートの保守一覧で、最新バックアップが読めるか、危険エントリがないか、復元対象があるか、プライバシー監査NG生成物候補があるかを確認できる
 - バックアップZIPから記事、設定、アイデアを復元でき、復元前に安全バックアップを作成できる
 - 初回セットアップウィザードで、環境確認と基本設定をまとめて進められる
-- GUIの `自動修復` と `auto-note repair` で、基本フォルダ、設定、アイデア保存を安全に再作成し、プライバシー監査NG生成物候補も確認できる
-- GUIの `トラブル診断` と `auto-note troubleshoot` で、セットアップ、GUIログ、noteログイン詰まり、最新生成物のプライバシー監査、危険生成物候補、最新配布ZIPをまとめて確認できる
+- GUIの `自動修復` と `auto-note repair` で、基本フォルダ、設定、アイデア保存を安全に再作成し、壊れた `install-info.json` を `install-info.invalid-*.json` に退避し、プライバシー監査NG生成物候補も確認できる
+- GUIの `トラブル診断` と `auto-note troubleshoot` で、セットアップ、インストール記録、GUIログ、noteログイン詰まり、最新生成物のプライバシー監査、危険生成物候補、最新配布ZIPをまとめて確認できる。`install-info.json` の破損や更新前バックアップの参照切れがある場合は、再インストール/更新や現状バックアップ作成への次アクションも出せる
 - GUIと `auto-note quickstart` で、初回投稿までの導線、記事チェック、投稿ヘルパー生成可否、バックアップ状態をまとめて確認できる
 - GUIのホーム/初回/診断/ヘルプ/コマンド検索と `auto-note starter-pack` で、サンプル記事、予定、アイデア、匿名ICSを一括作成し、販売デモや購入直後の体験をすぐ作れる。二回目以降は重複作成せず、`auto-note starter-clean` とGUI `スターター整理` でサンプル由来の内容だけ安全に片付けられる
 - GUIと `auto-note practice` で、空の環境でも投稿ヘルパーまで試せる練習用記事を作成できる
@@ -79,7 +79,7 @@ auto-noteを販売できるレベルに近づけるための品質メモです�
 - 診断レポートは標準でパス、ユーザー名、メール、記事タイトル、記事ファイル名を匿名化する
 - 診断レポートに匿名化済み記事レビュー、改善プラン、運用サマリー、公開予定、初回チェック、受入チェック、販売準備、販売直前チェック、販売確認記録の件数/最新名、販売者情報の完了数/不足数/確認数だけの匿名サマリー、セルフテスト、アクションプラン、最新記事の投稿準備レポート、投稿キュー、出荷前チェック、トラブル診断、準備度、製品品質、品質チェック、危険生成物候補を含む保守一覧を同梱できる
 - 診断レポートを作成する前にプレビューできる
-- バージョン/環境概要をGUIと `auto-note version` から確認できる
+- バージョン/環境概要、インストール情報の状態、更新前バックアップの参照状態をGUIと `auto-note version` から確認できる
 - 依存ライブラリの第三者表記をGUIと `auto-note licenses` から確認し、`auto-note licenses --write` で文書更新できる
 - 問い合わせテンプレートMarkdownをGUIと `auto-note support` から作成でき、再現手順、直近の変更、添付物、匿名化済み診断プレビューを含められる
 - GUIの `問い合わせ一式` と `auto-note support --bundle` で、問い合わせMarkdownと診断レポートZIPを1つにまとめられる
@@ -91,11 +91,11 @@ auto-noteを販売できるレベルに近づけるための品質メモです�
 - `auto-note release --verify` で配布ZIPのchecksum、manifest、プライバシーフラグを検証し、manifest概要を表示できる
 - `shortcuts\install-auto-note.bat` で非管理者ローカルインストールとショートカット作成ができる
 - 既存データを残す更新手順とロールバック手順がある
-- インストール/更新時に更新前バックアップと `install-info.json` を作成できる
+- インストール/更新時に更新前バックアップと `install-info.json` を作成でき、`auto-note version` / `auto-note diagnose` で壊れた記録や更新前バックアップの参照切れを確認できる
 - 既定ではユーザーデータを残すアンインストール導線がある
 - `scripts\check-release.ps1` で、構文チェック、全unittest、製品品質ゲート、VBSランチャー構文チェック、GUI smoke、GUI safe display smokeを一括確認でき、`-Full` でプライバシー監査、販売準備、preflight、インストール/アンインストールスモーク、販売一括/購入者送付/販売直前チェック保存スモークまで広げられる。GUIの `販売前一括チェック` からも同じ `-Full` を実行でき、結果は `release-check-*.txt` としてホームの `直近レポート` に並ぶ
 - `scripts\smoke-sales-delivery.ps1` で、クリーンな一時コピー上の販売一括作成、購入者向けZIP検証、送付前チェック保存、販売者向け送付記録作成、購入者送付の照合値付き販売直前チェックリスト保存、販売確認記録の保存と最新表示を確認できる
-- `scripts\smoke-install.ps1` でインストール/アンインストール導線を一時フォルダで検証できる
+- `scripts\smoke-install.ps1` でインストール/更新/アンインストール導線を一時フォルダで検証でき、インストール済みコピー上の `auto-note version` / `auto-note diagnose` が `install-info.json` と更新前バックアップ参照をOKとして読めることも確認できる
 - サポート、インストール、更新、プライバシー、利用条件ドラフト、商用方針ドラフト、第三者表記、変更履歴、リリースチェックリストの文書がある
 - 古い投稿ヘルパーHTML、診断ZIP、問い合わせ一式、記事CSV、セルフテスト保存レポート、受入チェック保存レポート、販売準備レポート、販売方針レビュー、販売ページ・納品最終レビューレポート、販売直前チェックリスト、販売確認記録、改善プランレポート、運用サマリーレポート、予定ICS、投稿キューレポート、E2E確認レポートをプレビューして整理できる。配布ZIPは明示した場合だけ対象にでき、プライバシー監査NGの生成物だけを抽出して整理できる
 - 記事一覧CSVを出力できる
@@ -105,7 +105,7 @@ auto-noteを販売できるレベルに近づけるための品質メモです�
 
 - インストール/アンインストール導線のユーザー環境実機検証
 - 実販売環境に近い決済/納品メッセージ文面のスモークを、マーケットプレイスごとの実画面変更に合わせて継続更新する
-- `sales-launch` で販売先別の最終チェックリストと販売確認記録は作れるため、実際の販売ページ/決済方法/マーケットプレイスの仕様変更に合わせた最終照合は販売者が目視で完了し、`販売確認記録` として残す
+- `sales-launch` で販売先別の最終チェックリストと販売確認記録は作れるため、実際の販売ページ/決済方法/マーケットプレイスの仕様変更に合わせた最終照合は販売者が目視で完了し、確認した画面、最新の購入者ZIP名、完全なSHA-256、プレビュー/テスト購入結果を `販売確認記録` として残す。ZIP名/SHA-256が最新の購入者向けZIPと一致しない記録は保存しない
 
 ## サポート時に見る場所
 
@@ -132,7 +132,7 @@ auto-noteを販売できるレベルに近づけるための品質メモです�
 - `auto-note sales-review --project-dir . --report`
 - `auto-note sales-launch --project-dir .`
 - `auto-note sales-launch --project-dir . --report`
-- `auto-note sales-launch --project-dir . --confirm-preview --note "checked"`
+- `auto-note sales-launch --project-dir . --confirm-preview --note "checkout preview checked: <buyer ZIP name> / <full SHA-256>"`
 - `auto-note sales-launch --project-dir . --latest-confirmation`
 - `auto-note sales-materials --project-dir .`
 - `auto-note sales-materials --project-dir . --verify ".auto-note\sales\auto-note-sales-materials-YYYYMMDD-HHMMSS.md" --strict`

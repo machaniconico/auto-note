@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from pathlib import PurePosixPath
 import shutil
+import stat
 import zipfile
 
 
@@ -70,6 +71,7 @@ def inspect_backup(backup_path: Path) -> BackupInspection:
     total_bytes = 0
     has_settings = False
     has_ideas = False
+    seen: set[str] = set()
 
     with zipfile.ZipFile(backup_path) as archive:
         for info in archive.infolist():
@@ -80,6 +82,14 @@ def inspect_backup(backup_path: Path) -> BackupInspection:
             normalized = _normalize_member_name(info.filename)
             if not _safe_member_name(normalized):
                 unsafe_files.append(normalized or info.filename)
+                continue
+            duplicate_key = _restore_collision_key(normalized)
+            if duplicate_key in seen:
+                unsafe_files.append(f"duplicate: {normalized}")
+                continue
+            seen.add(duplicate_key)
+            if not _regular_zip_member(info):
+                unsafe_files.append(f"unsafe type: {normalized}")
                 continue
             if _restorable_normalized_member(normalized):
                 restorable_files.append(normalized)
@@ -114,9 +124,32 @@ def verify_backup(backup_path: Path) -> list[str]:
     errors: list[str] = []
     if inspection.unsafe_files:
         errors.append(f"{len(inspection.unsafe_files)} unsafe file(s)")
+        errors.append(f"unsafe entries: {format_unsafe_backup_entries(inspection.unsafe_files)}")
     if not inspection.restorable_files:
         errors.append("no restorable articles/settings")
     return errors
+
+
+def format_unsafe_backup_entries(unsafe_files: list[str], *, limit: int = 3) -> str:
+    examples = unsafe_files[:limit]
+    text = "; ".join(examples)
+    if len(unsafe_files) > limit:
+        text += f"; ... {len(unsafe_files) - limit} more"
+    return text
+
+
+def backup_restore_blockers(inspection: BackupInspection) -> list[str]:
+    blockers: list[str] = []
+    if inspection.unsafe_files:
+        examples = format_unsafe_backup_entries(inspection.unsafe_files)
+        blockers.append(f"unsafe entries: {len(inspection.unsafe_files)} ({examples})")
+    if not inspection.restorable_files:
+        blockers.append("no restorable articles/settings")
+    return blockers
+
+
+def format_backup_restore_status(inspection: BackupInspection) -> str:
+    return "ready" if inspection.ok else "blocked"
 
 
 def format_backup_inspection(inspection: BackupInspection) -> str:
@@ -124,6 +157,7 @@ def format_backup_inspection(inspection: BackupInspection) -> str:
     lines = [
         "Backup inspection",
         f"Status: {status}",
+        f"Restore status: {format_backup_restore_status(inspection)}",
         f"Backup: {inspection.backup}",
         f"Total files: {inspection.total_files}",
         f"Total bytes: {inspection.total_bytes}",
@@ -134,6 +168,11 @@ def format_backup_inspection(inspection: BackupInspection) -> str:
         f"Ignored files: {len(inspection.ignored_files)}",
         f"Unsafe files: {len(inspection.unsafe_files)}",
     ]
+    blockers = backup_restore_blockers(inspection)
+    if blockers:
+        lines.append("")
+        lines.append("Restore blockers:")
+        lines.extend(f"- {blocker}" for blocker in blockers)
     if inspection.article_files:
         lines.append("")
         lines.append("Articles:")
@@ -163,7 +202,11 @@ def restore_backup(project_dir: Path, backup_path: Path, *, create_safety_backup
 
     inspection = inspect_backup(backup_path)
     if inspection.unsafe_files:
-        raise ValueError("backup contains unsafe entries. Inspect the backup before restoring.")
+        examples = format_unsafe_backup_entries(inspection.unsafe_files)
+        raise ValueError(
+            f"backup contains {len(inspection.unsafe_files)} unsafe entries: {examples}. "
+            "Inspect the backup before restoring."
+        )
     if not inspection.restorable_files:
         raise ValueError("backup has no restorable articles/settings.")
 
@@ -224,6 +267,15 @@ def _safe_member_name(name: str) -> bool:
 
 def _normalize_member_name(name: str) -> str:
     return name.replace("\\", "/")
+
+
+def _restore_collision_key(name: str) -> str:
+    return _normalize_member_name(name).casefold()
+
+
+def _regular_zip_member(info: zipfile.ZipInfo) -> bool:
+    mode = (info.external_attr >> 16) & 0o170000
+    return not mode or mode == stat.S_IFREG
 
 
 def _restore_target(project_dir: Path, name: str) -> Path:

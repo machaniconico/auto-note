@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from .app_info import archive_invalid_install_info, inspect_install_info, list_install_info_recovery_files
 from .maintenance import cleanup_generated_files
 from .paths import unique_path
 from .readiness import run_readiness
@@ -81,6 +82,7 @@ def run_repair(
         detail = f"{len(before_warnings)} setup warning(s); basic folders/settings/ideas can be refreshed"
         action = "実行する場合は `auto-note repair --project-dir . --apply` を使います。"
     items.append(RepairItem("basic setup", status, detail, action))
+    items.append(_repair_install_info_item(project_dir, apply=apply))
 
     privacy_result = cleanup_generated_files(
         project_dir,
@@ -154,6 +156,44 @@ def run_repair(
         applied=apply,
         readiness_score=readiness.score,
         items=items,
+    )
+
+
+def _repair_install_info_item(project_dir: Path, *, apply: bool) -> RepairItem:
+    status = inspect_install_info(project_dir)
+    recovery_files = list_install_info_recovery_files(project_dir)
+    recovery_note = f", recovery backups: {len(recovery_files)}" if recovery_files else ""
+    if status.ok:
+        return RepairItem("install info", "pass", f"{status.detail}{recovery_note}")
+    if "preinstall backup missing" in status.detail:
+        return RepairItem(
+            "install info",
+            "warn",
+            f"{status.detail}{recovery_note}",
+            "`auto-note backup --project-dir .` で現状バックアップを作成し、更新直後ならインストーラーを再実行してください。",
+        )
+    if not apply:
+        return RepairItem(
+            "install info",
+            "warn",
+            f"{status.detail}{recovery_note}; can archive invalid install-info.json",
+            "退避する場合は `auto-note repair --project-dir . --apply` を使います。",
+        )
+    try:
+        archived = archive_invalid_install_info(project_dir)
+    except OSError as exc:
+        return RepairItem(
+            "install info",
+            "fail",
+            f"failed to archive invalid install-info.json: {exc}",
+            "`auto-note diagnose --project-dir . --report` で診断ZIPを作成してサポートへ共有してください。",
+        )
+    repaired = inspect_install_info(project_dir)
+    return RepairItem(
+        "install info",
+        "pass" if repaired.ok else "warn",
+        f"archived invalid install-info.json as {archived.name}; now {repaired.detail}",
+        "更新時はインストーラーを再実行すると新しい install-info.json が作成されます。",
     )
 
 

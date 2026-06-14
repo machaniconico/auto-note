@@ -1514,11 +1514,11 @@ def _build_buyer_delivery_message(
     return (
         "auto-note buyer delivery message / 購入者向け送付文\n\n"
         "Paste-ready message / 貼り付け用文:\n"
-        "ご購入ありがとうございます。以下のZIPを添付します。\n\n"
+        "ご購入ありがとうございます。以下の購入者向け納品ZIPを添付します。\n\n"
         f"- 添付ZIP: {package_path.name}\n"
         f"- サイズ: {len(package_data)} bytes\n"
         f"- SHA-256: {package_sha}\n\n"
-        "ZIPを展開したら、まず START_HERE_FOR_BUYER.txt を開いてください。"
+        "このZIPだけを展開したら、まず START_HERE_FOR_BUYER.txt を開いてください。"
         "その案内に沿って配布ZIPを展開し、START_HERE.txt と shortcuts\\install-auto-note.bat から導入してください。"
         "note.com の自動ログインが安全ではない可能性で止まる場合は、普段使うブラウザでnote.comへログインし、投稿ヘルパーの貼り付け運用をご利用ください。\n\n"
         "困った時は BUYER_SUPPORT_GUIDE.txt を確認し、BUYER_SUPPORT_REQUEST.txt に状況を書いてください。"
@@ -1528,6 +1528,7 @@ def _build_buyer_delivery_message(
         f"- Buyer delivery ZIP: {package_path.name}\n"
         f"- Source release: {release_path.name}\n"
         f"- Seller evidence ZIP to keep: {handoff_path.name}\n"
+        "- Attach only the buyer delivery ZIP above. Do not attach the source release ZIP separately.\n"
         "- Keep this message with your order record.\n"
     )
 
@@ -1588,6 +1589,7 @@ def _build_seller_send_checklist(
         f"[ ] Sales evidence manifest: {_name_or_none(sales_evidence_manifest_path)}\n"
         f"[ ] Diagnostic evidence: {_name_or_none(diagnostic_report_path)}\n\n"
         "Do not send in normal delivery / 通常納品では送らないもの\n"
+        "[ ] Do not attach the source release ZIP separately; it is already inside the buyer delivery ZIP.\n"
         "[ ] Do not attach auto-note-sales-handoff-*.zip to the buyer.\n"
         "[ ] Do not attach auto-note-sales-listing-kit-*.zip to the buyer.\n"
         "[ ] Do not attach diagnostic ZIPs unless support asks for them.\n"

@@ -10,12 +10,24 @@ import sys
 from .action_plan import build_action_plan
 from .paths import unique_path
 from .privacy import run_privacy_audit
+from .privacy_actions import privacy_failed_cleanup_action
 from .quickstart import ESSENTIAL_SETUP_ITEMS, QuickstartReport, run_quickstart
 from .release import list_releases, verify_release_package
 from .setup_check import run_setup_check
 
 
 CONTENT_POLISH_QUICKSTART_ITEMS = {"article check", "article review"}
+PRIVACY_FAILED_CLEANUP_ACTION = (
+    "`auto-note cleanup --project-dir . --privacy-failed --include-releases` "
+    "でNG生成物だけを削除前に確認できます。"
+)
+LAUNCHER_INSTALL_HELPER_PATHS = (
+    Path("auto-note safe display.lnk"),
+    Path("shortcuts") / "install-auto-note.bat",
+    Path("shortcuts") / "uninstall-auto-note.bat",
+    Path("scripts") / "install-auto-note.ps1",
+    Path("scripts") / "uninstall-auto-note.ps1",
+)
 
 
 @dataclass(frozen=True)
@@ -90,7 +102,7 @@ def format_self_test_report(report: SelfTestReport) -> str:
         f"Items: {counts['pass']} OK, {counts['info']} INFO, {counts['warn']} WARN, {counts['fail']} NG",
         "",
     ]
-    next_actions: list[str] = []
+    next_actions: list[tuple[str, str]] = []
     for item in report.items:
         label = {"pass": "OK", "info": "INFO", "warn": "WARN", "fail": "NG"}.get(
             item.status,
@@ -99,11 +111,26 @@ def format_self_test_report(report: SelfTestReport) -> str:
         lines.append(f"[{label}] {item.name}: {item.detail}")
         if item.action:
             lines.append(f"  next: {item.action}")
-            next_actions.append(f"- {item.name}: {item.action}")
+            next_actions.append((item.name, item.action))
     if next_actions:
         lines.extend(["", "Next actions"])
-        lines.extend(next_actions)
+        lines.extend(_format_next_actions(next_actions))
     return "\n".join(lines)
+
+
+def _format_next_actions(actions: list[tuple[str, str]]) -> list[str]:
+    grouped: dict[str, list[str]] = {}
+    ordered_actions: list[str] = []
+    for name, action in actions:
+        action = action.strip()
+        if not action:
+            continue
+        if action not in grouped:
+            grouped[action] = []
+            ordered_actions.append(action)
+        if name not in grouped[action]:
+            grouped[action].append(name)
+    return [f"- {' / '.join(grouped[action])}: {action}" for action in ordered_actions]
 
 
 def write_self_test_report(
@@ -207,6 +234,12 @@ def _launcher_health_item(project_dir: Path) -> SelfTestItem:
 
     if not any(path.exists() for path in shortcut_candidates):
         warnings.append("desktop shortcut missing")
+    missing_helpers = [path for path in LAUNCHER_INSTALL_HELPER_PATHS if not (project_dir / path).exists()]
+    if missing_helpers:
+        missing_text = ", ".join(os.fspath(path) for path in missing_helpers[:3])
+        if len(missing_helpers) > 3:
+            missing_text = f"{missing_text}; +{len(missing_helpers) - 3} more"
+        warnings.append(f"install helper missing: {missing_text}")
 
     if warnings:
         preview = "; ".join(warnings[:4])
@@ -216,9 +249,13 @@ def _launcher_health_item(project_dir: Path) -> SelfTestItem:
             "launcher health",
             "warn",
             preview,
-            "ショートカットで起動しない場合は auto-note-gui.bat を直接開き、復旧セットを実行してください。",
+            "ショートカットで起動しない場合は auto-note-gui.bat を直接開き、配布ZIPの再展開または shortcuts\\install-auto-note.bat の再実行後に復旧セットを実行してください。",
         )
-    return SelfTestItem("launcher health", "pass", "bat, hidden launcher, shortcut, recovery path OK")
+    return SelfTestItem(
+        "launcher health",
+        "pass",
+        "bat, hidden launcher, shortcut, safe display shortcut, install helpers, recovery path OK",
+    )
 
 
 def _collect_missing_markers(warnings: list[str], text: str | None, markers: tuple[tuple[str, str], ...]) -> None:
@@ -336,8 +373,14 @@ def _first_report_issue(items, status: str):
 
 def _privacy_failure_action(item) -> str:
     if item is not None and item.action:
-        return item.action
-    return "`auto-note privacy-audit --project-dir .` のNG項目を確認してください。"
+        action = item.action
+    else:
+        action = "`auto-note privacy-audit --project-dir .` のNG項目を確認してください。"
+    if item is not None and item.path is not None:
+        return privacy_failed_cleanup_action(action, include_releases=True)
+    if "--privacy-failed" in action:
+        return privacy_failed_cleanup_action(action)
+    return action
 
 
 def _sanitize_detail(detail: str, project_dir: Path) -> str:

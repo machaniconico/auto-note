@@ -84,6 +84,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "auto-note-gui.bat --safe-display",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "INSTALL.md",
+            "install guide install info diagnostic guidance",
+            "install-info.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "INSTALL.md",
+            "install guide install helper diagnostic guidance",
+            "インストール/アンインストール補助ファイル",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "INSTALL.md",
+            "install guide preinstall backup diagnostic guidance",
+            "更新前バックアップの参照切れ",
+        )
+    )
     checks.append(_path_check(project_dir / "docs" / "UPDATE.md", "update guide"))
     checks.append(
         _text_contains_check(
@@ -360,6 +381,174 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "archive_safety.py",
+            "shared archive name safety helper",
+            "verify_zip_member_names",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "archive_safety.py",
+            "shared archive normalized duplicate safety",
+            "duplicate_key",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "archive_safety.py",
+            "shared archive entry type safety helper",
+            "verify_zip_regular_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "support.py",
+            "support bundle duplicate entry safety",
+            "duplicate file name",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup restore special entry safety",
+            "_regular_zip_member",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup restore normalized collision safety",
+            "_restore_collision_key",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup restore unsafe examples in error",
+            "format_unsafe_backup_entries(inspection.unsafe_files)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI backup restore friendly error",
+            "backup restore aborted:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI backup restore inspect hint",
+            "auto-note backup --inspect",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI backup inspect friendly error",
+            "backup inspection aborted:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI backup inspect blocked status",
+            "restore status: blocked until the unsafe/no-restorable entries above are fixed.",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI backup restore blocked message",
+            "_backup_restore_blocked_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI backup restore blockers",
+            "backup_restore_blockers(inspection)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI backup restore status line",
+            "Restore status:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup unsafe entry formatter",
+            "format_unsafe_backup_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup inspection restore blockers",
+            "backup_restore_blockers",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup inspection restore blockers heading",
+            "Restore blockers:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup inspection restore status",
+            "format_backup_restore_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "backup.py",
+            "backup inspection restore status line",
+            "Restore status:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness backup unsafe examples",
+            "format_unsafe_backup_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "quickstart.py",
+            "quickstart backup restore status",
+            "format_backup_restore_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "quickstart.py",
+            "quickstart backup restore blockers",
+            "backup_restore_blockers",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness backup restore status",
+            "format_backup_restore_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness backup restore blockers",
+            "backup_restore_blockers",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "support.py",
             "support bundle GUI log summary reader",
             "read_support_gui_log_summary",
@@ -465,6 +654,48 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic backup unsafe examples",
+            "latest_backup_unsafe_examples",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic preview backup unsafe examples",
+            "DIAGNOSTIC_PREVIEW_MAINTENANCE_REQUIRED_PREFIXES",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic privacy cleanup RC recheck summary",
+            "privacy_failed_cleanup_rc_recheck",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic privacy cleanup apply summary",
+            "privacy_failed_cleanup_apply",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic backup restore status",
+            "latest_backup_restore_status",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic backup restore blockers",
+            "latest_backup_restore_blockers",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "first_run.py",
             "first-run support bundle freshness warning",
             "is_support_bundle_stale",
@@ -493,9 +724,58 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run deduplicated next actions",
+            "_format_next_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run command-keyed next actions",
+            "_next_action_key",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run contained next action collapse",
+            "_action_subsumes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run next actions GUI guidance",
+            "_next_action_gui_suffix",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "first_run.py",
+            "first-run privacy cleanup GUI target",
+            "privacy_failed_cleanup_target",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "quickstart.py",
             "quickstart note login safety guide",
             "ログイン安全ガイド",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "quickstart.py",
+            "quickstart content inspection GUI guidance",
+            "GUIのチェックタブで全体チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "quickstart.py",
+            "quickstart content polish GUI guidance",
+            "GUIのチェックタブでレビュー更新",
         )
     )
     checks.append(
@@ -536,6 +816,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "acceptance.py",
+            "acceptance privacy cleanup GUI target",
+            "privacy_failed_cleanup_target",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "acceptance.py",
             "acceptance deduplicated next actions",
             "_format_next_actions",
         )
@@ -564,8 +851,50 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test deduplicated next actions",
+            "_format_next_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
             "self-test privacy specific action",
             "_privacy_failure_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy_actions.py",
+            "privacy failed cleanup shared action helper",
+            "privacy_failed_cleanup_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy_actions.py",
+            "privacy failed cleanup apply command guidance",
+            "privacy_failed_cleanup_apply_command",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy_actions.py",
+            "privacy failed cleanup GUI guidance",
+            "PRIVACY_FAILED_CLEANUP_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "privacy_actions.py",
+            "privacy failed cleanup RC recheck guidance",
+            "auto-note commercial-readiness --project-dir .",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test privacy cleanup action",
+            "cleanup --project-dir . --privacy-failed --include-releases",
         )
     )
     checks.append(
@@ -879,6 +1208,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README self-test install helper guidance",
+            "インストール/アンインストール補助ファイル",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README self-test privacy cleanup guidance",
+            "cleanup --project-dir . --privacy-failed --include-releases",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README home recent reports guidance",
             "直近レポート",
         )
@@ -895,6 +1238,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home recent reports buyer delivery guidance",
             "購入者ZIP、購入者送付文、送付記録",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README install info diagnostic guidance",
+            "install-info.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README install helper diagnostic guidance",
+            "インストール/アンインストール補助ファイル",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README preinstall backup diagnostic guidance",
+            "更新前バックアップの参照切れ",
         )
     )
     checks.append(
@@ -1075,6 +1439,83 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "StartMenuShortcutDir",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "app_info.py",
+            "install info status model",
+            "InstallInfoStatus",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "app_info.py",
+            "install info inspector",
+            "inspect_install_info",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "app_info.py",
+            "install info invalid JSON diagnostic",
+            "invalid JSON",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "app_info.py",
+            "install info preinstall backup missing diagnostic",
+            "preinstall backup missing",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "app_info.py",
+            "install info invalid archive helper",
+            "archive_invalid_install_info",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "app_info.py",
+            "install info recovery lister",
+            "list_install_info_recovery_files",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostics install info status",
+            "status.detail",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostics install info recovery count",
+            "list_install_info_recovery_files",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostics install helper item",
+            "_install_helpers_item",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostics install helper safe display",
+            "auto-note safe display.lnk",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostics install helper uninstall",
+            "uninstall-auto-note.bat",
+        )
+    )
     checks.append(_path_check(project_dir / "shortcuts" / "install-auto-note.bat", "installer launcher"))
     checks.append(_path_check(project_dir / "scripts" / "uninstall-auto-note.ps1", "uninstaller script"))
     checks.append(
@@ -1178,6 +1619,34 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             "StartMenuShortcutDir",
         )
     )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke runs installed version",
+            "version",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke runs installed diagnostics",
+            "diagnose",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke verifies install info OK",
+            "Install info status: OK",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-install.ps1",
+            "install smoke verifies preinstall backup status",
+            "preinstall backup found",
+        )
+    )
     checks.append(_path_check(project_dir / "scripts" / "smoke-sales-delivery.ps1", "sales delivery smoke test"))
     checks.append(
         _text_contains_check(
@@ -1261,6 +1730,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "scripts" / "smoke-sales-delivery.ps1",
             "sales delivery smoke launch confirmation assertion",
             "sales-launch-confirmation-*.txt",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke launch confirmation note detail",
+            "$launchConfirmationNote",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "scripts" / "smoke-sales-delivery.ps1",
+            "sales delivery smoke launch confirmation exact hash",
+            "$buyerPackageHash",
         )
     )
     checks.append(
@@ -1378,6 +1861,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test launcher install helpers",
+            "LAUNCHER_INSTALL_HELPER_PATHS",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test safe display shortcut health",
+            "auto-note safe display.lnk",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
+            "self-test install helper warning",
+            "install helper missing",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "selftest.py",
             "self-test hidden launcher syntax check",
             "_hidden_launcher_syntax_warning",
         )
@@ -1408,6 +1912,69 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "troubleshoot.py",
             "troubleshoot privacy specific action",
             "_privacy_failure_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot privacy cleanup action",
+            "cleanup --project-dir . --privacy-failed --include-releases",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot cleanup preview action",
+            "同じコマンドに `--apply`",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot cleanup GUI guidance",
+            "PRIVACY_FAILED_CLEANUP_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot cleanup include releases guidance",
+            "配布ZIPも含めて確認",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot install info item",
+            "_install_info_item",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot install info reinstall action",
+            "shortcuts\\\\install-auto-note.bat",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "troubleshoot.py",
+            "troubleshoot install info backup action",
+            "auto-note backup --project-dir .",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "repair.py",
+            "repair install info archive action",
+            "archive_invalid_install_info",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "repair.py",
+            "repair install info missing backup guard",
+            "preinstall backup missing",
         )
     )
     checks.append(
@@ -1489,6 +2056,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial setup template apply error details",
+            "format_commercial_setup_apply_error",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI commercial setup relative template paths",
+            "_display_project_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "commercial_setup.py",
             "commercial setup URL/contact warnings",
             "commercial_setup_warnings",
@@ -1532,6 +2113,83 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup placeholder CLI guard",
+            "commercial_setup_placeholder_errors",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup deduplicated template action",
+            "_commercial_setup_template_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup template apply next action",
+            "apply: auto-note commercial-setup --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup template GUI next action",
+            "COMMERCIAL_SETUP_TEMPLATE_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup apply GUI next action",
+            "COMMERCIAL_SETUP_APPLY_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup template apply error formatter",
+            "format_commercial_setup_apply_error",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup unedited template apply guard",
+            "未入力のプレースホルダー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup unedited template path guidance",
+            "_commercial_setup_template_display_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup combined review flags action",
+            "_commercial_setup_review_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup review GUI next action",
+            "COMMERCIAL_SETUP_REVIEW_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
+            "commercial setup ready GUI next action",
+            "COMMERCIAL_SETUP_READY_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial_setup.py",
             "commercial setup sales finalize followup",
             "sales-finalize --project-dir . --apply-latest-template",
         )
@@ -1541,6 +2199,118 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "commercial_setup.py",
             "commercial setup sales plan followup",
             "auto-note sales-plan --project-dir .",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness privacy cleanup direct target",
+            "privacy_failed_cleanup_action",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness deduplicated next actions",
+            "_format_next_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness command-keyed next actions",
+            "_next_action_key",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness GUI next action targets",
+            "_next_action_gui_target",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness RC milestone",
+            "_commercial_rc_milestone",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness RC path summary",
+            "_commercial_rc_path_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness RC checkpoint",
+            "_commercial_rc_checkpoint",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness contained next action collapse",
+            "_action_subsumes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness acceptance first NG detail",
+            "first NG:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness acceptance GUI guidance",
+            "_ACCEPTANCE_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness acceptance report command",
+            "_ACCEPTANCE_REPORT_COMMAND",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness actionable review command",
+            "_commercial_final_review_command",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness existing template apply guidance",
+            "_commercial_setup_template_action(project_dir)",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness item template GUI guidance",
+            "COMMERCIAL_SETUP_APPLY_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness item review GUI guidance",
+            "COMMERCIAL_SETUP_REVIEW_GUI",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "commercial.py",
+            "commercial readiness install smoke GUI guidance",
+            "_PREFLIGHT_CREATE_RELEASE_GUI",
         )
     )
     checks.append(
@@ -1555,6 +2325,104 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "action_plan.py",
             "action plan commercial setup next missing GUI guidance",
             "設定 > 次の不足へ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan commercial setup next actions summary",
+            "_commercial_setup_action_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan backup blocked rebuild title",
+            "復元できるバックアップを作り直す",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan backup blocked guidance",
+            "restore status blocked",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan privacy cleanup direct target",
+            "_troubleshoot_action_target",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan privacy cleanup GUI guidance",
+            "診断 > 危険生成物確認",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan privacy cleanup action message",
+            "_troubleshoot_action_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC milestone",
+            "RC target / 販売RC目途",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC path summary",
+            "RC path / 残り作業",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC checkpoint",
+            "RC checkpoint / 今回の目途",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC milestone helper",
+            "_action_plan_rc_milestone",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC path helper",
+            "_action_plan_rc_path_summary",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC checkpoint helper",
+            "_action_plan_rc_checkpoint",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan RC all steps source",
+            "_action_plan_all_steps",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "action_plan.py",
+            "action plan hidden priority count",
+            "Priority actions (",
         )
     )
     checks.append(
@@ -1671,6 +2539,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_listing.py",
+            "sales listing kit zip safety",
+            "_verify_listing_zip_entries",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_handoff.py",
             "sales handoff buyer first 10 minutes",
             "購入者の最初の10分",
@@ -1763,6 +2638,41 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery send-only guidance",
+            "Send only the verified auto-note-buyer-delivery-*.zip",
+        )
+    )
+    checks.append(
+        _text_not_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff avoids direct release ZIP send guidance",
+            "Send the release zip under release/",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer handoff delivery ZIP wording",
+            "Attached buyer delivery ZIP",
+        )
+    )
+    checks.append(
+        _text_not_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff avoids legacy buyer release attachment wording",
+            "Attached release package",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff duplicate entry safety",
+            "duplicate file name",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
             "sales handoff buyer delivery checksums",
             "SHA256SUMS.txt",
         )
@@ -1828,6 +2738,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_handoff.py",
             "sales handoff buyer delivery package SHA-256",
             "Package SHA-256",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_handoff.py",
+            "sales handoff buyer delivery package NG stop guidance",
+            "Do not send this ZIP",
         )
     )
     checks.append(
@@ -1919,6 +2836,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_finalize.py",
             "sales finalize buyer delivery message",
             "_write_buyer_delivery_message",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize buyer delivery message ZIP-only wording",
+            "購入者向け納品ZIP",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize buyer delivery message no separate release ZIP",
+            "Do not attach the source release ZIP separately",
         )
     )
     checks.append(
@@ -2098,6 +3029,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     )
     checks.append(
         _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_finalize.py",
+            "sales finalize seller checklist no separate release ZIP",
+            "Do not attach the source release ZIP separately; it is already inside the buyer delivery ZIP",
+        )
+    )
+    checks.append(
+        _text_contains_check(
             project_dir / "src" / "auto_note" / "privacy.py",
             "privacy audit seller send checklist",
             "seller send checklist privacy",
@@ -2150,6 +3088,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "diagnostics.py",
             "diagnostic report verifier",
             "verify_diagnostic_report",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "diagnostics.py",
+            "diagnostic report duplicate entry safety",
+            "duplicate file name",
         )
     )
     checks.append(
@@ -2267,6 +3212,69 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report explicit apply command",
+            "実行コマンド例:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup privacy report target guidance",
+            "対象: privacy-audit --all",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup privacy priority display guidance",
+            "表示順: 販売/送付に近いNG",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup release package target guidance",
+            "配布ZIP: 対象に含めています",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup privacy RC recheck guidance",
+            "RC再判定: auto-note commercial-readiness --project-dir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup privacy sales handoff regeneration guidance",
+            "再生成: auto-note sales-handoff --project-dir",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report bounded item list",
+            "CLEANUP_REPORT_ITEM_LIMIT",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report hidden item summary",
+            "種類別サマリー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup report project-relative paths",
+            "_format_cleanup_path",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
             "cleanup privacy summary grouping",
             "_cleanup_summary_reason",
         )
@@ -2283,6 +3291,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "maintenance.py",
             "cleanup confirmation irreversible warning",
             "元に戻せません",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "maintenance.py",
+            "cleanup confirmation release package warning",
+            "配布ZIPも削除対象に含まれます",
         )
     )
     checks.append(
@@ -2309,6 +3324,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness privacy cleanup apply guidance",
+            "privacy_failed_cleanup_apply_command",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
+            "readiness privacy cleanup RC recheck guidance",
+            "PRIVACY_FAILED_CLEANUP_RC_RECHECK",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "readiness.py",
             "readiness article content next focus",
             "next focus",
         )
@@ -2325,6 +3354,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI cleanup confirmation summary",
             "format_cleanup_confirmation(preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI privacy cleanup report context",
+            "privacy_failed=True",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI privacy cleanup apply command guidance",
+            "privacy_failed_cleanup_apply_command",
         )
     )
     checks.append(
@@ -2393,6 +3436,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales launch confirmation note guard",
+            "sales launch confirmation aborted",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
+            "CLI sales launch note required help",
+            "Required seller note saved with --confirm-preview",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "__main__.py",
             "CLI latest sales launch confirmation command",
             "--latest-confirmation",
         )
@@ -2444,6 +3501,55 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_plan.py",
             "sales plan upload guidance",
             "Upload guidance",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan deduplicated next actions",
+            "_format_next_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan contained next action collapse",
+            "_action_subsumes",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan combined commercial setup action",
+            "_merge_commercial_setup_actions",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan extracts commercial setup command",
+            "_backticked_commercial_setup_command",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan privacy cleanup direct target",
+            "cleanup --project-dir . --privacy-failed --include-releases",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan privacy cleanup GUI guidance",
+            "診断 > 危険生成物確認",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_plan.py",
+            "sales plan readiness followup target helper",
+            "_readiness_followup_target",
         )
     )
     checks.append(
@@ -2570,6 +3676,48 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "sales_launch.py",
             "sales launch confirmation seller-only guard",
             "seller-only evidence",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation note required",
+            "SALES_LAUNCH_CONFIRMATION_NOTE_GUIDANCE",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation note validator",
+            "_normalize_sales_launch_confirmation_note",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation delivery match guidance",
+            "SALES_LAUNCH_CONFIRMATION_MATCH_GUIDANCE",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation delivery match validator",
+            "_validate_sales_launch_confirmation_note_matches_delivery",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation blocker guard",
+            "_ensure_sales_launch_confirmation_ready",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "sales_launch.py",
+            "sales launch confirmation blocker guidance",
+            "sales launch confirmation requires zero launch blockers",
         )
     )
     checks.append(
@@ -2876,6 +4024,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI repair install info guidance",
+            "install-info.invalid-*.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI troubleshoot install info guidance",
+            "インストール記録",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI troubleshoot action",
             "トラブル診断",
         )
@@ -2927,6 +4089,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI commercial setup template apply action",
             "テンプレ適用",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI commercial setup template apply error details",
+            "format_commercial_setup_apply_error",
         )
     )
     checks.append(
@@ -5186,8 +6355,43 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales privacy cleanup next action",
+            'title == "危険生成物を確認する"',
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI home sales lightweight summary",
             "_home_sales_lightweight_next_step",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales RC target",
+            "_home_sales_rc_target_text",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales RC target next action",
+            "次: 危険生成物確認",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales RC checkpoint",
+            "今回の目途:",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home sales combined seller setup guidance",
+            "販売者設定をまとめて保存",
         )
     )
     checks.append(
@@ -5258,6 +6462,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home commercial setup dynamic button",
             "home_commercial_focus_button_var",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI home commercial setup action summary",
+            "_home_commercial_focus_action_summary",
         )
     )
     checks.append(
@@ -5802,6 +7013,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation note guard",
+            "販売確認記録には確認メモが必要です",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
+            "GUI sales launch confirmation exact values prompt",
+            "最新の購入者ZIP名とSHA-256",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales launch confirmation recent report",
             "list_sales_launch_confirmations",
         )
@@ -6110,6 +7335,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "README.md",
+            "README sales finalize no separate release ZIP guidance",
+            "元の配布ZIPを別添しないこと",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
             "README buyer delivery message copy guidance",
             "送付文コピー",
         )
@@ -6341,6 +7573,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
     checks.append(
         _text_contains_check(
             project_dir / "docs" / "SUPPORT.md",
+            "support guide troubleshoot install info guidance",
+            "install-info.json",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide install helper diagnostic guidance",
+            "インストール/アンインストール補助ファイル",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide troubleshoot preinstall backup guidance",
+            "更新前バックアップ",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
             "support guide GUI log display guidance",
             "GUIログ表示",
         )
@@ -6441,6 +7694,20 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "SUPPORT.md",
             "support guide self-test launcher health guidance",
             "launcher health",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide self-test install helper guidance",
+            "インストール/アンインストール補助ファイル",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "SUPPORT.md",
+            "support guide self-test privacy cleanup guidance",
+            "cleanup --project-dir . --privacy-failed --include-releases",
         )
     )
     checks.append(
@@ -6567,6 +7834,27 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness self-test launcher health guidance",
             "ランチャー健康チェック",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness self-test install helper guidance",
+            "インストール/アンインストール補助ファイル",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness self-test privacy cleanup guidance",
+            "cleanup --project-dir . --privacy-failed --include-releases",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness install helper diagnostic guidance",
+            "インストール/アンインストール補助ファイル",
         )
     )
     checks.append(
@@ -6714,6 +8002,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness sales finalize template apply command",
             "sales-finalize --project-dir . --apply-latest-template",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness sales finalize no separate release ZIP guidance",
+            "元の配布ZIPを別添しないこと",
         )
     )
     checks.append(
@@ -6875,6 +8170,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "src" / "auto_note" / "release.py",
             "release starter pack guidance",
             "starter-pack",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "src" / "auto_note" / "release.py",
+            "release package duplicate path safety",
+            "duplicate archive path",
         )
     )
     checks.append(

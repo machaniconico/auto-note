@@ -54,7 +54,7 @@ auto-note sales-finalize --project-dir . --send-check --send-check-report
 auto-note sales-finalize --project-dir . --delivery-receipt
 auto-note sales-finalize --project-dir . --order-note
 auto-note sales-launch --project-dir . --report
-auto-note sales-launch --project-dir . --confirm-preview --note "preview checked"
+auto-note sales-launch --project-dir . --confirm-preview --note "checkout preview checked: <buyer ZIP name> / <full SHA-256>"
 auto-note sales-launch --project-dir . --latest-confirmation
 ```
 

@@ -14,7 +14,8 @@ import tempfile
 import zipfile
 
 from . import __version__
-from .app_info import read_install_info
+from .app_info import inspect_install_info, list_install_info_recovery_files
+from .archive_safety import verify_zip_member_names, verify_zip_regular_entries
 from .article import ArticleError, load_article
 from .commercial_setup import (
     commercial_setup_completion,
@@ -24,8 +25,22 @@ from .commercial_setup import (
 )
 from .inspect import inspect_article
 from .paths import unique_path
+from .privacy_actions import (
+    PRIVACY_FAILED_CLEANUP_RC_RECHECK,
+    privacy_failed_cleanup_apply_command,
+    privacy_failed_cleanup_command,
+)
 from .settings import inspect_settings, list_settings_recovery_files, load_settings
 from .workflow import inspect_ideas, list_idea_recovery_files
+
+
+INSTALL_HELPER_PATHS = (
+    Path("auto-note safe display.lnk"),
+    Path("shortcuts") / "install-auto-note.bat",
+    Path("shortcuts") / "uninstall-auto-note.bat",
+    Path("scripts") / "install-auto-note.ps1",
+    Path("scripts") / "uninstall-auto-note.ps1",
+)
 
 
 @dataclass(frozen=True)
@@ -69,6 +84,20 @@ REQUIRED_DIAGNOSTIC_REPORT_FILES = (
 
 DIAGNOSTIC_PREVIEW_SECTION_LIMIT = 900
 DIAGNOSTIC_PREVIEW_MAINTENANCE_LIMIT = 1600
+DIAGNOSTIC_PREVIEW_MAINTENANCE_REQUIRED_PREFIXES = (
+    "latest_support_request:",
+    "latest_support_bundle:",
+    "latest_support_bundle_verified:",
+    "latest_support_bundle_age_hours:",
+    "latest_support_bundle_freshness:",
+    "latest_backup_restore_status:",
+    "latest_backup_restore_blockers:",
+    "latest_backup_unsafe_files:",
+    "latest_backup_unsafe_examples:",
+    "privacy_failed_cleanup_next:",
+    "privacy_failed_cleanup_apply:",
+    "privacy_failed_cleanup_rc_recheck:",
+)
 DIAGNOSTIC_PREVIEW_OMITTED_SECTIONS = {
     "first-run.txt": "First-run checklist / 初回チェック",
     "acceptance.txt": "Acceptance check / 受入チェック",
@@ -150,6 +179,7 @@ def run_diagnostics(project_dir: Path) -> list[DiagnosticItem]:
         _check_path(project_dir / "auto-note-gui.bat", "GUI launcher"),
         _check_path(project_dir / "auto-note.lnk", "GUI shortcut"),
         _check_path(project_dir / ".venv" / "Scripts" / "python.exe", "virtualenv python"),
+        _install_helpers_item(project_dir),
         _settings_item(project_dir),
         _commercial_setup_item(project_dir),
         _ideas_item(project_dir),
@@ -453,13 +483,7 @@ def preview_diagnostic_report(project_dir: Path, *, include_private: bool = Fals
             else DIAGNOSTIC_PREVIEW_SECTION_LIMIT
         )
         required_prefixes = (
-            (
-                "latest_support_request:",
-                "latest_support_bundle:",
-                "latest_support_bundle_verified:",
-                "latest_support_bundle_age_hours:",
-                "latest_support_bundle_freshness:",
-            )
+            DIAGNOSTIC_PREVIEW_MAINTENANCE_REQUIRED_PREFIXES
             if name == "maintenance-summary.txt"
             else ()
         )
@@ -523,6 +547,7 @@ def _verify_diagnostic_archive(archive: zipfile.ZipFile) -> list[str]:
     names = archive.namelist()
     name_set = set(names)
     errors.extend(_verify_diagnostic_archive_names(names))
+    errors.extend(_verify_diagnostic_archive_entries(archive))
     bad_member = archive.testzip()
     if bad_member:
         errors.append(f"CRC check failed: {bad_member}")
@@ -543,21 +568,11 @@ def format_diagnostic_report_verification(report_path: Path, errors: list[str]) 
 
 
 def _verify_diagnostic_archive_names(names: list[str]) -> list[str]:
-    errors: list[str] = []
-    seen: set[str] = set()
-    for name in names:
-        normalized = name.replace("\\", "/")
-        parts = [part for part in normalized.split("/") if part]
-        if not normalized or normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
-            errors.append(f"unsafe file name: {name}")
-        if any(part == ".." or ":" in part for part in parts):
-            errors.append(f"unsafe file name: {name}")
-        if normalized != name:
-            errors.append(f"non-normalized file name: {name}")
-        if name in seen:
-            errors.append(f"duplicate file name: {name}")
-        seen.add(name)
-    return errors
+    return verify_zip_member_names(names, unsafe_label="unsafe file name", duplicate_label="duplicate file name")
+
+
+def _verify_diagnostic_archive_entries(archive: zipfile.ZipFile) -> list[str]:
+    return verify_zip_regular_entries(archive)
 
 
 def _format_diagnostic_report_verification_details(report_path: Path) -> list[str]:
@@ -605,13 +620,36 @@ def _check_writable(project_dir: Path) -> DiagnosticItem:
     return DiagnosticItem("project writable", True, os.fspath(project_dir))
 
 
+def _install_helpers_item(project_dir: Path) -> DiagnosticItem:
+    missing = [path for path in INSTALL_HELPER_PATHS if not (project_dir / path).exists()]
+    if missing:
+        missing_text = ", ".join(os.fspath(path) for path in missing)
+        return DiagnosticItem(
+            "install helpers",
+            False,
+            f"missing: {missing_text}; reinstall from shortcuts\\install-auto-note.bat if this is an installed copy",
+        )
+    found_text = ", ".join(os.fspath(path) for path in INSTALL_HELPER_PATHS)
+    return DiagnosticItem("install helpers", True, f"all required install helpers found: {found_text}")
+
+
 def _install_info_item(project_dir: Path) -> DiagnosticItem:
-    info = read_install_info(project_dir)
+    status = inspect_install_info(project_dir)
+    recovery_files = list_install_info_recovery_files(project_dir)
+    info = status.info
     if not info:
-        return DiagnosticItem("install info", True, "not created yet")
+        detail = status.detail
+        if recovery_files:
+            detail += f", recovery backups: {len(recovery_files)}"
+        return DiagnosticItem("install info", status.ok, detail)
     backup = info.preinstall_backup or "(none)"
-    detail = f"version={info.version or '(unknown)'}, installed_at={info.installed_at or '(unknown)'}, backup={backup}"
-    return DiagnosticItem("install info", True, detail)
+    detail = (
+        f"version={info.version or '(unknown)'}, installed_at={info.installed_at or '(unknown)'}, "
+        f"backup={backup}, status={status.detail}"
+    )
+    if recovery_files:
+        detail += f", recovery backups: {len(recovery_files)}"
+    return DiagnosticItem("install info", status.ok, detail)
 
 
 def _settings_item(project_dir: Path) -> DiagnosticItem:
@@ -966,7 +1004,13 @@ def _build_quality_report(project_dir: Path, *, include_articles: bool = True) -
 
 def _build_maintenance_summary(project_dir: Path) -> str:
     from .acceptance import list_acceptance_reports
-    from .backup import inspect_backup, list_backups
+    from .backup import (
+        backup_restore_blockers,
+        format_backup_restore_status,
+        format_unsafe_backup_entries,
+        inspect_backup,
+        list_backups,
+    )
     from .commercial import list_commercial_policy_reviews, list_commercial_readiness_reports
     from .commercial_setup import list_commercial_setup_templates
     from .export import list_reports
@@ -1075,7 +1119,9 @@ def _build_maintenance_summary(project_dir: Path) -> str:
         f"privacy_failed_cleanup_candidates_including_releases: {len(privacy_failed)}",
     ]
     if privacy_failed:
-        lines.append("privacy_failed_cleanup_next: auto-note cleanup --project-dir . --privacy-failed --include-releases")
+        lines.append(f"privacy_failed_cleanup_next: {privacy_failed_cleanup_command(include_releases=True)}")
+        lines.append(f"privacy_failed_cleanup_apply: {privacy_failed_cleanup_apply_command(include_releases=True)}")
+        lines.append(f"privacy_failed_cleanup_rc_recheck: {PRIVACY_FAILED_CLEANUP_RC_RECHECK}")
     if backups:
         latest_backup = backups[0]
         lines.append(f"latest_backup: {latest_backup.name}")
@@ -1086,9 +1132,17 @@ def _build_maintenance_summary(project_dir: Path) -> str:
             lines.append(f"latest_backup_error: {exc}")
         else:
             lines.append(f"latest_backup_verified: {'yes' if backup_inspection.ok else 'no'}")
+            restore_status = format_backup_restore_status(backup_inspection)
+            lines.append(f"latest_backup_restore_status: {restore_status}")
+            restore_blockers = backup_restore_blockers(backup_inspection)
+            if restore_blockers:
+                lines.append(f"latest_backup_restore_blockers: {'; '.join(restore_blockers)}")
             lines.append(f"latest_backup_restorable_files: {len(backup_inspection.restorable_files)}")
             if backup_inspection.unsafe_files:
                 lines.append(f"latest_backup_unsafe_files: {len(backup_inspection.unsafe_files)}")
+                lines.append(
+                    f"latest_backup_unsafe_examples: {format_unsafe_backup_entries(backup_inspection.unsafe_files)}"
+                )
     if releases:
         latest_release = releases[0]
         errors = verify_release_package(latest_release)

@@ -4,8 +4,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from .backup import inspect_backup, list_backups
+from .backup import (
+    backup_restore_blockers,
+    format_backup_restore_status,
+    format_unsafe_backup_entries,
+    inspect_backup,
+    list_backups,
+)
 from .maintenance import collect_privacy_failed_artifacts, format_bytes
+from .privacy_actions import (
+    PRIVACY_FAILED_CLEANUP_RC_RECHECK,
+    privacy_failed_cleanup_apply_command,
+    privacy_failed_cleanup_command,
+)
 from .quality import run_quality_checks
 from .review import ArticleReview, review_path
 from .release import list_releases, verify_release_package
@@ -180,30 +191,44 @@ def _backup_item(project_dir: Path) -> ReadinessItem:
         return ReadinessItem(
             "latest backup",
             "fail",
-            f"{latest.name}: unreadable backup ({exc})",
+            f"{latest.name}: restore status blocked, unreadable backup ({exc})",
             "GUIの診断タブでバックアップ確認を開き、新しいバックアップを作成してください。",
         )
     if not inspection.ok:
+        restore_status = format_backup_restore_status(inspection)
+        blockers = backup_restore_blockers(inspection)
         reasons: list[str] = []
         if inspection.unsafe_files:
-            reasons.append(f"{len(inspection.unsafe_files)} unsafe file(s)")
+            reasons.append(
+                f"{len(inspection.unsafe_files)} unsafe file(s): "
+                f"{format_unsafe_backup_entries(inspection.unsafe_files)}"
+            )
         if not inspection.restorable_files:
             reasons.append("no restorable files")
+        detail = "; ".join(blockers) or ", ".join(reasons) or "verification failed"
         return ReadinessItem(
             "latest backup",
             "fail",
-            f"{latest.name}: {', '.join(reasons) or 'verification failed'}",
+            f"{latest.name}: restore status {restore_status}, {detail}",
             "GUIの診断タブでバックアップ確認を開き、新しいバックアップを作成してください。",
         )
     age_days = max(0, (datetime.now() - datetime.fromtimestamp(latest.stat().st_mtime)).days)
+    restore_status = format_backup_restore_status(inspection)
     if age_days > 7:
         return ReadinessItem(
             "latest backup",
             "warn",
-            f"{latest.name} ({age_days} days old, {len(inspection.restorable_files)} file(s) verified)",
+            (
+                f"{latest.name} (restore status {restore_status}, {age_days} days old, "
+                f"{len(inspection.restorable_files)} file(s) verified)"
+            ),
             "更新前や大量編集前に新しいバックアップを作成してください。",
         )
-    return ReadinessItem("latest backup", "pass", f"{latest.name} ({len(inspection.restorable_files)} file(s) verified)")
+    return ReadinessItem(
+        "latest backup",
+        "pass",
+        f"{latest.name} (restore status {restore_status}, {len(inspection.restorable_files)} file(s) verified)",
+    )
 
 
 def _release_item(project_dir: Path) -> ReadinessItem:
@@ -246,6 +271,8 @@ def _privacy_cleanup_item(project_dir: Path) -> ReadinessItem:
         release_count += 1
         release_bytes += item.size_bytes
     total_bytes = generated_bytes + release_bytes
+    cleanup_command = privacy_failed_cleanup_command(include_releases=True)
+    cleanup_apply_command = privacy_failed_cleanup_apply_command(include_releases=True)
     return ReadinessItem(
         "privacy cleanup",
         "info",
@@ -255,8 +282,9 @@ def _privacy_cleanup_item(project_dir: Path) -> ReadinessItem:
             f"(generated {format_bytes(generated_bytes)}, releases {format_bytes(release_bytes)})"
         ),
         (
-            "`auto-note cleanup --project-dir . --privacy-failed --include-releases` "
-            "で候補と見込み解放容量を確認できます（プレビューでは削除しません）。"
+            f"`{cleanup_command}` で候補と見込み解放容量を確認できます（プレビューでは削除しません）。"
+            f"削除する時だけ `{cleanup_apply_command}` を実行し、"
+            f"削除後は `{PRIVACY_FAILED_CLEANUP_RC_RECHECK}` で販売RC目途を再判定してください。"
         ),
     )
 

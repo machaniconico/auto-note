@@ -108,6 +108,8 @@ try {
   if (-not $buyerPackage) {
     throw "Sales finalize did not create a buyer delivery zip."
   }
+  $buyerPackageHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $buyerPackage.FullName).Hash.ToLowerInvariant()
+  $launchConfirmationNote = "smoke checkout preview checked: $($buyerPackage.Name) / $buyerPackageHash"
 
   Invoke-Smoke "Buyer package verify" {
     & $python -m auto_note sales-handoff --verify-buyer-package $buyerPackage.FullName
@@ -135,7 +137,7 @@ try {
   }
 
   Invoke-Smoke "Sales launch checklist and confirmation" {
-    & $python -m auto_note sales-launch --project-dir . --report --confirm-preview --note "smoke preview checked"
+    & $python -m auto_note sales-launch --project-dir . --report --confirm-preview --note $launchConfirmationNote
   }
 
   Invoke-Smoke "Latest sales launch confirmation" {
@@ -147,7 +149,7 @@ try {
     if ($latestConfirmationText -notlike "*Sales launch confirmation*") {
       throw "Latest sales launch confirmation output does not include the confirmation title."
     }
-    if ($latestConfirmationText -notlike "*smoke preview checked*") {
+    if ($latestConfirmationText -notlike "*$launchConfirmationNote*") {
       throw "Latest sales launch confirmation output does not include the seller note."
     }
     if ($latestConfirmationText -notlike "*seller-only evidence*") {
@@ -209,8 +211,14 @@ try {
   if ($confirmationText -notlike "*Sales launch confirmation*") {
     throw "Sales launch confirmation title was not found."
   }
-  if ($confirmationText -notlike "*smoke preview checked*") {
+  if ($confirmationText -notlike "*$launchConfirmationNote*") {
     throw "Sales launch confirmation does not include the seller note."
+  }
+  if ($confirmationText -notlike "*$($buyerPackage.Name)*") {
+    throw "Sales launch confirmation does not include the buyer ZIP name in the seller note."
+  }
+  if ($confirmationText -notlike "*$buyerPackageHash*") {
+    throw "Sales launch confirmation does not include the buyer ZIP SHA-256 in the seller note."
   }
   if ($confirmationText -notlike "*seller-only evidence*") {
     throw "Sales launch confirmation does not include seller-only evidence guidance."

@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 
+CLEANUP_REPORT_ITEM_LIMIT = 40
+
+
 @dataclass(frozen=True)
 class CleanupItem:
     path: Path
@@ -289,7 +292,7 @@ def collect_privacy_failed_artifacts(
                 reason=f"privacy audit NG: {audit_item.name}",
             )
         )
-    return sorted(items, key=lambda item: item.path.as_posix())
+    return sorted(items, key=_privacy_failed_cleanup_sort_key)
 
 
 def cleanup_generated_files(
@@ -325,10 +328,26 @@ def cleanup_generated_files(
     return CleanupResult(items=items, deleted=deleted, reclaimed_bytes=reclaimed)
 
 
-def format_cleanup_report(result: CleanupResult, *, dry_run: bool = True) -> str:
+def format_cleanup_report(
+    result: CleanupResult,
+    *,
+    dry_run: bool = True,
+    max_items: int = CLEANUP_REPORT_ITEM_LIMIT,
+    privacy_failed: bool = False,
+    include_releases: bool = False,
+    project_dir: Path | None = None,
+    apply_command: str = "",
+) -> str:
     action = "削除候補" if dry_run else "削除済み"
     total_bytes = sum(item.size_bytes for item in result.items)
     lines = [f"生成物整理: {action} {len(result.items)}件"]
+    if privacy_failed:
+        lines.append("対象: privacy-audit --all でNGになった生成物")
+        lines.append("表示順: 販売/送付に近いNGと新しい生成物を優先表示しています。")
+    if include_releases:
+        lines.append("配布ZIP: 対象に含めています。")
+    elif privacy_failed:
+        lines.append("配布ZIP: 除外しています。含める場合は --include-releases を付けてください。")
     if dry_run:
         lines.append(f"見込み解放容量: {_format_bytes(total_bytes)}")
     else:
@@ -343,12 +362,50 @@ def format_cleanup_report(result: CleanupResult, *, dry_run: bool = True) -> str
     lines.append("")
     if dry_run:
         lines.append("削除はまだ実行していません。内容を確認してから --apply または GUIの整理実行を使ってください。")
+        if apply_command:
+            lines.append(f"実行コマンド例: {apply_command}")
+        if privacy_failed:
+            lines.extend(_privacy_cleanup_rc_followup(project_dir))
     else:
         lines.append("削除したファイル一覧:")
+        if privacy_failed:
+            lines.extend(_privacy_cleanup_rc_followup(project_dir))
     lines.append("")
-    for item in result.items:
-        lines.append(f"- {item.path} ({_format_bytes(item.size_bytes)}): {item.reason}")
+    visible_items = result.items[: max(0, max_items)]
+    for item in visible_items:
+        lines.append(f"- {_format_cleanup_path(item.path, project_dir)} ({_format_bytes(item.size_bytes)}): {item.reason}")
+    hidden = len(result.items) - len(visible_items)
+    if hidden > 0:
+        lines.append(f"- ほか {hidden}件。種類別サマリーで全体を確認できます。")
     return "\n".join(lines)
+
+
+def _privacy_cleanup_rc_followup(project_dir: Path | None) -> list[str]:
+    project_arg = _cleanup_project_dir_arg(project_dir)
+    return [
+        f"RC再判定: auto-note commercial-readiness --project-dir {project_arg}",
+        f"再生成: auto-note sales-handoff --project-dir {project_arg}",
+    ]
+
+
+def _cleanup_project_dir_arg(project_dir: Path | None) -> str:
+    if project_dir is None:
+        return "."
+    try:
+        if project_dir.resolve() == Path.cwd().resolve():
+            return "."
+    except OSError:
+        return "<project-dir>"
+    return "<project-dir>"
+
+
+def _format_cleanup_path(path: Path, project_dir: Path | None) -> str:
+    if project_dir is not None:
+        try:
+            return str(path.resolve().relative_to(project_dir.resolve()))
+        except ValueError:
+            pass
+    return str(path)
 
 
 def format_cleanup_confirmation(
@@ -376,9 +433,11 @@ def format_cleanup_confirmation(
         [
             "",
             "対象は .auto-note 内の生成物だけです。",
-            "この操作は元に戻せません。続行しますか？",
         ]
     )
+    if _cleanup_includes_release_items(result.items):
+        lines.append("配布ZIPも削除対象に含まれます。必要なら削除前に最新ZIPや販売証跡を作り直してください。")
+    lines.append("この操作は元に戻せません。続行しますか？")
     return "\n".join(lines)
 
 
@@ -403,6 +462,47 @@ def _cleanup_summary_reason(reason: str) -> str:
         artifact_name, _separator, _detail = detail.partition(": ")
         return f"{prefix}: {artifact_name}"
     return reason
+
+
+def _cleanup_includes_release_items(items: list[CleanupItem]) -> bool:
+    for item in items:
+        if "release package" in item.reason.lower():
+            return True
+        if "releases" in {part.lower() for part in item.path.parts}:
+            return True
+    return False
+
+
+def _privacy_failed_cleanup_sort_key(item: CleanupItem) -> tuple[int, float, str]:
+    reason = item.reason.lower()
+    priority = 50
+    if "sales handoff privacy" in reason:
+        priority = 0
+    elif "buyer delivery zip privacy" in reason:
+        priority = 1
+    elif any(
+        marker in reason
+        for marker in (
+            "sales plan",
+            "sales finalize",
+            "sales launch",
+            "sales listing",
+            "sales materials",
+            "sales evidence",
+        )
+    ):
+        priority = 2
+    elif "support bundle" in reason or "support request" in reason:
+        priority = 3
+    elif "release package privacy" in reason:
+        priority = 4
+    elif "diagnostic report privacy" in reason:
+        priority = 5
+    try:
+        modified = -item.path.stat().st_mtime
+    except OSError:
+        modified = 0.0
+    return priority, modified, item.path.as_posix()
 
 
 def _generated_html_files(output_dir: Path) -> list[Path]:

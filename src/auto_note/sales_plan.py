@@ -5,11 +5,13 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 import hashlib
 import json
+import shlex
 import zipfile
 
 from .article import write_text_atomic
 from .commercial import CommercialReadinessReport, run_commercial_readiness
 from .paths import unique_path
+from .privacy_actions import privacy_failed_cleanup_target
 from .release import list_releases, verify_release_package
 from .sales_handoff import (
     list_buyer_delivery_packages,
@@ -18,6 +20,16 @@ from .sales_handoff import (
     verify_sales_handoff,
 )
 from .sales_materials import list_sales_materials, verify_sales_materials
+
+
+_COMMERCIAL_SETUP_VALUE_OPTIONS = {
+    "--project-dir",
+    "--seller-name",
+    "--sales-url",
+    "--refund-url",
+    "--support-contact",
+}
+_COMMERCIAL_SETUP_FLAG_OPTIONS = {"--terms-reviewed", "--support-scope-confirmed"}
 
 
 @dataclass(frozen=True)
@@ -53,11 +65,20 @@ class SalesPlanReport:
 
     @property
     def seller_remaining(self) -> int:
-        return sum(1 for step in self.steps if step.category == "seller" and step.status in {"blocker", "warning"})
+        return _remaining_action_count(self.steps, category="seller")
 
     @property
     def tool_remaining(self) -> int:
-        return sum(1 for step in self.steps if step.category == "tool" and step.status in {"blocker", "warning"})
+        return _remaining_action_count(self.steps, category="tool")
+
+
+def _remaining_action_count(steps: list[SalesPlanStep], *, category: str) -> int:
+    actions: list[tuple[str, str]] = []
+    for step in steps:
+        if step.category != category or step.status not in {"blocker", "warning"}:
+            continue
+        actions.append((step.title, (step.command or step.action or step.title).strip()))
+    return len(_group_next_actions(actions))
 
 
 def build_sales_plan(project_dir: Path) -> SalesPlanReport:
@@ -85,8 +106,8 @@ def build_sales_plan(project_dir: Path) -> SalesPlanReport:
         (
             "プライバシー監査",
             "送付前のプライバシーNGをなくす",
-            "診断 > プライバシー監査",
-            "auto-note privacy-audit --project-dir .",
+            "診断 > 危険生成物確認",
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases",
             "tool",
         ),
         (
@@ -100,7 +121,7 @@ def build_sales_plan(project_dir: Path) -> SalesPlanReport:
             "販売者プロフィール",
             "販売者情報を保存する",
             "設定 > 販売者/屋号",
-            "auto-note commercial-setup --project-dir . --seller-name \"Your Shop\" --sales-url \"https://example.com\" --refund-url \"https://example.com/refund\"",
+            "auto-note commercial-setup --project-dir . --template",
             "seller",
         ),
         (
@@ -121,7 +142,7 @@ def build_sales_plan(project_dir: Path) -> SalesPlanReport:
             "サポート連絡先",
             "購入者向けサポート連絡先を保存する",
             "設定 > サポート連絡先",
-            "auto-note commercial-setup --project-dir . --support-contact \"https://example.com/support\"",
+            "auto-note commercial-setup --project-dir . --template",
             "seller",
         ),
         (
@@ -134,14 +155,19 @@ def build_sales_plan(project_dir: Path) -> SalesPlanReport:
     ):
         item = readiness_items.get(name)
         if item and item.status in {"fail", "warn"}:
+            step_gui, step_command = _readiness_followup_target(
+                item.action,
+                default_gui=gui,
+                default_command=command,
+            )
             steps.append(
                 SalesPlanStep(
                     title=title,
                     status="blocker" if item.status == "fail" else "warning",
                     detail=item.detail,
                     action=item.action or title,
-                    gui=gui,
-                    command=command,
+                    gui=step_gui,
+                    command=step_command,
                     category=category,
                 )
             )
@@ -296,6 +322,7 @@ def build_sales_plan(project_dir: Path) -> SalesPlanReport:
 
 
 def format_sales_plan(report: SalesPlanReport) -> str:
+    next_actions: list[tuple[str, str]] = []
     lines = [
         "Sales plan / 販売ナビ",
         f"Generated: {report.generated_at:%Y-%m-%d %H:%M:%S}",
@@ -325,7 +352,145 @@ def format_sales_plan(report: SalesPlanReport) -> str:
             lines.append(f"  gui: {step.gui}")
         if step.command:
             lines.append(f"  cli: {step.command}")
+        next_action = (step.command or step.action).strip()
+        if next_action:
+            next_actions.append((step.title, next_action))
+    if next_actions:
+        lines.extend(["", "Next actions / 次の操作"])
+        lines.extend(_format_next_actions(next_actions))
     return "\n".join(lines)
+
+
+def _format_next_actions(actions: list[tuple[str, str]]) -> list[str]:
+    return [f"- {' / '.join(titles)}: {action}" for titles, action in _group_next_actions(actions)]
+
+
+def _group_next_actions(actions: list[tuple[str, str]]) -> list[tuple[list[str], str]]:
+    grouped: dict[str, list[str]] = {}
+    ordered_actions: list[str] = []
+    for title, action in actions:
+        action = action.strip()
+        if not action:
+            continue
+        merge_actions = [existing for existing in ordered_actions if _actions_can_merge(existing, action)]
+        if merge_actions:
+            merged_action = _merge_commercial_setup_actions([*merge_actions, action])
+            if merged_action:
+                insert_at = min(ordered_actions.index(existing) for existing in merge_actions)
+                titles: list[str] = []
+                for existing in merge_actions:
+                    for existing_title in grouped.pop(existing):
+                        _append_unique(titles, existing_title)
+                    ordered_actions.remove(existing)
+                ordered_actions.insert(insert_at, merged_action)
+                grouped[merged_action] = titles
+                _append_unique(grouped[merged_action], title)
+                continue
+        contained_by = next((existing for existing in ordered_actions if _action_subsumes(existing, action)), "")
+        if contained_by:
+            _append_unique(grouped[contained_by], title)
+            continue
+        contained_actions = [existing for existing in ordered_actions if _action_subsumes(action, existing)]
+        if contained_actions:
+            insert_at = min(ordered_actions.index(existing) for existing in contained_actions)
+            titles: list[str] = []
+            for existing in contained_actions:
+                for existing_title in grouped.pop(existing):
+                    _append_unique(titles, existing_title)
+                ordered_actions.remove(existing)
+            ordered_actions.insert(insert_at, action)
+            grouped[action] = titles
+            _append_unique(grouped[action], title)
+            continue
+        if action not in grouped:
+            grouped[action] = []
+            ordered_actions.append(action)
+        _append_unique(grouped[action], title)
+    return [(grouped[action], action) for action in ordered_actions]
+
+
+def _actions_can_merge(left: str, right: str) -> bool:
+    return bool(_merge_commercial_setup_actions([left, right]))
+
+
+def _merge_commercial_setup_actions(actions: list[str]) -> str:
+    merged: dict[str, str | None] = {}
+    ordered_options: list[str] = []
+    for action in actions:
+        parsed = _commercial_setup_options(action)
+        if parsed is None:
+            return ""
+        for option, value in parsed:
+            if option in merged:
+                if merged[option] != value:
+                    return ""
+                continue
+            merged[option] = value
+            ordered_options.append(option)
+    parts = ["auto-note", "commercial-setup"]
+    for option in ordered_options:
+        parts.append(option)
+        value = merged[option]
+        if value is not None:
+            parts.append(_format_commercial_setup_value(option, value))
+    return " ".join(parts)
+
+
+def _commercial_setup_options(action: str) -> list[tuple[str, str | None]] | None:
+    tokens = _action_tokens(action)
+    if _action_command_prefix(tokens) != ("auto-note", "commercial-setup"):
+        return None
+    options: list[tuple[str, str | None]] = []
+    index = 2
+    while index < len(tokens):
+        option = tokens[index]
+        if option in _COMMERCIAL_SETUP_VALUE_OPTIONS:
+            if index + 1 >= len(tokens):
+                return None
+            options.append((option, tokens[index + 1]))
+            index += 2
+        elif option in _COMMERCIAL_SETUP_FLAG_OPTIONS:
+            options.append((option, None))
+            index += 1
+        else:
+            return None
+    return options
+
+
+def _format_commercial_setup_value(option: str, value: str) -> str:
+    if option == "--project-dir" and not _needs_shell_quotes(value):
+        return value
+    return f'"{value.replace(chr(34), chr(92) + chr(34))}"'
+
+
+def _needs_shell_quotes(value: str) -> bool:
+    return not value or any(character.isspace() for character in value)
+
+
+def _action_subsumes(candidate: str, action: str) -> bool:
+    candidate_tokens = _action_tokens(candidate)
+    action_tokens = _action_tokens(action)
+    if not candidate_tokens or not action_tokens:
+        return candidate == action
+    if _action_command_prefix(candidate_tokens) != _action_command_prefix(action_tokens):
+        return False
+    return set(action_tokens).issubset(set(candidate_tokens))
+
+
+def _action_command_prefix(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    return tokens[:2] if len(tokens) >= 2 else tokens
+
+
+def _action_tokens(action: str) -> tuple[str, ...]:
+    try:
+        return tuple(shlex.split(action))
+    except ValueError:
+        return tuple(action.split())
+
+
+def _append_unique(values: list[str], value: str) -> None:
+    if value not in values:
+        values.append(value)
 
 
 def write_sales_plan_report(project_dir: Path, *, report: SalesPlanReport | None = None) -> Path:
@@ -349,6 +514,27 @@ def has_sales_plan_blockers(report: SalesPlanReport, *, strict: bool = False) ->
     if any(step.status == "blocker" for step in report.steps):
         return True
     return strict and any(step.status == "warning" for step in report.steps)
+
+
+def _readiness_followup_target(action: str, *, default_gui: str, default_command: str) -> tuple[str, str]:
+    if "cleanup --project-dir . --privacy-failed" in action:
+        return privacy_failed_cleanup_target(action, include_releases=True)
+    if "sales-handoff --project-dir ." in action:
+        return "診断 > 販売一式作成", "auto-note sales-handoff --project-dir ."
+    commercial_setup_command = _backticked_commercial_setup_command(action)
+    if commercial_setup_command:
+        return default_gui, commercial_setup_command
+    return default_gui, default_command
+
+
+def _backticked_commercial_setup_command(action: str) -> str:
+    for index, segment in enumerate(action.split("`")):
+        if index % 2 == 0:
+            continue
+        command = segment.strip()
+        if command.startswith("auto-note commercial-setup "):
+            return command
+    return ""
 
 
 def _handoff_release_name(path: Path | None) -> str:

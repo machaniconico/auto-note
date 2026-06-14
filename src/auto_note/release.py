@@ -7,6 +7,7 @@ import json
 import re
 import zipfile
 
+from .archive_safety import verify_zip_member_names, verify_zip_regular_entries
 from .paths import unique_path
 
 
@@ -80,7 +81,8 @@ def verify_release_package(package_path: Path) -> list[str]:
         return [f"package not found: {package_path}"]
     try:
         with zipfile.ZipFile(package_path) as archive:
-            names = set(archive.namelist())
+            name_list = archive.namelist()
+            names = set(name_list)
             for required in (
                 "RELEASE_MANIFEST.json",
                 "CHECKSUMS.txt",
@@ -91,7 +93,8 @@ def verify_release_package(package_path: Path) -> list[str]:
             ):
                 if required not in names:
                     errors.append(f"missing required file: {required}")
-            _verify_archive_paths(names, errors)
+            _verify_archive_paths(name_list, errors)
+            _verify_archive_entries(archive, errors)
             _verify_privacy_exclusions(names, errors)
             _verify_manifest(archive, names, errors)
             if "CHECKSUMS.txt" not in names:
@@ -115,14 +118,21 @@ def verify_release_package(package_path: Path) -> list[str]:
     return errors
 
 
-def _verify_archive_paths(names: set[str], errors: list[str]) -> None:
-    for name in sorted(names):
-        normalized = name.replace("\\", "/")
-        parts = [part for part in normalized.split("/") if part]
-        if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
-            errors.append(f"unsafe archive path: {name}")
-        if any(part == ".." for part in parts):
-            errors.append(f"unsafe archive path: {name}")
+def _verify_archive_paths(names: list[str], errors: list[str]) -> None:
+    errors.extend(
+        verify_zip_member_names(
+            names,
+            unsafe_label="unsafe archive path",
+            duplicate_label="duplicate archive path",
+            reject_empty=False,
+            reject_colons=False,
+            reject_non_normalized=False,
+        )
+    )
+
+
+def _verify_archive_entries(archive: zipfile.ZipFile, errors: list[str]) -> None:
+    errors.extend(verify_zip_regular_entries(archive))
 
 
 def _verify_privacy_exclusions(names: set[str], errors: list[str]) -> None:

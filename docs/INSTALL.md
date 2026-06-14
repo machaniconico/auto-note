@@ -22,6 +22,8 @@ auto-note は管理者権限なしで使えるポータブルアプリとして�
 CLIで確認する場合は、インストール先で次を実行します。
 
 ```powershell
+auto-note version --project-dir .
+auto-note diagnose --project-dir .
 auto-note self-test --project-dir . --create --gui-smoke --report
 auto-note first-run --project-dir . --create --gui-smoke --smoke-helper
 auto-note acceptance --project-dir . --create --gui-smoke --smoke-helper --report
@@ -37,6 +39,8 @@ auto-note quickstart --project-dir . --smoke-helper
 auto-note gui --project-dir . --smoke
 auto-note gui --project-dir . --safe-display
 ```
+
+`auto-note version` と `auto-note diagnose` は `.auto-note\install-info.json` の状態も表示します。更新前バックアップ名が記録されているのに `.auto-note\install-backups` に実体がない場合や、`install-info.json` が壊れている場合はNGとして見つけられます。`auto-note diagnose` ではインストール/アンインストール補助ファイルと `auto-note safe display.lnk` の有無も確認できます。
 
 ## インストールせず試す
 
@@ -59,7 +63,7 @@ ZIPを展開したフォルダで `auto-note-gui.bat` を直接開きます。
 - アプリ本体を `%LOCALAPPDATA%\auto-note` にコピー
 - `articles` と `.auto-note` フォルダを作成
 - 既存の記事や設定がある場合は `.auto-note\install-backups` に更新前バックアップを作成
-- `.auto-note\install-info.json` にインストール日時、バージョン、更新前バックアップ名を記録
+- `.auto-note\install-info.json` にインストール日時、バージョン、更新前バックアップ名を記録し、`auto-note version` / `auto-note diagnose` で壊れた記録や更新前バックアップの参照切れを確認
 - デスクトップとスタートメニューに `auto-note.lnk` と `auto-note safe display.lnk` を作成
 - `.venv` を作成し、GUIに必要な依存関係を準備
 

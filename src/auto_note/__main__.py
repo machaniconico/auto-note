@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import webbrowser
+import zipfile
 
 from .article import ArticleError, body_with_tags, hashtags_for, load_article, text_bundle, write_text_atomic
 
@@ -472,7 +473,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "commercial-setup":
             from .commercial_setup import (
                 apply_commercial_setup_template,
+                commercial_setup_placeholder_errors,
                 create_commercial_setup_template,
+                format_commercial_setup_apply_error,
                 format_commercial_setup_apply_result,
                 format_commercial_settings,
                 list_commercial_setup_templates,
@@ -483,7 +486,11 @@ def main(argv: list[str] | None = None) -> int:
             project_dir = args.project_dir.resolve()
             if args.list_templates:
                 templates = list_commercial_setup_templates(project_dir)
-                print("\n".join(str(path) for path in templates) if templates else "No commercial setup templates.")
+                print(
+                    "\n".join(_display_project_path(path, project_dir) for path in templates)
+                    if templates
+                    else "No commercial setup templates."
+                )
                 return 0
             apply_path = args.apply_template
             if args.apply_latest_template:
@@ -492,7 +499,11 @@ def main(argv: list[str] | None = None) -> int:
                     raise ArticleError("適用できる販売者テンプレートがありません。先に --template で作成してください。")
                 apply_path = templates[0]
             if apply_path:
-                result = apply_commercial_setup_template(project_dir, apply_path)
+                try:
+                    result = apply_commercial_setup_template(project_dir, apply_path)
+                except (ArticleError, OSError) as exc:
+                    print(format_commercial_setup_apply_error(apply_path, exc, project_dir), file=sys.stderr)
+                    return 1
                 print(format_commercial_setup_apply_result(result))
                 settings = result.settings
             else:
@@ -507,6 +518,19 @@ def main(argv: list[str] | None = None) -> int:
                 or args.clear_review
             )
             if should_update:
+                placeholder_errors = commercial_setup_placeholder_errors(
+                    seller_name=args.seller_name,
+                    sales_channel_url=args.sales_url,
+                    refund_policy_url=args.refund_url,
+                    support_contact=args.support_contact,
+                )
+                if placeholder_errors:
+                    raise ArticleError(
+                        "commercial-setup の例示値はそのまま保存できません: "
+                        + ", ".join(placeholder_errors)
+                        + "。実際の販売者情報に置き換えるか、"
+                        + "`auto-note commercial-setup --project-dir . --template` でテンプレートを作成してください。"
+                    )
                 settings = update_commercial_settings(
                     project_dir,
                     seller_name=args.seller_name,
@@ -520,8 +544,9 @@ def main(argv: list[str] | None = None) -> int:
                 print("commercial setup saved")
             if args.template:
                 result = create_commercial_setup_template(project_dir)
-                print(f"commercial setup template created: {result.path}")
+                print(f"commercial setup template created: {_display_project_path(result.path, project_dir)}")
                 print(f"missing: {result.missing}")
+                print("apply: auto-note commercial-setup --project-dir . --apply-latest-template")
             print(format_commercial_settings(settings))
             return 0
 
@@ -822,7 +847,14 @@ def main(argv: list[str] | None = None) -> int:
                 print()
                 print(f"sales launch checklist created: {path}")
             if args.confirm_preview:
-                path = write_sales_launch_confirmation(args.project_dir.resolve(), report=report, note=args.note or "")
+                try:
+                    path = write_sales_launch_confirmation(args.project_dir.resolve(), report=report, note=args.note or "")
+                except ValueError as exc:
+                    print(f"sales launch confirmation aborted: {exc}")
+                    print(
+                        'hint: rerun with --note "checked checkout preview: <buyer ZIP name> / <full SHA-256>".'
+                    )
+                    return 1
                 print()
                 print(f"sales launch confirmation created: {path}")
             return 1 if has_sales_launch_blockers(report, strict=args.strict) else 0
@@ -879,13 +911,28 @@ def main(argv: list[str] | None = None) -> int:
             from .backup import create_backup, format_backup_inspection, inspect_backup, list_backups, restore_backup
 
             if args.inspect:
-                print(format_backup_inspection(inspect_backup(args.inspect)))
+                try:
+                    inspection = inspect_backup(args.inspect)
+                except (OSError, zipfile.BadZipFile) as exc:
+                    print(f"backup inspection aborted: {exc}")
+                    print("hint: choose a .zip created by `auto-note backup` or run `auto-note backup --list`.")
+                    return 1
+                print(format_backup_inspection(inspection))
+                if not inspection.ok:
+                    print()
+                    print("restore status: blocked until the unsafe/no-restorable entries above are fixed.")
+                    return 1
             elif args.restore:
-                result = restore_backup(
-                    args.project_dir.resolve(),
-                    args.restore,
-                    create_safety_backup=not args.no_safety_backup,
-                )
+                try:
+                    result = restore_backup(
+                        args.project_dir.resolve(),
+                        args.restore,
+                        create_safety_backup=not args.no_safety_backup,
+                    )
+                except (OSError, ValueError) as exc:
+                    print(f"backup restore aborted: {exc}")
+                    print(f"hint: run `auto-note backup --inspect {args.restore}` before restoring this backup.")
+                    return 1
                 print(f"backup restored: {result.backup}")
                 if result.safety_backup:
                     print(f"safety backup created: {result.safety_backup}")
@@ -972,7 +1019,16 @@ def main(argv: list[str] | None = None) -> int:
                 keep_latest=args.keep_latest,
                 privacy_failed=args.privacy_failed,
             )
-            print(format_cleanup_report(result, dry_run=not args.apply))
+            print(
+                format_cleanup_report(
+                    result,
+                    dry_run=not args.apply,
+                    privacy_failed=args.privacy_failed,
+                    include_releases=args.include_releases,
+                    project_dir=args.project_dir.resolve(),
+                    apply_command=_cleanup_apply_command(args) if not args.apply else "",
+                )
+            )
             return 0
 
         if args.command == "export":
@@ -1634,7 +1690,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the latest saved seller-only marketplace preview confirmation without running a new checklist.",
     )
-    sales_launch.add_argument("--note", help="Optional seller note saved with --confirm-preview.")
+    sales_launch.add_argument(
+        "--note",
+        help="Required seller note saved with --confirm-preview: include the checked screen, exact buyer ZIP name, and full SHA-256.",
+    )
 
     self_test = subparsers.add_parser("self-test", help="Run a user-facing local health check after install.")
     self_test.add_argument("--project-dir", type=Path, default=Path.cwd(), help="auto-note project directory.")
@@ -1874,6 +1933,36 @@ def _collect_files(path: Path, pattern: str) -> list[Path]:
     if path.is_file():
         return [path]
     return sorted(file for file in path.glob(pattern) if file.is_file())
+
+
+def _cleanup_apply_command(args: argparse.Namespace) -> str:
+    command = ["auto-note", "cleanup", "--project-dir", _cleanup_project_dir_arg(args.project_dir)]
+    if args.privacy_failed:
+        command.append("--privacy-failed")
+    else:
+        command.extend(["--days", str(args.days), "--keep-latest", str(args.keep_latest)])
+        if args.helpers_only:
+            command.append("--helpers-only")
+    if args.include_releases:
+        command.append("--include-releases")
+    command.append("--apply")
+    return " ".join(command)
+
+
+def _cleanup_project_dir_arg(project_dir: Path) -> str:
+    try:
+        if project_dir.resolve() == Path.cwd().resolve():
+            return "."
+    except OSError:
+        pass
+    return "<project-dir>"
+
+
+def _display_project_path(path: Path, project_dir: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(project_dir.resolve()))
+    except ValueError:
+        return path.name
 
 
 def _wait_until(value: str | None) -> None:

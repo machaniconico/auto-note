@@ -1,5 +1,5 @@
 from pathlib import Path
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import replace
 from datetime import datetime, timedelta
 import io
@@ -7,13 +7,21 @@ import json
 import hashlib
 import os
 import shutil
+import stat
 import tempfile
 import unittest
+import warnings
 import zipfile
 from unittest.mock import patch
 
 from auto_note.__main__ import main as cli_main
-from auto_note.action_plan import ActionPlanReport, ActionPlanStep, build_action_plan, format_action_plan
+from auto_note.action_plan import (
+    ActionPlanReport,
+    ActionPlanStep,
+    _troubleshoot_action_message,
+    build_action_plan,
+    format_action_plan,
+)
 from auto_note.acceptance import (
     format_acceptance_report,
     has_acceptance_blockers,
@@ -22,10 +30,13 @@ from auto_note.acceptance import (
     write_acceptance_report,
 )
 from auto_note.article import ArticleError, body_with_tags, load_article, write_markdown, write_text_atomic
+from auto_note.archive_safety import verify_zip_member_names, verify_zip_regular_entries
 from auto_note.autosave import autosave_state, clear_autosave, has_newer_autosave, read_autosave, write_autosave
 from auto_note.backup import create_backup, format_backup_inspection, inspect_backup, restore_backup, verify_backup
-from auto_note.app_info import collect_app_info, format_app_info
+from auto_note.app_info import collect_app_info, format_app_info, inspect_install_info, list_install_info_recovery_files
 from auto_note.commercial import (
+    CommercialReadinessItem,
+    CommercialReadinessReport,
     format_commercial_readiness_report,
     has_commercial_readiness_blockers,
     list_commercial_policy_reviews,
@@ -39,6 +50,7 @@ from auto_note.commercial_setup import (
     commercial_setup_next_field,
     commercial_setup_next_focus,
     create_commercial_setup_template,
+    format_commercial_setup_apply_error,
     format_commercial_setup_apply_result,
     format_commercial_settings,
     list_commercial_setup_templates,
@@ -46,6 +58,7 @@ from auto_note.commercial_setup import (
 )
 from auto_note.diagnostics import (
     REQUIRED_DIAGNOSTIC_REPORT_FILES,
+    _format_preview_section,
     _truncate_preview_text,
     create_diagnostic_report,
     format_diagnostic_report_verification,
@@ -62,6 +75,7 @@ from auto_note.first_run import (
     has_first_run_blockers,
     run_first_run_checklist,
 )
+from auto_note.privacy_actions import privacy_failed_cleanup_action, privacy_failed_cleanup_apply_command
 from auto_note.gui import (
     AutoNoteApp,
     _article_focus_accent_color,
@@ -69,6 +83,8 @@ from auto_note.gui import (
     _article_focus_next_text,
     _article_focus_status_style,
     _article_focus_summary,
+    _backup_restore_blocked_message,
+    _backup_restore_confirmation,
     _bounded_scaled_dimension,
     _button_label_fit_status,
     _command_palette_matches,
@@ -116,6 +132,7 @@ from auto_note.gui import (
     _home_sales_artifact_text,
     _home_sales_freshness_text,
     _home_sales_handoff_release_name,
+    _home_sales_rc_target_text,
     _home_sales_screenshot_text,
     _home_snapshot_brief,
     _home_snapshot_next_state,
@@ -162,7 +179,14 @@ from auto_note.improvement_plan import (
     write_improvement_plan_report,
 )
 from auto_note.licenses import collect_dependency_notices, format_dependency_notices, write_dependency_notices
-from auto_note.maintenance import cleanup_generated_files, format_cleanup_confirmation, format_cleanup_report
+from auto_note.maintenance import (
+    CleanupItem,
+    CleanupResult,
+    collect_privacy_failed_artifacts,
+    cleanup_generated_files,
+    format_cleanup_confirmation,
+    format_cleanup_report,
+)
 from auto_note.manual import write_manual_post_helper
 from auto_note.overview import (
     build_overview,
@@ -267,6 +291,8 @@ from auto_note.sales_screenshots import (
     verify_sales_screenshot_pack,
 )
 from auto_note.sales_plan import (
+    SalesPlanReport,
+    SalesPlanStep,
     build_sales_plan,
     format_sales_plan,
     has_sales_plan_blockers,
@@ -283,6 +309,8 @@ from auto_note.sales_review import (
 from auto_note.scaffold import create_article, create_practice_article, list_article_templates
 from auto_note.settings import DEFAULT_SETTINGS, AppSettings, inspect_settings, list_settings_recovery_files, load_settings, save_settings
 from auto_note.selftest import (
+    SelfTestItem,
+    SelfTestReport,
     _launcher_health_item,
     _self_test_quickstart_item,
     format_self_test_report,
@@ -308,7 +336,12 @@ from auto_note.support import (
     support_bundle_age_hours,
     verify_support_bundle,
 )
-from auto_note.troubleshoot import format_troubleshoot_report, has_troubleshoot_blockers, run_troubleshoot
+from auto_note.troubleshoot import (
+    TroubleshootItem,
+    format_troubleshoot_report,
+    has_troubleshoot_blockers,
+    run_troubleshoot,
+)
 from auto_note.workflow import (
     add_idea,
     export_calendar,
@@ -473,6 +506,7 @@ class ArticleTests(unittest.TestCase):
         self.assertIn("販売者次項目: 販売者/屋号", missing_text)
         self.assertIn("未入力", missing_text)
         self.assertIn("設定 > 販売者/屋号", missing_text)
+        self.assertIn("次: 販売者テンプレート作成 + 確認フラグ保存", missing_text)
 
         warned = replace(
             DEFAULT_SETTINGS,
@@ -487,6 +521,7 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_home_commercial_focus_state("warn"), "warn")
         self.assertIn("販売者次項目: 販売ページURL", warned_text)
         self.assertIn("確認", warned_text)
+        self.assertIn("次: 公開URL修正", warned_text)
 
         ready = replace(warned, sales_channel_url="https://example.com/sales")
         ready_text = _home_commercial_focus_text(ready)
@@ -494,6 +529,7 @@ class ArticleTests(unittest.TestCase):
         self.assertEqual(_home_commercial_focus_button_label("ready"), "販売素材へ")
         self.assertIn("販売者次項目: 販売素材へ反映", ready_text)
         self.assertIn("OK", ready_text)
+        self.assertNotIn("次:", ready_text)
 
     def test_home_primary_button_label_names_next_action(self) -> None:
         self.assertEqual(_home_primary_button_label(None), "詳細を見る")
@@ -979,6 +1015,23 @@ class ArticleTests(unittest.TestCase):
         self.assertIn("Ctrl+K", message)
         self.assertIn("gui-error.log", message)
 
+    def test_commercial_setup_apply_error_message_guides_recovery(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            template = project / ".auto-note" / "sales" / "commercial-setup-template-20260613-000000.md"
+            message = format_commercial_setup_apply_error(
+                template,
+                ArticleError("未入力のプレースホルダー: seller_name"),
+                project,
+            )
+
+        self.assertIn("販売者テンプレート適用エラー", message)
+        self.assertIn(".auto-note/sales/commercial-setup-template", message.replace("\\", "/"))
+        self.assertNotIn(str(project), message)
+        self.assertIn("未入力のプレースホルダー: seller_name", message)
+        self.assertIn("auto-note commercial-setup --project-dir . --apply-latest-template", message)
+        self.assertIn("GUIの「テンプレ適用」", message)
+
     def test_home_gui_log_status_summarizes_recovery_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "gui-error.log"
@@ -1216,6 +1269,13 @@ tags: note
             initial_next_focus = commercial_setup_next_focus(load_settings(project))
             empty_template = create_commercial_setup_template(project)
             empty_template_text = empty_template.path.read_text(encoding="utf-8")
+            empty_apply_output = io.StringIO()
+            empty_apply_errors = io.StringIO()
+            with redirect_stdout(empty_apply_output), redirect_stderr(empty_apply_errors):
+                empty_apply_code = cli_main(
+                    ["commercial-setup", "--project-dir", str(project), "--apply-template", str(empty_template.path)]
+                )
+            empty_loaded = load_settings(project)
             updated = update_commercial_settings(
                 project,
                 seller_name="Auto Note Shop",
@@ -1290,13 +1350,43 @@ tags: note
         self.assertIn("- field: 販売者/屋号", missing_text)
         self.assertIn("- status: missing", missing_text)
         self.assertIn("- gui: 設定 > 販売者/屋号", missing_text)
-        self.assertIn('- cli: --seller-name "Your Shop"', missing_text)
+        self.assertIn("- cli: auto-note commercial-setup --project-dir . --template", missing_text)
         self.assertIn("next actions:", missing_text)
-        self.assertIn('CLI: --seller-name "Your Shop"', missing_text)
-        self.assertIn("CLI: --support-scope-confirmed", missing_text)
+        self.assertIn("CLI: auto-note commercial-setup --project-dir . --template", missing_text)
+        missing_next_actions = missing_text.split("next actions:", 1)[1]
+        self.assertIn(
+            "販売者テンプレートで 販売者/屋号、販売ページURL、返金方針URL、サポート連絡先 をまとめて入力し、編集後に反映する",
+            missing_next_actions,
+        )
+        self.assertIn("GUI: 設定 > 販売者テンプレ -> 設定 > テンプレ適用", missing_next_actions)
+        self.assertEqual(missing_next_actions.count("auto-note commercial-setup --project-dir . --template"), 1)
+        self.assertEqual(
+            missing_next_actions.count("auto-note commercial-setup --project-dir . --apply-latest-template"),
+            1,
+        )
+        self.assertIn(
+            "CLI: auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed",
+            missing_next_actions,
+        )
+        self.assertIn("GUI: 設定 > 販売者情報確認", missing_next_actions)
+        self.assertNotIn("CLI: --terms-reviewed", missing_next_actions)
+        self.assertNotIn("CLI: --support-scope-confirmed", missing_next_actions)
         self.assertEqual(initial_next_field, "seller_name")
         self.assertEqual(initial_next_focus.field, "seller_name")
         self.assertEqual(initial_next_focus.status, "missing")
+        self.assertEqual(empty_apply_code, 1)
+        self.assertEqual(empty_loaded.seller_name, "")
+        self.assertFalse(empty_loaded.commercial_terms_reviewed)
+        self.assertIn("Commercial setup template apply error", empty_apply_errors.getvalue())
+        self.assertIn("next actions / 次の操作:", empty_apply_errors.getvalue())
+        self.assertIn("GUIの「テンプレ適用」", empty_apply_errors.getvalue())
+        self.assertIn("未入力のプレースホルダー", empty_apply_errors.getvalue())
+        self.assertIn("--apply-latest-template", empty_apply_errors.getvalue())
+        self.assertNotIn(str(project), empty_apply_errors.getvalue())
+        self.assertIn(
+            f".auto-note{os.sep}sales{os.sep}{empty_template.path.name}",
+            empty_apply_errors.getvalue(),
+        )
         self.assertIn("Completion: 0/6", empty_template_text)
         self.assertIn("--apply-latest-template", empty_template_text)
         self.assertIn("Field Guide / 入力の目安", empty_template_text)
@@ -1311,6 +1401,7 @@ tags: note
         self.assertIn("- cli: auto-note sales-materials --project-dir .", text)
         self.assertIn("販売素材へ反映する: auto-note sales-materials --project-dir .", text)
         self.assertIn("販売ナビで最終確認する: auto-note sales-plan --project-dir .", text)
+        self.assertIn("GUI: 診断 > 販売素材作成 / 販売ナビ", text)
         self.assertEqual(updated_next_field, "")
         self.assertEqual(updated_next_focus.field, "sales_materials")
         self.assertEqual(code, 0)
@@ -1327,16 +1418,31 @@ tags: note
         self.assertEqual(template_code, 0)
         self.assertIn("commercial setup template created:", template_output.getvalue())
         self.assertIn("missing: 0", template_output.getvalue())
+        self.assertIn("apply: auto-note commercial-setup --project-dir . --apply-latest-template", template_output.getvalue())
+        self.assertNotIn(str(project), template_output.getvalue())
+        self.assertIn(f".auto-note{os.sep}sales{os.sep}commercial-setup-template-", template_output.getvalue())
         self.assertEqual(template_list_code, 0)
         self.assertGreaterEqual(len(templates), 2)
         self.assertIn("commercial-setup-template-", template_list_output.getvalue())
+        self.assertNotIn(str(project), template_list_output.getvalue())
+        self.assertIn(f".auto-note{os.sep}sales{os.sep}commercial-setup-template-", template_list_output.getvalue())
         self.assertEqual(clear_code, 0)
         self.assertFalse(cleared.commercial_terms_reviewed)
         self.assertFalse(cleared.commercial_support_scope_confirmed)
         self.assertEqual(cleared.commercial_reviewed_at, "")
+        self.assertEqual(commercial_setup_next_field(cleared), "commercial_terms_reviewed")
+        self.assertEqual(
+            commercial_setup_next_focus(cleared).cli,
+            "auto-note commercial-setup --project-dir . --terms-reviewed",
+        )
+        self.assertEqual(
+            commercial_setup_next_focus(replace(cleared, commercial_terms_reviewed=True)).cli,
+            "auto-note commercial-setup --project-dir . --support-scope-confirmed",
+        )
         self.assertEqual(applied.missing, 0)
         self.assertIn("updated: seller_name", apply_text)
         self.assertIn("販売素材へ反映する: auto-note sales-materials --project-dir .", apply_text)
+        self.assertIn("GUI: 診断 > 販売素材作成 / 販売ナビ", apply_text)
         self.assertIn("missing fields: (none)", apply_text)
         self.assertEqual(apply_code, 0)
         self.assertEqual(latest_apply_code, 0)
@@ -1349,6 +1455,42 @@ tags: note
         self.assertTrue(loaded.commercial_terms_reviewed)
         self.assertTrue(loaded.commercial_support_scope_confirmed)
         self.assertNotEqual(loaded.commercial_reviewed_at, "")
+
+    def test_commercial_setup_cli_rejects_placeholder_values(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            output = io.StringIO()
+            errors = io.StringIO()
+            with redirect_stdout(output), redirect_stderr(errors):
+                code = cli_main(
+                    [
+                        "commercial-setup",
+                        "--project-dir",
+                        str(project),
+                        "--seller-name",
+                        "Your Shop",
+                        "--sales-url",
+                        "https://example.com",
+                        "--refund-url",
+                        "https://example.com/refund",
+                        "--support-contact",
+                        "https://example.com/support",
+                        "--terms-reviewed",
+                        "--support-scope-confirmed",
+                    ]
+                )
+            loaded = load_settings(project)
+
+        self.assertEqual(code, 1)
+        self.assertIn("例示値", errors.getvalue())
+        self.assertIn("--template", errors.getvalue())
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(loaded.seller_name, "")
+        self.assertEqual(loaded.sales_channel_url, "")
+        self.assertEqual(loaded.refund_policy_url, "")
+        self.assertEqual(loaded.support_contact, "")
+        self.assertFalse(loaded.commercial_terms_reviewed)
+        self.assertFalse(loaded.commercial_support_scope_confirmed)
 
     def test_commercial_setup_warns_about_non_public_sales_contacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1547,6 +1689,82 @@ tags: note
         self.assertEqual(step.status, "fail")
         self.assertIn("NG", step.detail)
 
+    def test_home_sales_next_step_guides_combined_seller_setup(self) -> None:
+        step = AutoNoteApp._home_sales_lightweight_next_step(
+            object(),
+            missing=["seller name"],
+            warnings=["sales page uses a placeholder URL"],
+            releases=[],
+            handoffs=[],
+            buyer_packages=[],
+            buyer_package_errors=[],
+            buyer_messages=[],
+            materials=[],
+            screenshot_packs=[],
+            listing_packages=[],
+        )
+
+        self.assertEqual(step.title, "販売者情報を整える")
+        self.assertEqual(step.category, "seller")
+        self.assertIn("まとめて保存", step.action)
+        self.assertIn("販売ナビ", step.action)
+        self.assertEqual(step.gui, "設定 > 次の不足へ")
+
+    def test_home_sales_next_step_prioritizes_privacy_cleanup_checkpoint(self) -> None:
+        step = AutoNoteApp._home_sales_lightweight_next_step(
+            object(),
+            missing=["seller name"],
+            warnings=[],
+            releases=[],
+            handoffs=[],
+            buyer_packages=[],
+            buyer_package_errors=[],
+            buyer_messages=[],
+            materials=[],
+            screenshot_packs=[],
+            listing_packages=[],
+            privacy_cleanup_needed=True,
+        )
+
+        self.assertEqual(step.title, "危険生成物を確認する")
+        self.assertEqual(step.status, "fail")
+        self.assertEqual(step.gui, "診断 > 危険生成物確認")
+        self.assertIn("販売RCを再判定", step.action)
+
+    def test_home_sales_rc_target_text_names_milestone(self) -> None:
+        self.assertEqual(
+            _home_sales_rc_target_text(
+                "NEEDS ATTENTION",
+                seller_remaining=0,
+                artifact_remaining=0,
+                artifact_ng_count=2,
+                artifact_stale_count=0,
+            ),
+            "販売RC目途: BLOCKED / 生成物NG 2件を0件へ / "
+            "今回の目途: 危険生成物確認後に再判定 / 次: 危険生成物確認",
+        )
+        self.assertEqual(
+            _home_sales_rc_target_text(
+                "NEEDS ATTENTION",
+                seller_remaining=3,
+                artifact_remaining=0,
+                artifact_ng_count=0,
+                artifact_stale_count=0,
+            ),
+            "販売RC目途: NEAR RC / 販売者残件 3件を保存 / "
+            "今回の目途: テンプレ適用で保存 / 次: テンプレ適用",
+        )
+        self.assertEqual(
+            _home_sales_rc_target_text(
+                "READY TO VERIFY",
+                seller_remaining=0,
+                artifact_remaining=0,
+                artifact_ng_count=0,
+                artifact_stale_count=0,
+            ),
+            "販売RC目途: READY / 今回の目途: 一括チェックで固定 / 次: 販売前一括チェック",
+        )
+
     def test_sales_listing_kit_packages_seller_listing_assets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -1574,6 +1792,20 @@ tags: note
             with zipfile.ZipFile(kit.package_path) as archive:
                 package_names = set(archive.namelist())
                 package_manifest = archive.read("SALES_LISTING_MANIFEST.json").decode("utf-8")
+                duplicate_materials = archive.read("SALES_MATERIALS.md")
+            unsafe_package = kit.package_path.with_name("unsafe-listing-kit.zip")
+            shutil.copy2(kit.package_path, unsafe_package)
+            with zipfile.ZipFile(unsafe_package, "a") as archive:
+                archive.writestr("logs/", "")
+                link_info = zipfile.ZipInfo("latest-listing-log")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "README.txt")
+                archive.writestr("../escape.txt", "x")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("SALES_MATERIALS.md", duplicate_materials)
+            unsafe_package_errors = verify_sales_listing_kit(unsafe_package, project_dir=project)
+            unsafe_verification = format_sales_listing_verification(unsafe_package, unsafe_package_errors)
             create_output = io.StringIO()
             with redirect_stdout(create_output):
                 create_code = cli_main(["sales-listing", "--project-dir", str(project)])
@@ -1593,6 +1825,11 @@ tags: note
         self.assertIn("Buyer delivery package: no", readme_text)
         self.assertIn("Do not send this ZIP to buyers", checklist_text)
         self.assertTrue(expected_names.issubset(package_names))
+        self.assertIn("non-file archive entry: logs/", unsafe_package_errors)
+        self.assertIn("unsafe archive entry type: latest-listing-log", unsafe_package_errors)
+        self.assertIn("unsafe file name: ../escape.txt", unsafe_package_errors)
+        self.assertIn("duplicate file name: SALES_MATERIALS.md", unsafe_package_errors)
+        self.assertIn("[NG] sales listing kit verification failed", unsafe_verification)
         self.assertTrue(manifest["seller_listing_only"])
         self.assertFalse(manifest["buyer_delivery"])
         self.assertTrue(manifest["do_not_send_to_buyer"])
@@ -1655,6 +1892,7 @@ tags: note
             self.assertEqual(backup_errors, [])
             self.assertEqual(len(inspection.article_files), 1)
             self.assertIn("Backup inspection", inspection_text)
+            self.assertIn("Restore status: ready", inspection_text)
             self.assertTrue(any(item.name == "project directory" and item.ok for item in diagnostics))
             self.assertTrue(any(item.name == "auto-note version" and item.ok for item in diagnostics))
             self.assertTrue(
@@ -1773,6 +2011,7 @@ tags: note
             self.assertNotIn(str(project), quality_text)
             self.assertNotIn(str(project), maintenance_text)
             self.assertIn("latest_backup_verified: yes", maintenance_text)
+            self.assertIn("latest_backup_restore_status: ready", maintenance_text)
             self.assertIn("Troubleshooting report", troubleshoot_text)
             self.assertIn("Acceptance check", acceptance_text)
             self.assertIn("Commercial readiness", commercial_readiness_text)
@@ -1885,12 +2124,165 @@ tags: note
             self.assertNotIn(str(project), preview)
             self.assertNotIn(article_path.name, preview)
 
+    def test_install_info_diagnostics_catch_invalid_and_missing_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            info_path = project / ".auto-note" / "install-info.json"
+            info_path.parent.mkdir(parents=True)
+
+            info_path.write_text("{bad json", encoding="utf-8")
+            invalid_status = inspect_install_info(project)
+            invalid_diagnostics = run_diagnostics(project)
+            invalid_detail = next(item.detail for item in invalid_diagnostics if item.name == "install info")
+            invalid_info_text = format_app_info(collect_app_info(project))
+
+            info_path.write_text(
+                '{"installed_at":"2026-06-06T10:00:00","version":"0.1.0","preinstall_backup":"missing.zip"}',
+                encoding="utf-8",
+            )
+            missing_backup_status = inspect_install_info(project)
+            missing_backup_diagnostics = run_diagnostics(project)
+            missing_backup_item = next(item for item in missing_backup_diagnostics if item.name == "install info")
+            missing_backup_info_text = format_app_info(collect_app_info(project))
+
+            backup_dir = project / ".auto-note" / "install-backups"
+            backup_dir.mkdir()
+            (backup_dir / "missing.zip").write_bytes(b"backup")
+            ok_status = inspect_install_info(project)
+            ok_diagnostics = run_diagnostics(project)
+            ok_item = next(item for item in ok_diagnostics if item.name == "install info")
+
+        self.assertFalse(invalid_status.ok)
+        self.assertIn("invalid JSON", invalid_status.detail)
+        self.assertIn("invalid JSON", invalid_detail)
+        self.assertIn("Install info: invalid JSON", invalid_info_text)
+        self.assertFalse(missing_backup_status.ok)
+        self.assertIn("preinstall backup missing: missing.zip", missing_backup_status.detail)
+        self.assertFalse(missing_backup_item.ok)
+        self.assertIn("preinstall backup missing: missing.zip", missing_backup_item.detail)
+        self.assertIn("Install info status: NG - preinstall backup missing: missing.zip", missing_backup_info_text)
+        self.assertTrue(ok_status.ok)
+        self.assertTrue(ok_item.ok)
+        self.assertIn("preinstall backup found: missing.zip", ok_item.detail)
+
+    def test_install_helper_diagnostics_report_missing_and_present_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            missing_item = next(item for item in run_diagnostics(project) if item.name == "install helpers")
+
+            helper_paths = [
+                Path("auto-note safe display.lnk"),
+                Path("shortcuts") / "install-auto-note.bat",
+                Path("shortcuts") / "uninstall-auto-note.bat",
+                Path("scripts") / "install-auto-note.ps1",
+                Path("scripts") / "uninstall-auto-note.ps1",
+            ]
+            for helper in helper_paths:
+                path = project / helper
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("ok\n", encoding="utf-8")
+            ok_item = next(item for item in run_diagnostics(project) if item.name == "install helpers")
+
+        self.assertFalse(missing_item.ok)
+        self.assertIn("shortcuts\\install-auto-note.bat", missing_item.detail)
+        self.assertIn("shortcuts\\uninstall-auto-note.bat", missing_item.detail)
+        self.assertIn("auto-note safe display.lnk", missing_item.detail)
+        self.assertTrue(ok_item.ok)
+        self.assertIn("all required install helpers found", ok_item.detail)
+        self.assertIn("scripts\\uninstall-auto-note.ps1", ok_item.detail)
+
     def test_diagnostic_preview_truncates_large_sections(self) -> None:
         text = _truncate_preview_text("x" * 2000, max_chars=20)
+        section = "\n".join(
+            _format_preview_section(
+                "maintenance-summary.txt",
+                "header\n"
+                + ("x" * 2000)
+                + "\nlatest_backup_restore_status: blocked\n"
+                + "latest_backup_restore_blockers: unsafe entries: 3 (../evil.md)\n"
+                + "latest_backup_unsafe_files: 3\nlatest_backup_unsafe_examples: ../evil.md",
+                max_chars=40,
+                required_prefixes=(
+                    "latest_backup_restore_status:",
+                    "latest_backup_restore_blockers:",
+                    "latest_backup_unsafe_files:",
+                    "latest_backup_unsafe_examples:",
+                ),
+            )
+        )
 
         self.assertTrue(text.startswith("x" * 20))
         self.assertIn("truncated 1980 chars", text)
         self.assertIn("full content is in diagnostic-report.zip", text)
+        self.assertIn("Important lines", section)
+        self.assertIn("latest_backup_restore_status: blocked", section)
+        self.assertIn("latest_backup_restore_blockers: unsafe entries: 3 (../evil.md)", section)
+        self.assertIn("latest_backup_unsafe_files: 3", section)
+        self.assertIn("latest_backup_unsafe_examples: ../evil.md", section)
+
+    def test_archive_safety_helpers_report_names_and_special_entries(self) -> None:
+        errors = verify_zip_member_names(
+            [
+                "ok.txt",
+                "nested\\bad.txt",
+                "nested/bad.txt",
+                "../evil.txt",
+                "/absolute.txt",
+                "C:/absolute.txt",
+                "field:name.txt",
+                "",
+                "OK.TXT",
+                "ok.txt",
+            ]
+        )
+        release_errors = verify_zip_member_names(
+            [
+                "",
+                "field:name.txt",
+                "nested\\name.txt",
+                "nested/name.txt",
+                "../evil.txt",
+                "START_HERE.txt",
+                "start_here.txt",
+                "START_HERE.txt",
+            ],
+            unsafe_label="unsafe archive path",
+            duplicate_label="duplicate archive path",
+            reject_empty=False,
+            reject_colons=False,
+            reject_non_normalized=False,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "entries.zip"
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("ok.txt", "ok")
+                archive.writestr("nested/", "")
+                link_info = zipfile.ZipInfo("latest-entry")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "ok.txt")
+            with zipfile.ZipFile(package) as archive:
+                entry_errors = verify_zip_regular_entries(archive)
+
+        self.assertIn("non-normalized file name: nested\\bad.txt", errors)
+        self.assertIn("unsafe file name: ../evil.txt", errors)
+        self.assertIn("unsafe file name: /absolute.txt", errors)
+        self.assertIn("unsafe file name: C:/absolute.txt", errors)
+        self.assertIn("unsafe file name: field:name.txt", errors)
+        self.assertIn("unsafe file name: ", errors)
+        self.assertIn("duplicate file name: nested/bad.txt", errors)
+        self.assertIn("duplicate file name: OK.TXT", errors)
+        self.assertIn("duplicate file name: ok.txt", errors)
+        self.assertEqual(
+            release_errors,
+            [
+                "duplicate archive path: nested/name.txt",
+                "unsafe archive path: ../evil.txt",
+                "duplicate archive path: start_here.txt",
+                "duplicate archive path: START_HERE.txt",
+            ],
+        )
+        self.assertIn("non-file archive entry: nested/", entry_errors)
+        self.assertIn("unsafe archive entry type: latest-entry", entry_errors)
 
     def test_quickstart_reports_first_publish_path_and_helper_smoke(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1901,6 +2293,7 @@ tags: note
             article.write_text(body + "\n本文を少し追記します。\n", encoding="utf-8")
 
             run_setup_check(project, create=True)
+            backup = create_backup(project)
             report = run_quickstart(project, smoke_helper=True)
             text = format_quickstart_report(report)
             public_text = format_quickstart_report(report, include_private=False)
@@ -1915,6 +2308,8 @@ tags: note
         self.assertIn("posting helper", text)
         self.assertIn("Generated helper", text)
         self.assertIn("ログイン安全ガイド", text)
+        self.assertIn(backup.name, text)
+        self.assertIn("restore status ready", text)
         self.assertIn(article.name, text)
         self.assertNotIn(article.name, public_text)
         self.assertIn("article-001.md", public_text)
@@ -2011,6 +2406,59 @@ tags: note
         self.assertEqual(content_top_action.status, "info")
         self.assertEqual(commercial_top_action.status, "info")
 
+    def test_first_run_report_deduplicates_next_actions(self) -> None:
+        cleanup_command = "auto-note cleanup --project-dir . --privacy-failed --include-releases"
+        shared_action = f"`{cleanup_command}` で確認してください。"
+        display_command = "auto-note first-run --project-dir . --gui-smoke"
+        report = FirstRunReport(
+            project_dir=Path("."),
+            status="fail",
+            score=70,
+            self_test_score=70,
+            quickstart_score=80,
+            items=[
+                FirstRunItem(
+                    "セルフテスト",
+                    "fail",
+                    "privacy NG",
+                    shared_action,
+                    gui="診断 > 危険生成物確認",
+                ),
+                FirstRunItem(
+                    "次の一手",
+                    "warn",
+                    "top privacy cleanup",
+                    shared_action,
+                    gui="診断 > 危険生成物確認",
+                ),
+                FirstRunItem(
+                    "表示の読みやすさ",
+                    "info",
+                    "not run",
+                    "GUI smoke付きで実行してください。",
+                    gui="診断 > 表示診断",
+                    command=display_command,
+                ),
+                FirstRunItem(
+                    "再確認",
+                    "warn",
+                    "base check",
+                    "`auto-note first-run --project-dir .` で確認してください。",
+                ),
+            ],
+        )
+
+        text = format_first_run_report(report)
+        next_section = text.split("Next actions", 1)[1]
+
+        self.assertIn("- セルフテスト / 次の一手:", next_section)
+        self.assertEqual(next_section.count(cleanup_command), 1)
+        self.assertIn(f"{cleanup_command} / GUI: 診断 > 危険生成物確認", next_section)
+        self.assertNotIn(shared_action, next_section)
+        self.assertIn(f"- 表示の読みやすさ / 再確認: {display_command} / GUI: 診断 > 表示診断", next_section)
+        self.assertNotIn("- セルフテスト: `auto-note cleanup", next_section)
+        self.assertNotIn("- 次の一手: `auto-note cleanup", next_section)
+
     def test_acceptance_check_summarizes_buyer_handoff_and_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -2083,28 +2531,319 @@ tags: note
 
             self_test = run_self_test(project)
             first_run = run_first_run_checklist(project)
+            first_run_text = format_first_run_report(first_run)
             report = run_acceptance_check(project)
             text = format_acceptance_report(report)
+            commercial = run_commercial_readiness(project)
+            commercial_text = format_commercial_readiness_report(commercial)
+            sales_plan = build_sales_plan(project)
+            sales_plan_text = format_sales_plan(sales_plan)
 
         self_test_privacy = next(item for item in self_test.items if item.name == "privacy audit")
         first_run_self_test = next(item for item in first_run.items if item.name == "セルフテスト")
         acceptance_first_run = next(item for item in report.items if item.name == "初回チェック")
         acceptance_self_test = next(item for item in report.items if item.name == "セルフテスト")
+        acceptance_troubleshoot = next(item for item in report.items if item.name == "トラブル診断")
+        commercial_acceptance = next(item for item in commercial.items if item.name == "受入チェック")
+        sales_plan_acceptance = next(step for step in sales_plan.steps if step.title == "購入者目線の受入チェックを保存する")
+        cleanup_command = "auto-note cleanup --project-dir . --privacy-failed --include-releases"
+        handoff_command = "auto-note sales-handoff --project-dir ."
+
+        def assert_cleanup_before_handoff(action: str) -> None:
+            self.assertIn(cleanup_command, action)
+            self.assertIn(handoff_command, action)
+            self.assertLess(action.index(cleanup_command), action.index(handoff_command))
+
         self.assertIn("first NG: sales handoff privacy", self_test_privacy.detail)
-        self.assertIn("auto-note sales-handoff --project-dir .", self_test_privacy.action)
+        assert_cleanup_before_handoff(self_test_privacy.action)
         self.assertIn("first NG: sales handoff privacy", first_run_self_test.detail)
-        self.assertIn("auto-note sales-handoff --project-dir .", first_run_self_test.action)
+        assert_cleanup_before_handoff(first_run_self_test.action)
+        self.assertEqual(first_run_self_test.gui, "診断 > 危険生成物確認")
+        self.assertEqual(first_run_self_test.command, cleanup_command)
+        first_run_next_section = first_run_text.split("Next actions", 1)[1]
+        self.assertEqual(first_run_next_section.count(cleanup_command), 1)
+        self.assertIn(f"{cleanup_command} / GUI: 診断 > 危険生成物確認", first_run_next_section)
+        self.assertNotIn(f"- セルフテスト: `{handoff_command}`", first_run_next_section)
+        self.assertNotIn(f"- 次の一手: `{handoff_command}`", first_run_next_section)
         self.assertIn("first NG: sales handoff privacy", acceptance_first_run.detail)
-        self.assertIn("auto-note sales-handoff --project-dir .", acceptance_first_run.action)
+        assert_cleanup_before_handoff(acceptance_first_run.action)
+        self.assertEqual(acceptance_first_run.gui, "診断 > 危険生成物確認")
+        self.assertEqual(acceptance_first_run.command, cleanup_command)
         self.assertIn("first NG: sales handoff privacy", acceptance_self_test.detail)
-        self.assertIn("auto-note sales-handoff --project-dir .", acceptance_self_test.action)
+        assert_cleanup_before_handoff(acceptance_self_test.action)
+        self.assertEqual(acceptance_self_test.gui, "診断 > 危険生成物確認")
+        self.assertEqual(acceptance_self_test.command, cleanup_command)
+        self.assertEqual(acceptance_troubleshoot.gui, "診断 > 危険生成物確認")
+        self.assertEqual(acceptance_troubleshoot.command, cleanup_command)
         self.assertIn("first NG: sales handoff privacy", text)
-        self.assertIn("auto-note sales-handoff --project-dir .", text)
+        assert_cleanup_before_handoff(text)
+        self.assertIn("first NG: 初回チェック", commercial_acceptance.detail)
+        self.assertIn("first NG: 初回チェック", commercial_text)
+        assert_cleanup_before_handoff(commercial_acceptance.action)
+        self.assertIn("first NG: 初回チェック", sales_plan_acceptance.detail)
+        self.assertIn("first NG: 初回チェック", sales_plan_text)
+        assert_cleanup_before_handoff(sales_plan_acceptance.action)
+        self.assertEqual(sales_plan_acceptance.gui, "診断 > 危険生成物確認")
+        self.assertEqual(
+            sales_plan_acceptance.command,
+            cleanup_command,
+        )
         next_section = text.split("Next actions", 1)[1]
-        self.assertIn("- 初回チェック / セルフテスト / トラブル診断: `auto-note sales-handoff --project-dir .`", next_section)
-        self.assertNotIn("- 初回チェック: `auto-note sales-handoff --project-dir .`", next_section)
-        self.assertNotIn("- セルフテスト: `auto-note sales-handoff --project-dir .`", next_section)
-        self.assertNotIn("- トラブル診断: `auto-note sales-handoff --project-dir .`", next_section)
+        self.assertIn("- 初回チェック / セルフテスト / トラブル診断:", next_section)
+        assert_cleanup_before_handoff(next_section)
+        self.assertNotIn(f"- 初回チェック: `{handoff_command}`", next_section)
+        self.assertNotIn(f"- セルフテスト: `{handoff_command}`", next_section)
+        self.assertNotIn(f"- トラブル診断: `{handoff_command}`", next_section)
+
+    def test_commercial_readiness_report_deduplicates_next_actions(self) -> None:
+        shared_action = "`auto-note cleanup --project-dir . --privacy-failed --include-releases` で確認してください。"
+        setup_action = "GUIの設定タブ、または `auto-note commercial-setup --project-dir . --template` で保存してください。"
+        terms_action = (
+            "利用条件を確認し、`auto-note commercial-setup --project-dir . --terms-reviewed` で保存してください。"
+        )
+        final_review_action = (
+            "最終確認後、"
+            "`auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed` "
+            "で保存してください。"
+        )
+        report = CommercialReadinessReport(
+            project_dir=Path("."),
+            status="fail",
+            score=60,
+            generated_at=datetime(2026, 6, 13, 3, 0, 0),
+            items=[
+                CommercialReadinessItem("プライバシー監査", "fail", "1 NG artifact", shared_action),
+                CommercialReadinessItem("受入チェック", "fail", "current status fail", shared_action),
+                CommercialReadinessItem(
+                    "販売者プロフィール",
+                    "warn",
+                    "missing seller profile",
+                    setup_action,
+                ),
+                CommercialReadinessItem(
+                    "サポート連絡先",
+                    "warn",
+                    "support contact is not set",
+                    setup_action,
+                ),
+                CommercialReadinessItem(
+                    "利用条件/商用方針",
+                    "warn",
+                    "draft markers present",
+                    terms_action,
+                ),
+                CommercialReadinessItem(
+                    "販売最終確認",
+                    "warn",
+                    "missing support scope",
+                    final_review_action,
+                ),
+            ],
+        )
+        ready_report = CommercialReadinessReport(
+            project_dir=Path("."),
+            status="pass",
+            score=100,
+            generated_at=datetime(2026, 6, 13, 3, 0, 0),
+            items=[
+                CommercialReadinessItem("配布ZIP", "pass", "verified"),
+                CommercialReadinessItem("インストール導線", "info", "script present"),
+            ],
+        )
+
+        text = format_commercial_readiness_report(report)
+        ready_text = format_commercial_readiness_report(ready_report)
+        next_section = text.split("Next actions", 1)[1]
+
+        self.assertIn("RC target / 販売RC目途: BLOCKED: NG 2件を0件にすると販売RC判定へ進めます", text)
+        self.assertIn(
+            "RC path / 残り作業: BLOCKED: 3作業（NG 2件 -> WARN 4件） / 先頭: "
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases",
+            text,
+        )
+        self.assertIn(
+            "RC checkpoint / 今回の目途: auto-note cleanup --project-dir . --privacy-failed --include-releases "
+            "-> commercial-readiness再判定でNG 0件",
+            text,
+        )
+        self.assertIn("RC target / 販売RC目途: READY: NG 0件、WARN 0件", ready_text)
+        self.assertIn("RC path / 残り作業: READY: 必須残件0件。販売前一括チェックで固定できます。", ready_text)
+        self.assertIn(
+            "RC checkpoint / 今回の目途: auto-note preflight --project-dir . --gui-smoke -> 販売RC固定",
+            ready_text,
+        )
+        self.assertIn("- プライバシー監査 / 受入チェック:", next_section)
+        self.assertEqual(next_section.count("auto-note cleanup --project-dir . --privacy-failed --include-releases"), 1)
+        self.assertIn("auto-note cleanup --project-dir . --privacy-failed --include-releases / GUI: 診断 > 危険生成物確認", next_section)
+        self.assertNotIn("- プライバシー監査: `auto-note cleanup", next_section)
+        self.assertNotIn("- 受入チェック: `auto-note cleanup", next_section)
+        self.assertIn(
+            "- 販売者プロフィール / サポート連絡先: auto-note commercial-setup --project-dir . --template",
+            next_section,
+        )
+        self.assertIn("auto-note commercial-setup --project-dir . --template / GUI: 設定 > 販売者テンプレ", next_section)
+        self.assertIn(
+            "- 利用条件/商用方針 / 販売最終確認: "
+            "auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed",
+            next_section,
+        )
+        self.assertIn(
+            "auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed "
+            "/ GUI: 設定 > 販売者情報確認",
+            next_section,
+        )
+        self.assertEqual(next_section.count("auto-note commercial-setup --project-dir . --template"), 1)
+        self.assertEqual(
+            next_section.count("auto-note commercial-setup --project-dir . --terms-reviewed"),
+            1,
+        )
+
+    def test_commercial_readiness_reuses_existing_setup_template(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            run_setup_check(project, create=True)
+            template = create_commercial_setup_template(project)
+
+            report = run_commercial_readiness(project)
+            text = format_commercial_readiness_report(report)
+            next_section = text.split("Next actions", 1)[1]
+
+        seller_item = next(item for item in report.items if item.name == "販売者プロフィール")
+        support_item = next(item for item in report.items if item.name == "サポート連絡先")
+        template_display = f".auto-note{os.sep}sales{os.sep}{template.path.name}"
+        self.assertIn(template_display, seller_item.action)
+        self.assertIn(template_display, support_item.action)
+        self.assertIn("GUIでは「設定 > テンプレ適用」", seller_item.action)
+        self.assertIn("新しく作る場合は「設定 > 販売者テンプレ」", seller_item.action)
+        self.assertIn("GUIでは「設定 > 販売者情報確認」", support_item.action)
+        self.assertIn("GUIでは「設定 > テンプレ適用」", support_item.action)
+        self.assertIn("auto-note commercial-setup --project-dir . --apply-latest-template", seller_item.action)
+        self.assertIn("auto-note commercial-setup --project-dir . --template", seller_item.action)
+        self.assertNotIn(str(project), text)
+        self.assertIn(
+            "- 販売者プロフィール / サポート連絡先: "
+            "auto-note commercial-setup --project-dir . --apply-latest-template",
+            next_section,
+        )
+        self.assertEqual(next_section.count("auto-note commercial-setup --project-dir . --apply-latest-template"), 1)
+
+    def test_sales_plan_report_deduplicates_next_actions(self) -> None:
+        shared_command = "auto-note cleanup --project-dir . --privacy-failed --include-releases"
+        seller_command = (
+            'auto-note commercial-setup --project-dir . --seller-name "Your Shop" '
+            '--sales-url "https://example.com" --refund-url "https://example.com/refund"'
+        )
+        terms_command = "auto-note commercial-setup --project-dir . --terms-reviewed"
+        support_scope_command = "auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed"
+        support_contact_command = 'auto-note commercial-setup --project-dir . --support-contact "https://example.com/support"'
+        combined_seller_command = (
+            'auto-note commercial-setup --project-dir . --seller-name "Your Shop" '
+            '--sales-url "https://example.com" --refund-url "https://example.com/refund" '
+            '--terms-reviewed --support-scope-confirmed --support-contact "https://example.com/support"'
+        )
+        report = SalesPlanReport(
+            project_dir=Path("."),
+            status="BLOCKED",
+            score=55,
+            generated_at=datetime(2026, 6, 13, 3, 30, 0),
+            readiness=CommercialReadinessReport(
+                project_dir=Path("."),
+                status="fail",
+                score=60,
+                generated_at=datetime(2026, 6, 13, 3, 29, 0),
+                items=[],
+            ),
+            latest_release=None,
+            latest_handoff=None,
+            latest_buyer_delivery_package=None,
+            latest_materials=None,
+            buyer_delivery_status="BLOCKED",
+            buyer_delivery_detail="privacy NG",
+            steps=[
+                SalesPlanStep(
+                    "送付前のプライバシーNGをなくす",
+                    "blocker",
+                    "privacy NG artifact",
+                    "危険生成物を片付けてください。",
+                    gui="診断 > 危険生成物確認",
+                    command=shared_command,
+                ),
+                SalesPlanStep(
+                    "購入者目線の受入チェックを保存する",
+                    "blocker",
+                    "current status fail",
+                    "受入チェックを保存してください。",
+                    gui="診断 > 危険生成物確認",
+                    command=shared_command,
+                ),
+                SalesPlanStep(
+                    "販売素材Markdownを作成する",
+                    "warning",
+                    "sales materials not found",
+                    "販売素材を作成してください。",
+                    command="auto-note sales-materials --project-dir .",
+                ),
+                SalesPlanStep(
+                    "販売者情報を保存する",
+                    "warning",
+                    "missing: seller name, sales page, refund policy",
+                    "販売者情報を保存してください。",
+                    command=seller_command,
+                    category="seller",
+                ),
+                SalesPlanStep(
+                    "利用条件と商用方針を最終レビューする",
+                    "warning",
+                    "draft markers present",
+                    "文書を最終レビューしてください。",
+                    command=terms_command,
+                    category="seller",
+                ),
+                SalesPlanStep(
+                    "販売ページとサポート範囲の最終確認を保存する",
+                    "warning",
+                    "missing: terms review, support scope",
+                    "最終確認を保存してください。",
+                    command=support_scope_command,
+                    category="seller",
+                ),
+                SalesPlanStep(
+                    "購入者向けサポート連絡先を保存する",
+                    "warning",
+                    "support contact is not set",
+                    "サポート連絡先を保存してください。",
+                    command=support_contact_command,
+                    category="seller",
+                ),
+            ],
+        )
+
+        text = format_sales_plan(report)
+        next_section = text.split("Next actions", 1)[1]
+
+        self.assertEqual(report.seller_remaining, 1)
+        self.assertEqual(report.tool_remaining, 2)
+        self.assertIn("Seller setup remaining: 1", text)
+        self.assertIn("Tool/artifact actions remaining: 2", text)
+        self.assertIn("Upload guidance: HOLD - tool/artifact actions remain: 2", text)
+        self.assertIn(
+            "- 送付前のプライバシーNGをなくす / 購入者目線の受入チェックを保存する: "
+            + shared_command,
+            next_section,
+        )
+        self.assertEqual(next_section.count(shared_command), 1)
+        self.assertNotIn("- 送付前のプライバシーNGをなくす: auto-note cleanup", next_section)
+        self.assertNotIn("- 購入者目線の受入チェックを保存する: auto-note cleanup", next_section)
+        self.assertIn(
+            "- 販売者情報を保存する / 利用条件と商用方針を最終レビューする / "
+            "販売ページとサポート範囲の最終確認を保存する / 購入者向けサポート連絡先を保存する: "
+            + combined_seller_command,
+            next_section,
+        )
+        self.assertNotIn(f"- 販売者情報を保存する: {seller_command}", next_section)
+        self.assertNotIn(f"- 利用条件と商用方針を最終レビューする: {terms_command}", next_section)
+        self.assertNotIn(f"- 販売ページとサポート範囲の最終確認を保存する: {support_scope_command}", next_section)
+        self.assertNotIn(f"- 購入者向けサポート連絡先を保存する: {support_contact_command}", next_section)
 
     def test_commercial_readiness_summarizes_sale_handoff_and_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2143,6 +2882,7 @@ tags: note
 
             report = run_commercial_readiness(project)
             text = format_commercial_readiness_report(report)
+            next_actions_text = text.split("Next actions", 1)[1]
             saved = write_commercial_readiness_report(project, report=report)
             saved_exists = saved.exists()
             policy_review = write_commercial_policy_review(project)
@@ -2158,6 +2898,8 @@ tags: note
             policy_reviews = list_commercial_policy_reviews(project)
             privacy = run_privacy_audit(project)
             privacy_text = format_privacy_audit_report(privacy)
+            sales_plan = build_sales_plan(project)
+            sales_plan_text = format_sales_plan(sales_plan)
             update_commercial_settings(
                 project,
                 seller_name="Auto Note Shop",
@@ -2191,6 +2933,41 @@ tags: note
         self.assertIn("draft markers", text)
         self.assertIn("support contact", text)
         self.assertIn("missing: seller name", text)
+        self.assertIn("RC target / 販売RC目途: NEAR RC: NG 0件、WARN", text)
+        self.assertIn("RC path / 残り作業: NEAR RC: 3作業（WARN 5件）を確認/保存", text)
+        self.assertIn("WARNを確認または保存すればREADY", text)
+        self.assertIn("RC target / 販売RC目途: NEAR RC: NG 0件、WARN 1件", configured_text)
+        self.assertIn("RC path / 残り作業: NEAR RC: 1作業（WARN 1件）を確認/保存", configured_text)
+        self.assertIn("`auto-note commercial-setup --project-dir . --template`", text)
+        self.assertIn("GUIでは「設定 > 販売者情報確認」", text)
+        self.assertIn("「設定 > 販売者テンプレ」", text)
+        self.assertIn("GUIでは「診断 > 出荷ZIP作成」", text)
+        self.assertIn("`auto-note commercial-setup --project-dir . --terms-reviewed`", text)
+        self.assertIn(
+            "`auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed`",
+            text,
+        )
+        self.assertIn(
+            "- 販売者プロフィール / サポート連絡先: auto-note commercial-setup --project-dir . --template",
+            next_actions_text,
+        )
+        self.assertIn(
+            "- 利用条件/商用方針 / 販売最終確認: "
+            "auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed",
+            next_actions_text,
+        )
+        self.assertEqual(next_actions_text.count("auto-note commercial-setup --project-dir . --template"), 1)
+        self.assertEqual(
+            next_actions_text.count("auto-note commercial-setup --project-dir . --terms-reviewed"),
+            1,
+        )
+        self.assertNotIn("- 販売者プロフィール: GUIの設定タブ", next_actions_text)
+        self.assertNotIn("- サポート連絡先: GUIの設定タブ", next_actions_text)
+        self.assertIn("  cli: auto-note commercial-setup --project-dir . --terms-reviewed", sales_plan_text)
+        self.assertIn(
+            "  cli: auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed",
+            sales_plan_text,
+        )
         self.assertEqual(configured_statuses["販売者プロフィール"], "pass")
         self.assertEqual(configured_statuses["利用条件/商用方針"], "pass")
         self.assertEqual(configured_statuses["販売最終確認"], "pass")
@@ -2268,6 +3045,7 @@ tags: note
             with zipfile.ZipFile(result.path) as archive:
                 names = set(archive.namelist())
                 manifest = archive.read("SALES_HANDOFF_MANIFEST.json").decode("utf-8")
+                handoff_readme = archive.read("README.txt").decode("utf-8")
                 buyer_handoff = archive.read("BUYER_HANDOFF.txt").decode("utf-8")
                 buyer_support_guide = archive.read("BUYER_SUPPORT_GUIDE.txt").decode("utf-8")
                 buyer_support_request = archive.read("BUYER_SUPPORT_REQUEST.txt").decode("utf-8")
@@ -2307,6 +3085,32 @@ tags: note
                 output_path=buyer_delivery.directory.parent / "manual-buyer-delivery.zip",
             )
             manual_buyer_package_errors = verify_buyer_delivery_package(manual_buyer_package)
+            unsafe_handoff = result.path.with_name("unsafe-sales-handoff.zip")
+            shutil.copy2(result.path, unsafe_handoff)
+            with zipfile.ZipFile(unsafe_handoff, "a") as archive:
+                archive.writestr("logs/", "")
+                link_info = zipfile.ZipInfo("latest-handoff-log")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "README.txt")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("BUYER_HANDOFF.txt", buyer_handoff)
+            unsafe_handoff_errors = verify_sales_handoff(unsafe_handoff)
+            unsafe_buyer_package = buyer_delivery.package_path.with_name("unsafe-buyer-delivery.zip")
+            shutil.copy2(buyer_delivery.package_path, unsafe_buyer_package)
+            with zipfile.ZipFile(unsafe_buyer_package, "a") as archive:
+                archive.writestr("logs/", "")
+                link_info = zipfile.ZipInfo("latest-buyer-log")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "BUYER_HANDOFF.txt")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("START_HERE_FOR_BUYER.txt", buyer_package_start)
+            unsafe_buyer_package_errors = verify_buyer_delivery_package(unsafe_buyer_package)
+            unsafe_buyer_package_verification = format_buyer_delivery_package_verification(
+                unsafe_buyer_package,
+                unsafe_buyer_package_errors,
+            )
             (buyer_delivery.directory / "seller-evidence.zip").write_text("wrong file", encoding="utf-8")
             dirty_buyer_delivery_errors = verify_buyer_delivery(buyer_delivery.directory)
             (buyer_delivery.directory / "seller-evidence.zip").unlink()
@@ -2437,7 +3241,14 @@ tags: note
         self.assertIn("SALES_MATERIALS.md", manifest)
         self.assertIn("sales_screenshots/index.html", manifest)
         self.assertIn("sales_screenshots/SCREENSHOT_CAPTIONS.md", manifest)
-        self.assertIn("Attached release package", buyer_handoff)
+        self.assertIn("Send only the verified auto-note-buyer-delivery-*.zip", handoff_readme)
+        self.assertIn("Source release ZIP", handoff_readme)
+        self.assertNotIn("Send the release zip under release/", handoff_readme)
+        self.assertIn("Attached buyer delivery ZIP", buyer_handoff)
+        self.assertIn("Included release package", buyer_handoff)
+        self.assertIn("START_HERE_FOR_BUYER.txt", buyer_handoff)
+        self.assertNotIn("Attached release package", buyer_handoff)
+        self.assertNotIn("添付の配布ZIP", buyer_handoff)
         self.assertIn("Buyer first 10 minutes", buyer_handoff)
         self.assertIn("購入者の最初の10分", buyer_handoff)
         self.assertIn("auto-note buyer support guide", buyer_support_guide)
@@ -2517,6 +3328,16 @@ tags: note
         )
         self.assertEqual(buyer_package_errors, [])
         self.assertEqual(manual_buyer_package_errors, [])
+        self.assertIn("non-file archive entry: logs/", unsafe_handoff_errors)
+        self.assertIn("unsafe archive entry type: latest-handoff-log", unsafe_handoff_errors)
+        self.assertIn("duplicate file name: BUYER_HANDOFF.txt", unsafe_handoff_errors)
+        self.assertIn("non-file archive entry: logs/", unsafe_buyer_package_errors)
+        self.assertIn("unsafe archive entry type: latest-buyer-log", unsafe_buyer_package_errors)
+        self.assertIn("duplicate file name: START_HERE_FOR_BUYER.txt", unsafe_buyer_package_errors)
+        self.assertIn("[NG] buyer delivery zip verification failed", unsafe_buyer_package_verification)
+        self.assertIn("Package bytes:", unsafe_buyer_package_verification)
+        self.assertIn("Package SHA-256:", unsafe_buyer_package_verification)
+        self.assertIn("Do not send this ZIP.", unsafe_buyer_package_verification)
         self.assertTrue(buyer_delivery.package_path.name.startswith("auto-note-buyer-delivery-"))
         self.assertIn("[OK] buyer delivery zip verified", buyer_package_verification)
         self.assertIn("Package bytes:", buyer_package_verification)
@@ -2528,7 +3349,9 @@ tags: note
         self.assertIn("buyer support request template", buyer_delivery_text)
         self.assertTrue(any("unexpected file" in error for error in dirty_buyer_delivery_errors))
         self.assertTrue(any("buyer checksum mismatch: BUYER_HANDOFF.txt" in error for error in tampered_buyer_delivery_errors))
-        self.assertIn("release package to send", buyer_delivery_text)
+        self.assertIn("release package included in buyer ZIP", buyer_delivery_text)
+        self.assertIn("buyer delivery zip to send after verification", buyer_delivery_text)
+        self.assertNotIn("release package to send", buyer_delivery_text)
         self.assertIn("manifest file", buyer_delivery_text)
         self.assertIn("checksum file", buyer_delivery_text)
         self.assertEqual(
@@ -2906,14 +3729,28 @@ tags: note
             sales_launch_text = format_sales_launch_checklist(sales_launch)
             assert report.buyer_delivery_package_path is not None
             buyer_package_sha = hashlib.sha256(report.buyer_delivery_package_path.read_bytes()).hexdigest()
+            sales_launch_confirmation_note = (
+                f"checked note preview before publish: {report.buyer_delivery_package_path.name} / {buyer_package_sha}"
+            )
+            sales_launch_cli_confirmation_note = (
+                f"marketplace preview checked: {report.buyer_delivery_package_path.name} / {buyer_package_sha}"
+            )
             sales_launch_report_path = write_sales_launch_checklist(project, report=sales_launch)
             sales_launch_report_text = sales_launch_report_path.read_text(encoding="utf-8")
             sales_launch_reports = list_sales_launch_checklists(project)
             sales_launch_confirmation_path = write_sales_launch_confirmation(
                 project,
                 report=sales_launch,
-                note="checked note preview before publish",
+                note=sales_launch_confirmation_note,
             )
+            with self.assertRaisesRegex(ValueError, "sales launch confirmation note is required"):
+                write_sales_launch_confirmation(project, report=sales_launch, note="  ")
+            with self.assertRaisesRegex(ValueError, "latest buyer delivery ZIP name and full SHA-256"):
+                write_sales_launch_confirmation(
+                    project,
+                    report=sales_launch,
+                    note=f"checked note preview before publish: {report.buyer_delivery_package_path.name}",
+                )
             sales_launch_confirmation_text = sales_launch_confirmation_path.read_text(encoding="utf-8")
             sales_launch_confirmations = list_sales_launch_confirmations(project)
             latest_sales_launch_confirmation_path, latest_sales_launch_confirmation_text = (
@@ -2931,7 +3768,17 @@ tags: note
                         str(project),
                         "--confirm-preview",
                         "--note",
-                        "marketplace preview checked",
+                        sales_launch_cli_confirmation_note,
+                    ]
+                )
+            sales_launch_missing_note_cli_output = io.StringIO()
+            with redirect_stdout(sales_launch_missing_note_cli_output):
+                sales_launch_missing_note_cli_code = cli_main(
+                    [
+                        "sales-launch",
+                        "--project-dir",
+                        str(project),
+                        "--confirm-preview",
                     ]
                 )
             sales_launch_latest_confirmation_cli_output = io.StringIO()
@@ -3076,20 +3923,24 @@ tags: note
         self.assertIn(buyer_package_sha, sales_launch_confirmation_text)
         self.assertIn("latest release package:", sales_launch_confirmation_text)
         self.assertIn(release_path.name, sales_launch_confirmation_text)
-        self.assertIn("checked note preview before publish", sales_launch_confirmation_text)
+        self.assertIn(sales_launch_confirmation_note, sales_launch_confirmation_text)
         self.assertIn("blocker count: 0", sales_launch_confirmation_text)
         self.assertIn("seller-only evidence", sales_launch_confirmation_text)
         self.assertNotIn(str(project), sales_launch_confirmation_text)
         self.assertIn("Sales launch confirmation", latest_sales_launch_confirmation_text)
-        self.assertIn("checked note preview before publish", latest_sales_launch_confirmation_text)
+        self.assertIn(sales_launch_confirmation_note, latest_sales_launch_confirmation_text)
         self.assertEqual(sales_launch_cli_code, 0)
         self.assertIn("sales launch checklist created:", sales_launch_cli_output.getvalue())
         self.assertIn("Sales launch checklist", sales_launch_cli_output.getvalue())
         self.assertEqual(sales_launch_confirm_cli_code, 0)
         self.assertIn("sales launch confirmation created:", sales_launch_confirm_cli_output.getvalue())
+        self.assertEqual(sales_launch_missing_note_cli_code, 1)
+        self.assertIn("sales launch confirmation aborted:", sales_launch_missing_note_cli_output.getvalue())
+        self.assertIn("sales launch confirmation note is required", sales_launch_missing_note_cli_output.getvalue())
+        self.assertIn('--note "checked checkout preview: <buyer ZIP name>', sales_launch_missing_note_cli_output.getvalue())
         self.assertEqual(sales_launch_latest_confirmation_cli_code, 0)
         self.assertIn("Sales launch confirmation", sales_launch_latest_confirmation_cli_output.getvalue())
-        self.assertIn("marketplace preview checked", sales_launch_latest_confirmation_cli_output.getvalue())
+        self.assertIn(sales_launch_cli_confirmation_note, sales_launch_latest_confirmation_cli_output.getvalue())
         self.assertNotIn(str(project), sales_launch_latest_confirmation_cli_output.getvalue())
         self.assertIsNotNone(report.seller_send_checklist_path)
         self.assertTrue(seller_send_checklist_exists)
@@ -3155,6 +4006,9 @@ tags: note
         self.assertIn("auto-note-buyer-delivery-", text)
         self.assertIn("auto-note buyer delivery message", buyer_delivery_message_text)
         self.assertIn("貼り付け用文", buyer_delivery_message_text)
+        self.assertIn("購入者向け納品ZIP", buyer_delivery_message_text)
+        self.assertIn("このZIPだけ", buyer_delivery_message_text)
+        self.assertIn("Do not attach the source release ZIP separately", buyer_delivery_message_text)
         self.assertIn("START_HERE_FOR_BUYER.txt", buyer_delivery_message_text)
         self.assertIn("BUYER_SUPPORT_GUIDE.txt", buyer_delivery_message_text)
         self.assertIn("BUYER_SUPPORT_REQUEST.txt", buyer_delivery_message_text)
@@ -3166,6 +4020,10 @@ tags: note
         self.assertIn("Sales screenshot pack", seller_send_checklist_text)
         self.assertIn("Sales listing kit ZIP", seller_send_checklist_text)
         self.assertIn("Sales evidence manifest", seller_send_checklist_text)
+        self.assertIn(
+            "Do not attach the source release ZIP separately; it is already inside the buyer delivery ZIP",
+            seller_send_checklist_text,
+        )
         self.assertIn("Do not attach auto-note-sales-handoff-*.zip", seller_send_checklist_text)
         self.assertIn("Do not attach auto-note-sales-listing-kit-*.zip", seller_send_checklist_text)
         self.assertIn("Remaining seller actions", seller_send_checklist_text)
@@ -3310,10 +4168,112 @@ tags: note
         self.assertIn("最初の記事を作る", titles)
         self.assertIn("販売者情報を埋める", titles)
         self.assertIn("Action plan", text)
+        self.assertIn("RC target / 販売RC目途:", text)
+        self.assertIn("RC path / 残り作業:", text)
+        self.assertIn("RC checkpoint / 今回の目途:", text)
         self.assertIn("auto-note starter-pack --project-dir .", text)
         self.assertIn("auto-note commercial-setup --project-dir . --template", text)
-        self.assertIn("設定 > 次の不足へ", text)
+        self.assertIn("auto-note commercial-setup --project-dir . --terms-reviewed --support-scope-confirmed", text)
+        self.assertIn("販売者テンプレートで", text)
+        self.assertIn("設定 > 販売者/屋号", text)
         self.assertIn("最初の記事を作る", cli_output.getvalue())
+        self.assertIn("RC target / 販売RC目途:", cli_output.getvalue())
+        self.assertIn("RC path / 残り作業:", cli_output.getvalue())
+        self.assertIn("RC checkpoint / 今回の目途:", cli_output.getvalue())
+
+    def test_action_plan_names_rc_milestone_for_blocked_near_and_ready(self) -> None:
+        blocked_text = format_action_plan(
+            ActionPlanReport(
+                project_dir=Path.cwd(),
+                readiness_score=70,
+                quickstart_score=80,
+                status="BLOCKED",
+                steps=[
+                    ActionPlanStep("危険生成物を確認する", "privacy NG", "cleanup", severity="blocker"),
+                    ActionPlanStep("販売者情報を埋める", "missing", "setup", severity="warning"),
+                ],
+            )
+        )
+        near_text = format_action_plan(
+            ActionPlanReport(
+                project_dir=Path.cwd(),
+                readiness_score=100,
+                quickstart_score=90,
+                status="NEEDS ATTENTION",
+                steps=[ActionPlanStep("販売者情報を埋める", "missing", "setup", severity="warning")],
+            )
+        )
+        ready_text = format_action_plan(
+            ActionPlanReport(
+                project_dir=Path.cwd(),
+                readiness_score=100,
+                quickstart_score=100,
+                status="READY",
+                steps=[ActionPlanStep("出荷前チェックを通す", "ready", "preflight", severity="ready")],
+            )
+        )
+        cleanup_step = ActionPlanStep(
+            "危険生成物を確認する",
+            "privacy NG",
+            "cleanup",
+            severity="blocker",
+            command="auto-note cleanup --project-dir . --privacy-failed --include-releases",
+        )
+        seller_step = ActionPlanStep(
+            "販売者情報を埋める",
+            "missing",
+            "setup",
+            severity="warning",
+            command="auto-note commercial-setup --project-dir . --template",
+        )
+        limited_text = format_action_plan(
+            ActionPlanReport(
+                project_dir=Path.cwd(),
+                readiness_score=70,
+                quickstart_score=80,
+                status="BLOCKED",
+                steps=[cleanup_step],
+                all_steps=(cleanup_step, seller_step),
+            )
+        )
+
+        self.assertIn("BLOCKED: NG 1件を0件にすると販売RC判定へ進めます", blocked_text)
+        self.assertIn("先頭: 危険生成物を確認する", blocked_text)
+        self.assertIn(
+            "RC path / 残り作業: BLOCKED: 2優先作業（NG 1件 -> 確認 1件） / 先頭: 危険生成物を確認する",
+            blocked_text,
+        )
+        self.assertIn(
+            "RC checkpoint / 今回の目途: 危険生成物を確認する -> commercial-readiness再判定でNG 0件",
+            blocked_text,
+        )
+        self.assertIn("NEAR RC: NG 0件、確認 1件", near_text)
+        self.assertIn("先頭: 販売者情報を埋める", near_text)
+        self.assertIn(
+            "RC path / 残り作業: NEAR RC: 1優先作業（確認 1件） / 先頭: 販売者情報を埋める",
+            near_text,
+        )
+        self.assertIn(
+            "RC checkpoint / 今回の目途: 販売者情報を埋める -> 確認を保存してREADY判定",
+            near_text,
+        )
+        self.assertIn("READY: 優先アクションを確認済みです。販売RCとして固定できます。", ready_text)
+        self.assertIn("RC path / 残り作業: READY: 優先残件0件。出荷前チェックで固定できます。", ready_text)
+        self.assertIn(
+            "RC checkpoint / 今回の目途: auto-note preflight --project-dir . --gui-smoke -> 販売RC固定",
+            ready_text,
+        )
+        self.assertIn("Priority actions (1/2 shown)", limited_text)
+        self.assertIn(
+            "RC path / 残り作業: BLOCKED: 2優先作業（NG 1件 -> 確認 1件） / 先頭: "
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases",
+            limited_text,
+        )
+        self.assertIn(
+            "RC checkpoint / 今回の目途: auto-note cleanup --project-dir . --privacy-failed --include-releases "
+            "-> commercial-readiness再判定でNG 0件",
+            limited_text,
+        )
 
     def test_action_plan_surfaces_commercial_setup_warnings(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3336,7 +4296,9 @@ tags: note
         titles = [step.title for step in report.steps]
         self.assertIn("販売者情報の公開URLを確認する", titles)
         self.assertIn("support contact is a raw email address", text)
-        self.assertIn("設定 > 次の不足へ", text)
+        self.assertIn("サポート連絡先はメール直書きではなく", text)
+        self.assertIn("設定 > 販売ページURL", text)
+        self.assertIn("auto-note commercial-setup --project-dir . --template", text)
 
     def test_action_plan_surfaces_troubleshoot_when_gui_log_has_crash_marker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3409,6 +4371,28 @@ tags: note
         self.assertIn("Self-test report", cli_output.getvalue())
         self.assertIn("self-test report created:", cli_report_output.getvalue())
 
+    def test_self_test_report_deduplicates_next_actions(self) -> None:
+        action = "`auto-note sales-handoff --project-dir .` で販売用一式を作り直してください。"
+        report = SelfTestReport(
+            project_dir=Path.cwd(),
+            status="fail",
+            score=42,
+            generated_at=datetime(2026, 6, 13, 10, 0, 0),
+            items=[
+                SelfTestItem("action plan", "warn", "blocked", action),
+                SelfTestItem("privacy audit", "fail", "first NG", action),
+                SelfTestItem("release package", "pass", "verified"),
+            ],
+        )
+
+        text = format_self_test_report(report)
+        next_section = text.split("Next actions", 1)[1]
+
+        self.assertIn("- action plan / privacy audit: `auto-note sales-handoff --project-dir .`", next_section)
+        self.assertEqual(next_section.count(action), 1)
+        self.assertNotIn("- action plan: `auto-note sales-handoff --project-dir .`", next_section)
+        self.assertNotIn("- privacy audit: `auto-note sales-handoff --project-dir .`", next_section)
+
     def test_launcher_health_warns_when_hidden_launcher_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -3426,6 +4410,36 @@ tags: note
         self.assertEqual(item.status, "warn")
         self.assertIn("hidden launcher missing", item.detail)
         self.assertIn("auto-note-gui.bat", item.action)
+
+    def test_launcher_health_warns_when_install_helpers_are_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "auto-note-gui.bat").write_text(
+                "python -m auto_note gui --project-dir . --smoke\n"
+                "python -m auto_note recovery-kit --project-dir . --report\n"
+                "python -m auto_note support --project-dir . --bundle\n"
+                ".auto-note\\gui-error.log\n",
+                encoding="utf-8",
+            )
+            (project / "auto-note.lnk").write_text("shortcut\n", encoding="utf-8")
+            (project / "scripts").mkdir()
+            (project / "scripts" / "launch-gui.vbs").write_text(
+                'batPath = "auto-note-gui.bat"\n'
+                "AUTO_NOTE_LAUNCHER_CHECK\n"
+                'command = "cmd /c exit 0"\n'
+                "Set shell = CreateObject(\"WScript.Shell\")\n"
+                "exitCode = shell.Run(command, 0, True)\n",
+                encoding="utf-8",
+            )
+
+            item = _launcher_health_item(project)
+
+        self.assertEqual(item.name, "launcher health")
+        self.assertEqual(item.status, "warn")
+        self.assertIn("install helper missing", item.detail)
+        self.assertIn("auto-note safe display.lnk", item.detail)
+        self.assertIn("shortcuts\\install-auto-note.bat", item.detail)
+        self.assertIn("shortcuts\\install-auto-note.bat", item.action)
 
     def test_workflow_smoke_runs_temporary_publish_flow_and_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3494,8 +4508,73 @@ tags: note
             report = build_action_plan(project, limit=8)
             text = format_action_plan(report)
 
-        self.assertTrue(any(step.title == "危険生成物を確認する" for step in report.steps))
+        cleanup_step = next(step for step in report.steps if step.title == "危険生成物を確認する")
+        self.assertEqual(cleanup_step.severity, "blocker")
+        self.assertEqual(cleanup_step.gui, "診断 > 危険生成物確認")
+        self.assertEqual(
+            cleanup_step.command,
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases",
+        )
+        self.assertTrue(
+            cleanup_step.action.startswith(
+                "`auto-note cleanup --project-dir . --privacy-failed --include-releases`"
+            )
+        )
         self.assertIn("auto-note cleanup --project-dir . --privacy-failed --include-releases", text)
+        self.assertIn("診断 > 危険生成物確認", text)
+
+    def test_action_plan_privacy_message_prioritizes_cleanup_before_sales_handoff(self) -> None:
+        item = TroubleshootItem(
+            name="privacy audit",
+            status="fail",
+            detail="first NG: sales handoff privacy",
+            action=(
+                "`auto-note sales-handoff --project-dir .` で販売用一式を作り直してください。 "
+                "`auto-note cleanup --project-dir . --privacy-failed --include-releases` "
+                "でNG生成物だけを削除前に確認できます。"
+            ),
+        )
+
+        action = _troubleshoot_action_message(item, fallback="fallback")
+
+        self.assertTrue(
+            action.startswith("`auto-note cleanup --project-dir . --privacy-failed --include-releases`")
+        )
+        self.assertLess(
+            action.index("auto-note cleanup --project-dir . --privacy-failed --include-releases"),
+            action.index("auto-note sales-handoff --project-dir ."),
+        )
+        self.assertIn("同じコマンドに `--apply`", action)
+        self.assertIn(
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases --apply",
+            action,
+        )
+
+    def test_privacy_failed_cleanup_action_includes_safe_apply_example(self) -> None:
+        action = privacy_failed_cleanup_action(
+            "`auto-note sales-handoff --project-dir .` で販売用一式を作り直してください。",
+            include_releases=True,
+        )
+
+        self.assertTrue(
+            action.startswith("`auto-note cleanup --project-dir . --privacy-failed --include-releases`")
+        )
+        self.assertIn("削除前に確認", action)
+        self.assertIn("GUIでは「診断 > 危険生成物確認」", action)
+        self.assertIn("同じコマンドに `--apply`", action)
+        self.assertIn(
+            "`auto-note cleanup --project-dir . --privacy-failed --include-releases --apply`",
+            action,
+        )
+        self.assertIn("auto-note commercial-readiness --project-dir .", action)
+        self.assertLess(
+            action.index("auto-note cleanup --project-dir . --privacy-failed --include-releases --apply"),
+            action.index("auto-note commercial-readiness --project-dir ."),
+        )
+        self.assertEqual(
+            privacy_failed_cleanup_apply_command(include_releases=True),
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases --apply",
+        )
 
     def test_restore_backup_restores_articles_and_creates_safety_backup(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3507,12 +4586,14 @@ tags: note
             extra = project / "articles" / "extra.md"
             extra.write_text("extra", encoding="utf-8")
 
+            inspection = inspect_backup(backup)
             result = restore_backup(project, backup)
 
             self.assertEqual(article.read_text(encoding="utf-8"), original)
             self.assertFalse(extra.exists())
             self.assertTrue(result.safety_backup and result.safety_backup.exists())
             self.assertIn(f"articles/{article.name}", result.restored_files)
+            self.assertIn("Restore status: ready", _backup_restore_confirmation(inspection))
 
     def test_restore_backup_rejects_unsafe_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -3521,6 +4602,12 @@ tags: note
             with zipfile.ZipFile(backup, "w") as archive:
                 archive.writestr("articles/good.md", "ok")
                 archive.writestr("../evil.md", "bad")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("articles/good.md", "duplicate")
+                link_info = zipfile.ZipInfo("articles/link.md")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "target.md")
             backups_dir = project / ".auto-note" / "backups"
             backups_dir.mkdir(parents=True)
             tracked_backup = backups_dir / "auto-note-backup-unsafe.zip"
@@ -3528,13 +4615,172 @@ tags: note
 
             inspection = inspect_backup(backup)
             backup_errors = verify_backup(backup)
+            quickstart = run_quickstart(project)
+            quickstart_text = format_quickstart_report(quickstart)
             readiness = run_readiness(project)
+            readiness_text = format_readiness_report(readiness)
+            action_plan = build_action_plan(project, limit=12)
+            action_plan_text = format_action_plan(action_plan)
+            diagnostic_report = create_diagnostic_report(project)
+            diagnostic_preview = preview_diagnostic_report(project)
+            with zipfile.ZipFile(diagnostic_report) as archive:
+                maintenance_text = archive.read("maintenance-summary.txt").decode("utf-8")
 
             self.assertFalse(inspection.ok)
             self.assertIn("../evil.md", inspection.unsafe_files)
-            self.assertIn("1 unsafe file(s)", backup_errors)
+            self.assertIn("duplicate: articles/good.md", inspection.unsafe_files)
+            self.assertIn("unsafe type: articles/link.md", inspection.unsafe_files)
+            blocked_message = _backup_restore_blocked_message(inspection)
+            self.assertIn("Restore status: blocked", blocked_message)
+            self.assertIn(
+                "unsafe entries: 3 (../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md)",
+                blocked_message,
+            )
+            self.assertIn("別のバックアップを選ぶか", blocked_message)
+            self.assertIn("3 unsafe file(s)", backup_errors)
+            self.assertIn("unsafe entries: ../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md", backup_errors)
+            self.assertTrue(any(item.name == "backup" and item.status == "fail" for item in quickstart.items))
+            self.assertIn("restore status blocked", quickstart_text)
+            self.assertIn("unsafe entries: 3 (../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md)", quickstart_text)
             self.assertTrue(any(item.name == "latest backup" and item.status == "fail" for item in readiness.items))
-            with self.assertRaises(ValueError):
+            self.assertIn("restore status blocked", readiness_text)
+            self.assertIn("unsafe entries: 3 (../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md)", readiness_text)
+            self.assertTrue(any(step.title == "復元できるバックアップを作り直す" for step in action_plan.steps))
+            self.assertIn("危険または壊れたバックアップは使わず", action_plan_text)
+            self.assertIn("auto-note backup --project-dir .", action_plan_text)
+            self.assertIn("../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md", readiness_text)
+            self.assertIn("latest_backup_restore_status: blocked", maintenance_text)
+            self.assertIn(
+                "latest_backup_restore_blockers: unsafe entries: 3 (../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md)",
+                maintenance_text,
+            )
+            self.assertIn("latest_backup_restore_status: blocked", diagnostic_preview)
+            self.assertIn(
+                "latest_backup_restore_blockers: unsafe entries: 3 (../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md)",
+                diagnostic_preview,
+            )
+            self.assertIn(
+                "latest_backup_unsafe_examples: ../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md",
+                maintenance_text,
+            )
+            self.assertIn(
+                "latest_backup_unsafe_examples: ../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md",
+                diagnostic_preview,
+            )
+            cli_output = io.StringIO()
+            with redirect_stdout(cli_output):
+                cli_code = cli_main(
+                    [
+                        "backup",
+                        "--project-dir",
+                        str(project),
+                        "--restore",
+                        str(backup),
+                        "--no-safety-backup",
+                    ]
+                )
+            cli_text = cli_output.getvalue()
+            inspect_cli_output = io.StringIO()
+            with redirect_stdout(inspect_cli_output):
+                inspect_cli_code = cli_main(["backup", "--inspect", str(backup)])
+            inspect_cli_text = inspect_cli_output.getvalue()
+            with self.assertRaisesRegex(
+                ValueError,
+                r"backup contains 3 unsafe entries: \.\./evil\.md; duplicate: articles/good\.md; unsafe type: articles/link\.md",
+            ):
+                restore_backup(project, backup, create_safety_backup=False)
+            self.assertEqual(cli_code, 1)
+            self.assertIn(
+                "backup restore aborted: backup contains 3 unsafe entries: ../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md",
+                cli_text,
+            )
+            self.assertIn("hint: run `auto-note backup --inspect", cli_text)
+            self.assertNotIn("Traceback", cli_text)
+            self.assertEqual(inspect_cli_code, 1)
+            self.assertIn("Status: NG", inspect_cli_text)
+            self.assertIn("Restore status: blocked", inspect_cli_text)
+            self.assertIn("Restore blockers:", inspect_cli_text)
+            self.assertIn(
+                "- unsafe entries: 3 (../evil.md; duplicate: articles/good.md; unsafe type: articles/link.md)",
+                inspect_cli_text,
+            )
+            self.assertIn("Unsafe entries:", inspect_cli_text)
+            self.assertIn("restore status: blocked until the unsafe/no-restorable entries above are fixed.", inspect_cli_text)
+            self.assertNotIn("Traceback", inspect_cli_text)
+
+    def test_backup_inspect_cli_handles_unreadable_zip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            backup = project / "broken.zip"
+            backup.write_text("not a zip", encoding="utf-8")
+
+            backup_errors = verify_backup(backup)
+            cli_output = io.StringIO()
+            with redirect_stdout(cli_output):
+                code = cli_main(["backup", "--inspect", str(backup)])
+            text = cli_output.getvalue()
+
+        self.assertEqual(code, 1)
+        self.assertIn("backup could not be read:", backup_errors[0])
+        self.assertIn("backup inspection aborted:", text)
+        self.assertIn("hint: choose a .zip created by `auto-note backup`", text)
+        self.assertNotIn("Traceback", text)
+
+    def test_backup_inspection_reports_no_restorable_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            backup = project / "not-restorable.zip"
+            with zipfile.ZipFile(backup, "w") as archive:
+                archive.writestr("README.md", "readme only")
+
+            inspection = inspect_backup(backup)
+            backup_errors = verify_backup(backup)
+            inspection_text = format_backup_inspection(inspection)
+            cli_output = io.StringIO()
+            with redirect_stdout(cli_output):
+                cli_code = cli_main(["backup", "--inspect", str(backup)])
+            cli_text = cli_output.getvalue()
+
+        self.assertFalse(inspection.ok)
+        self.assertEqual(backup_errors, ["no restorable articles/settings"])
+        self.assertIn("Restore blockers:", inspection_text)
+        self.assertIn("Restore status: blocked", inspection_text)
+        self.assertIn("- no restorable articles/settings", inspection_text)
+        self.assertIn("Ignored entries:", inspection_text)
+        self.assertEqual(cli_code, 1)
+        self.assertIn("Restore blockers:", cli_text)
+        self.assertIn("Restore status: blocked", cli_text)
+        self.assertIn("- no restorable articles/settings", cli_text)
+        self.assertIn("restore status: blocked until the unsafe/no-restorable entries above are fixed.", cli_text)
+
+    def test_restore_backup_rejects_normalized_name_collisions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            backup = project / "colliding-backup.zip"
+            with zipfile.ZipFile(backup, "w") as archive:
+                archive.writestr("articles/post.md", "lower")
+                archive.writestr("articles/Post.md", "case collision")
+                archive.writestr("articles/draft.md", "slash")
+                archive.writestr("articles/DRAFT.md", "case collision")
+
+            inspection = inspect_backup(backup)
+            backup_errors = verify_backup(backup)
+            inspection_text = format_backup_inspection(inspection)
+
+            self.assertFalse(inspection.ok)
+            self.assertIn("duplicate: articles/Post.md", inspection.unsafe_files)
+            self.assertIn("duplicate: articles/DRAFT.md", inspection.unsafe_files)
+            self.assertIn("2 unsafe file(s)", backup_errors)
+            self.assertIn("unsafe entries: duplicate: articles/Post.md; duplicate: articles/DRAFT.md", backup_errors)
+            self.assertIn("Restore status: blocked", inspection_text)
+            self.assertIn("Restore blockers:", inspection_text)
+            self.assertIn("- unsafe entries: 2 (duplicate: articles/Post.md; duplicate: articles/DRAFT.md)", inspection_text)
+            self.assertIn("- duplicate: articles/Post.md", inspection_text)
+            self.assertIn("- duplicate: articles/DRAFT.md", inspection_text)
+            with self.assertRaisesRegex(
+                ValueError,
+                r"backup contains 2 unsafe entries: duplicate: articles/Post\.md; duplicate: articles/DRAFT\.md",
+            ):
                 restore_backup(project, backup, create_safety_backup=False)
 
     def test_support_request_and_app_info(self) -> None:
@@ -3817,6 +5063,48 @@ tags: note
 
         self.assertIn("checksum mismatch: README.txt", errors)
         self.assertTrue(any(error.startswith("diagnostic-report.zip: unreadable diagnostic report") for error in errors))
+
+    def test_support_bundle_verification_rejects_special_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "unsafe-support.zip"
+            entries = {
+                "README.txt": b"readme",
+                "SUPPORT_SEND_CHECKLIST.txt": b"checklist",
+                "support-request.md": b"request",
+                "GUI_LOG_SUMMARY.txt": b"log",
+                "diagnostic-report.zip": _minimal_diagnostic_report_bytes(),
+            }
+            manifest = json.dumps(
+                {
+                    "version": "0.1.0",
+                    "privacy": {"includes_raw_details": False},
+                    "files": [{"path": name} for name in entries],
+                }
+            ).encode("utf-8")
+            checksum_entries = {**entries, "SUPPORT_BUNDLE_MANIFEST.json": manifest}
+            checksums = "".join(
+                f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in checksum_entries.items()
+            )
+            with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name, data in entries.items():
+                    archive.writestr(name, data)
+                archive.writestr("SUPPORT_BUNDLE_MANIFEST.json", manifest)
+                archive.writestr("CHECKSUMS.txt", checksums)
+                archive.writestr("logs/", "")
+                link_info = zipfile.ZipInfo("latest-support-log")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "GUI_LOG_SUMMARY.txt")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("README.txt", entries["README.txt"])
+
+            errors = verify_support_bundle(bundle)
+            verification_text = format_support_bundle_verification(bundle, errors)
+
+        self.assertIn("non-file archive entry: logs/", errors)
+        self.assertIn("unsafe archive entry type: latest-support-log", errors)
+        self.assertIn("duplicate file name: README.txt", errors)
+        self.assertIn("[NG] support bundle verification failed", verification_text)
 
     def test_support_bundle_verification_accepts_legacy_without_gui_log_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -4241,6 +5529,8 @@ tags:
                 "latest release package\n"
                 "zip SHA-256\n"
                 "seller-only evidence\n"
+                "$launchConfirmationNote\n"
+                "$buyerPackageHash\n"
                 "Latest sales launch confirmation output\n",
                 encoding="utf-8",
             )
@@ -4283,7 +5573,11 @@ tags:
                 "Assert-GuiShortcut\n"
                 "--safe-display\n"
                 "DesktopShortcutDir\n"
-                "StartMenuShortcutDir\n",
+                "StartMenuShortcutDir\n"
+                "version\n"
+                "diagnose\n"
+                "Install info status: OK\n"
+                "preinstall backup found\n",
                 encoding="utf-8",
             )
             (project / "shortcuts").mkdir(exist_ok=True)
@@ -4295,7 +5589,7 @@ tags:
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text('__version__ = "1.2.3"\n', encoding="utf-8")
             (project / "src" / "auto_note" / "__main__.py").write_text(
-                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-screenshots\nVerify a generated sales screenshot pack directory.\nsales-listing\nVerify a sales listing kit folder or zip.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\n--order-note\nextract_seller_order_management_block(receipt_text)\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n--confirm-preview\nsales launch confirmation created\n--latest-confirmation\n",
+                "starter-pack\nstarter-clean\nrepair\nrecovery-kit\n--report\ntroubleshoot\nOpen the generated support request or bundle.\n--safe-display\nacceptance\n--full\ncommercial-readiness\n--policy-review\ncommercial-setup\nCreate a seller profile fill-in template\n--apply-template\nformat_commercial_setup_apply_error\n_display_project_path\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nVerify a sales materials markdown file.\nsales-screenshots\nVerify a generated sales screenshot pack directory.\nsales-listing\nVerify a sales listing kit folder or zip.\nsales-finalize\nApply the latest seller profile template before finalizing sales artifacts.\n--send-check\n--send-check-report\n--delivery-receipt\n--order-note\nextract_seller_order_management_block(receipt_text)\nsales-plan\nsales plan report created\nsales-review\nsales review report created\nsales-launch\nsales launch checklist created\n--confirm-preview\nsales launch confirmation created\nsales launch confirmation aborted\nRequired seller note saved with --confirm-preview\n--latest-confirmation\nbackup restore aborted:\nauto-note backup --inspect\nbackup inspection aborted:\nrestore status: blocked until the unsafe/no-restorable entries above are fixed.\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "settings.py").write_text(
@@ -4308,22 +5602,56 @@ tags:
             (project / "src" / "auto_note" / "selftest.py").write_text(
                 "_launcher_health_item\n"
                 "_launcher_health_item(project_dir)\n"
+                "LAUNCHER_INSTALL_HELPER_PATHS\n"
+                "auto-note safe display.lnk\n"
+                "install helper missing\n"
                 "_hidden_launcher_syntax_warning\n"
                 "auto-note-gui.bat を直接\n"
                 "first NG:\n"
-                "_privacy_failure_action\n",
+                "_format_next_actions\n"
+                "_privacy_failure_action\n"
+                "cleanup --project-dir . --privacy-failed --include-releases\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "privacy_actions.py").write_text(
+                "PRIVACY_FAILED_CLEANUP_GUI\nprivacy_failed_cleanup_action\nprivacy_failed_cleanup_command\nprivacy_failed_cleanup_target\nprivacy_failed_cleanup_apply_command\nauto-note commercial-readiness --project-dir .\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "commercial.py").write_text(
-                "write_commercial_policy_review\nlist_commercial_policy_reviews\n",
+                "write_commercial_policy_review\n"
+                "list_commercial_policy_reviews\n"
+                "cleanup --project-dir . --privacy-failed --include-releases\n"
+                "_format_next_actions\n"
+                "_next_action_key\n"
+                "_next_action_gui_target\n"
+                "_commercial_rc_milestone\n"
+                "_commercial_rc_path_summary\n"
+                "_commercial_rc_checkpoint\n"
+                "_action_subsumes\n"
+                "privacy_failed_cleanup_action\n"
+                "first NG:\n"
+                "_ACCEPTANCE_GUI\n"
+                "_ACCEPTANCE_REPORT_COMMAND\n"
+                "_commercial_final_review_command\n"
+                "COMMERCIAL_SETUP_APPLY_GUI\n"
+                "COMMERCIAL_SETUP_REVIEW_GUI\n"
+                "_PREFLIGHT_CREATE_RELEASE_GUI\n"
+                "_commercial_setup_template_action(project_dir)\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "commercial_setup.py").write_text(
-                "commercial_setup_warnings\ncommercial_setup_next_actions\ncommercial_setup_completion\ncommercial_setup_next_field\ncommercial_setup_next_focus\nSafe Apply / 編集後の保存\nsales-finalize --project-dir . --apply-latest-template\nauto-note sales-plan --project-dir .\n",
+                "commercial_setup_warnings\ncommercial_setup_next_actions\ncommercial_setup_completion\ncommercial_setup_next_field\ncommercial_setup_next_focus\ncommercial_setup_placeholder_errors\nformat_commercial_setup_apply_error\n_commercial_setup_template_action\napply: auto-note commercial-setup --project-dir . --apply-latest-template\nCOMMERCIAL_SETUP_TEMPLATE_GUI\nCOMMERCIAL_SETUP_APPLY_GUI\n未入力のプレースホルダー\n_commercial_setup_template_display_path\n_commercial_setup_review_action\nCOMMERCIAL_SETUP_REVIEW_GUI\nCOMMERCIAL_SETUP_READY_GUI\nSafe Apply / 編集後の保存\nsales-finalize --project-dir . --apply-latest-template\nauto-note sales-plan --project-dir .\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "action_plan.py").write_text(
-                "commercial_setup_missing_fields\n設定 > 次の不足へ\n",
+                "commercial_setup_missing_fields\n設定 > 次の不足へ\n"
+                "_commercial_setup_action_summary\n"
+                "復元できるバックアップを作り直す\nrestore status blocked\n"
+                "_troubleshoot_action_target\n診断 > 危険生成物確認\n_troubleshoot_action_message\n"
+                "RC target / 販売RC目途\n_action_plan_rc_milestone\n"
+                "RC path / 残り作業\nRC checkpoint / 今回の目途\n_action_plan_rc_path_summary\n"
+                "_action_plan_rc_checkpoint\n"
+                "_action_plan_all_steps\nPriority actions (\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_materials.py").write_text(
@@ -4335,15 +5663,16 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_listing.py").write_text(
-                "create_sales_listing_kit\nSALES_LISTING_MANIFEST.json\nCHECKSUMS.txt\nBuyer delivery package: no\n",
+                "create_sales_listing_kit\nSALES_LISTING_MANIFEST.json\nCHECKSUMS.txt\n"
+                "Buyer delivery package: no\n_verify_listing_zip_entries\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_handoff.py").write_text(
-                "購入者の最初の10分\nDELIVERY_CHECKLIST.txt\nSELLER_DELIVERY_RECEIPT.txt\n_build_sales_screenshot_entries\nsales_screenshots/\n_verify_sales_screenshot_entries\n_expected_sales_screenshot_entry_names\nextract_buyer_delivery\nverify_buyer_delivery\nSHA256SUMS.txt\nPackage SHA-256\nSTART_HERE_FOR_BUYER.txt\nBUYER_SUPPORT_GUIDE.txt\nBUYER_SUPPORT_REQUEST.txt\n_build_buyer_support_request\nBUYER_DELIVERY_MANIFEST.json\n_verify_buyer_delivery_manifest\npackage_buyer_delivery\nverify_buyer_delivery_package\n",
+                "購入者の最初の10分\nDELIVERY_CHECKLIST.txt\nSELLER_DELIVERY_RECEIPT.txt\n_build_sales_screenshot_entries\nsales_screenshots/\n_verify_sales_screenshot_entries\n_expected_sales_screenshot_entry_names\nextract_buyer_delivery\nverify_buyer_delivery\nSend only the verified auto-note-buyer-delivery-*.zip\nAttached buyer delivery ZIP\nduplicate file name\nSHA256SUMS.txt\nPackage SHA-256\nDo not send this ZIP\nSTART_HERE_FOR_BUYER.txt\nBUYER_SUPPORT_GUIDE.txt\nBUYER_SUPPORT_REQUEST.txt\n_build_buyer_support_request\nBUYER_DELIVERY_MANIFEST.json\n_verify_buyer_delivery_manifest\npackage_buyer_delivery\nverify_buyer_delivery_package\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_finalize.py").write_text(
-                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\ncreate_sales_listing_kit\nverify_sales_listing_kit\nformat_sales_listing_verification\nrun_buyer_send_readiness\n_buyer_delivery_package_release_name\nbuyer delivery zip freshness\nlatest release package\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nLatest release package at check\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nsales_listing_package_path\nSales screenshot pack\nSales listing kit ZIP\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n\"sales_listing_package\"\n",
+                "include_sales_handoffs=False\nwrite_acceptance_report\nextract_buyer_delivery\nverify_buyer_delivery\nverify_buyer_delivery_package\n_write_buyer_delivery_message\n購入者向け納品ZIP\nDo not attach the source release ZIP separately\nDo not attach the source release ZIP separately; it is already inside the buyer delivery ZIP\nBUYER_SUPPORT_REQUEST.txt\nlist_buyer_delivery_messages\ncreate_sales_screenshot_pack\nverify_sales_screenshot_pack\nformat_sales_screenshot_verification\ncreate_sales_listing_kit\nverify_sales_listing_kit\nformat_sales_listing_verification\nrun_buyer_send_readiness\n_buyer_delivery_package_release_name\nbuyer delivery zip freshness\nlatest release package\nformat_buyer_send_readiness_report\nwrite_buyer_send_readiness_report\nlist_buyer_send_readiness_reports\nwrite_seller_delivery_receipt\nformat_seller_delivery_receipt\nLatest release package at check\nlist_seller_delivery_receipts\nfind_buyer_delivery_package_for_message\n_write_seller_send_checklist\nlist_seller_send_checklists\n_delivery_verification_lines\nwrite_sales_plan_report\nsales plan report\nSales plan evidence\nsales_plan_report_path\nsales_screenshot_pack_path\nsales_listing_package_path\nSales screenshot pack\nSales listing kit ZIP\n_write_sales_evidence_manifest\nlist_sales_evidence_manifests\nsales evidence manifest\nSales evidence manifest\nsales_evidence_manifest_path\n\"sales_screenshot_pack\"\n\"sales_listing_package\"\n",
                 encoding="utf-8",
             )
             sales_finalize_fixture = project / "src" / "auto_note" / "sales_finalize.py"
@@ -4360,11 +5689,24 @@ tags:
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "troubleshoot.py").write_text(
-                "first NG:\n_privacy_failure_action\n",
+                "first NG:\n"
+                "_privacy_failure_action\n"
+                "cleanup --project-dir . --privacy-failed --include-releases\n"
+                "同じコマンドに `--apply`\n"
+                "配布ZIPも含めて確認\n"
+                "PRIVACY_FAILED_CLEANUP_GUI\n"
+                "_install_info_item\n"
+                "shortcuts\\\\install-auto-note.bat\n"
+                "auto-note backup --project-dir .\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "app_info.py").write_text(
+                "InstallInfoStatus\ninspect_install_info\ninvalid JSON\npreinstall backup missing\n"
+                "archive_invalid_install_info\nlist_install_info_recovery_files\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "diagnostics.py").write_text(
-                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\nsales_launch_confirmations\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\nlatest_support_bundle_age_hours:\nlatest_support_bundle_freshness:\ncreate_support_diagnostic_report\nFull check omitted for fast support bundle creation\n",
+                "seller-send-checklist.txt\nseller_send_checklists\nbuyer_delivery_messages\nbuyer_send_readiness_reports\nseller_delivery_receipts\nsales_plan_reports\nsales_review_reports\nsales-launch.txt\nsales_launch_checklists\nsales_launch_confirmations\ncommercial_policy_reviews\nsales-evidence-manifest.json\n_commercial_setup_item\nsales_evidence_manifests\nverify_diagnostic_report\nduplicate file name\nformat_diagnostic_report_verification\nDIAGNOSTIC_PREVIEW_SECTION_LIMIT\nDIAGNOSTIC_PREVIEW_MAINTENANCE_REQUIRED_PREFIXES\n_format_preview_section\nfull content is in diagnostic-report.zip\nPreview omitted for speed\nlatest_support_bundle_age_hours:\nlatest_support_bundle_freshness:\nlatest_backup_restore_status\nlatest_backup_restore_blockers\nlatest_backup_unsafe_examples\nprivacy_failed_cleanup_apply\nprivacy_failed_cleanup_rc_recheck\ncreate_support_diagnostic_report\nFull check omitted for fast support bundle creation\nstatus.detail\nlist_install_info_recovery_files\n_install_helpers_item\nauto-note safe display.lnk\nuninstall-auto-note.bat\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "support.py").write_text(
@@ -4376,18 +5718,38 @@ tags:
                 "Do not attach the whole `.auto-note` folder\n"
                 "send checklist: open SUPPORT_SEND_CHECKLIST.txt before sending\n"
                 "SUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\nis_support_bundle_stale\nfreshness:\n"
+                "duplicate file name\n"
                 "verify_diagnostic_report_bytes\n"
                 "Fast support diagnostic attached\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "backup.py").write_text(
+                "_regular_zip_member\n_restore_collision_key\n"
+                "format_unsafe_backup_entries(inspection.unsafe_files)\n"
+                "format_unsafe_backup_entries\n"
+                "backup_restore_blockers\n"
+                "Restore blockers:\n"
+                "format_backup_restore_status\n"
+                "Restore status:\n",
+                encoding="utf-8",
+            )
+            (project / "src" / "auto_note" / "archive_safety.py").write_text(
+                "verify_zip_member_names\nduplicate_key\nverify_zip_regular_entries\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "first_run.py").write_text(
                 "is_support_bundle_stale\nホーム > ログイン安全ガイド\n"
                 "表示の読みやすさ\nauto-note gui --project-dir . --safe-display\n"
-                "_score_issue_detail\n",
+                "_score_issue_detail\n_format_next_actions\n_next_action_key\n_action_subsumes\n"
+                "_next_action_gui_suffix\nprivacy_failed_cleanup_target\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "quickstart.py").write_text(
-                "ログイン安全ガイド\n",
+                "ログイン安全ガイド\n"
+                "GUIのチェックタブで全体チェック\n"
+                "GUIのチェックタブでレビュー更新\n"
+                "format_backup_restore_status\n"
+                "backup_restore_blockers\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "acceptance.py").write_text(
@@ -4396,23 +5758,26 @@ tags:
                 "_score_issue_detail\n"
                 "_format_next_actions\n"
                 "_gui_smoke_summary\n"
-                "可読性OK\n",
+                "可読性OK\nprivacy_failed_cleanup_target\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "repair.py").write_text(
-                "run_recovery_kit\ncreate_bundle_on_issue\nwrite_recovery_kit_report\nlist_recovery_kit_reports\n",
+                "run_recovery_kit\ncreate_bundle_on_issue\nwrite_recovery_kit_report\nlist_recovery_kit_reports\n"
+                "archive_invalid_install_info\npreinstall backup missing\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "maintenance.py").write_text(
-                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\nsales-launch-confirmation-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n_cleanup_summary_reason\nformat_cleanup_confirmation\n元に戻せません\ndef format_bytes\n",
+                "seller-send-checklist-*.txt\nbuyer-delivery-message-*.txt\nbuyer-send-readiness-*.txt\nseller-delivery-receipt-*.txt\nsales-plan-*.txt\nsales-review-*.txt\nsales-launch-checklist-*.txt\nsales-launch-confirmation-*.txt\ncommercial-policy-review-*.txt\nsales-evidence-manifest-*.json\n見込み解放容量:\n種類別:\n削除はまだ実行していません\n実行コマンド例:\n対象: privacy-audit --all\n表示順: 販売/送付に近いNG\n配布ZIP: 対象に含めています\nRC再判定: auto-note commercial-readiness --project-dir\n再生成: auto-note sales-handoff --project-dir\nCLEANUP_REPORT_ITEM_LIMIT\n種類別サマリー\n_format_cleanup_path\n_cleanup_summary_reason\nformat_cleanup_confirmation\n元に戻せません\n配布ZIPも削除対象に含まれます\ndef format_bytes\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "readiness.py").write_text(
-                "estimated reclaim\nプレビューでは削除しません\nnext focus\n_article_content_next_focus\n",
+                "estimated reclaim\nプレビューでは削除しません\nnext focus\n_article_content_next_focus\n"
+                "privacy_failed_cleanup_apply_command\nPRIVACY_FAILED_CLEANUP_RC_RECHECK\n"
+                "format_unsafe_backup_entries\nformat_backup_restore_status\nbackup_restore_blockers\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_plan.py").write_text(
-                "list_buyer_delivery_packages\nverify_buyer_delivery_package\nLatest buyer delivery zip\nBuyer delivery readiness\nSeller setup remaining\nTool/artifact actions remaining\nUpload guidance\n_buyer_delivery_package_release_name\nwrite_sales_plan_report\nlist_sales_plan_reports\n_project_relative_path\n",
+                "list_buyer_delivery_packages\nverify_buyer_delivery_package\nLatest buyer delivery zip\nBuyer delivery readiness\nSeller setup remaining\nTool/artifact actions remaining\nUpload guidance\ncleanup --project-dir . --privacy-failed --include-releases\n診断 > 危険生成物確認\n_format_next_actions\n_action_subsumes\n_merge_commercial_setup_actions\n_backticked_commercial_setup_command\n_readiness_followup_target\n_buyer_delivery_package_release_name\nwrite_sales_plan_report\nlist_sales_plan_reports\n_project_relative_path\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "sales_review.py").write_text(
@@ -4422,18 +5787,25 @@ tags:
             (project / "src" / "auto_note" / "sales_launch.py").write_text(
                 "run_sales_launch_check\nwrite_sales_launch_checklist\nrun_sales_review(project_dir)\n"
                 "write_sales_launch_confirmation\nlist_sales_launch_confirmations\nfind_latest_sales_launch_confirmation\nsales-launch-confirmation-*.txt\nseller-only evidence\n"
+                "SALES_LAUNCH_CONFIRMATION_NOTE_GUIDANCE\n_normalize_sales_launch_confirmation_note\n"
+                "SALES_LAUNCH_CONFIRMATION_MATCH_GUIDANCE\n_validate_sales_launch_confirmation_note_matches_delivery\n"
+                "_ensure_sales_launch_confirmation_ready\nsales launch confirmation requires zero launch blockers\n"
                 "_listing_kit_launch_check\n掲載キットZIPは販売ページ作成用\n"
                 "MarketplaceLaunchProfile\n_marketplace_profile_for_url\nPlatform-specific launch checks\n"
                 "Buyer delivery copy sheet\nzip SHA-256\nlatest release package\n貼り付け後、改行\n",
                 encoding="utf-8",
             )
             (project / "src" / "auto_note" / "gui.py").write_text(
-                    "スターター一式\nスターター整理\n自動修復\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\nhome_sales_timeline_vars\nhome_sales_timeline_summary_var\n販売準備タイムライン\n_set_home_sales_timeline_step\n_refresh_home_sales_timeline\nhome_sales_timeline_items=\nhome_sales_timeline_chars=\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\n_home_sales_lightweight_next_step\nbuyer_messages\nseller_receipts\n_home_sales_screenshot_text\n_home_sales_artifact_text\n_home_sales_freshness_text\nartifact_ng_count\nartifact_stale_count\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付記録コピー\ncopy_latest_seller_delivery_receipt_action\nself.clipboard_append(receipt_text.rstrip() + \"\\n\")\n送付記録をコピーしました\n問い合わせ票\nopen_latest_buyer_support_request_action\n購入者ZIP場所\nopen_latest_buyer_delivery_location_action\n送付前チェックNGのため購入者ZIP場所を開きませんでした\n購入者向けZIPの場所を開きました\n送付文コピー\ncopy_latest_buyer_delivery_message_action\nZIPパスコピー\ncopy_latest_buyer_delivery_zip_path_action\nself.clipboard_append(str(copied_path))\n送付前チェックNGのためZIPパスをコピーしませんでした\n送付情報コピー\ncopy_latest_buyer_delivery_sheet_action\nBuyer delivery copy sheet / 購入者送付の照合値\nself.clipboard_append(sheet_text + \"\\n\")\n送付前チェックNGのため送付情報をコピーしませんでした\n販売素材作成\n販売素材検証\n掲載画像作成\n掲載画像検証\ncreate_sales_screenshots_action\nverify_latest_sales_screenshots_action\nlist_sales_screenshot_packs\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\n_buyer_support_request_for\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\nsales_screenshot_pack_path\nsales_listing_package_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nrun_release_check_full_action\nthreading.Thread\nrelease-check-\n販売前一括チェック\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
+                    "スターター一式\nスターター整理\n自動修復\ninstall-info.invalid-*.json\nインストール記録\nトラブル診断\n受入チェック\n受入フル保存\n販売準備\n方針レビュー\ncreate_commercial_policy_review_action\n販売者/屋号\n販売者情報確認\n_notify_settings_saved\ncommercial_progress_var\nfocus_next_commercial_missing_field\n販売者情報へ\nhome_sales_status_var\nhome_sales_status_pill\nhome_sales_stage_vars\nhome_sales_timeline_vars\nhome_sales_timeline_summary_var\n販売準備タイムライン\n_set_home_sales_timeline_step\n_refresh_home_sales_timeline\nhome_sales_timeline_items=\nhome_sales_timeline_chars=\n\"support\", \"サポート\"\n_home_support_send_readiness\nサポート {support_text}\nshow_support_send_panel_action\nrun_home_support_next_action\nサポート次実行\nself.run_support_next_action()\nサポート送付の状態を表示しました\n_home_sales_indicator_style\nChrome.TFrame\nAppTitle.TLabel\nKpiValue.TLabel\nUI_COLORS\nQuiet.TButton\nCtrl+K コマンド検索\nUI_COLORS[\"accent\"] if index == 0 else UI_COLORS[\"line\"]\n初回起動、販売前チェック\n投稿補助、表示サイズ\n品質チェック、配布ZIP\n購入者向け案内\nサポート送付\n送付前リスト\nshow_support_send_checklist_action\nrun_support_next_action\nサポート送付の現在の次アクションを実行\nsupport_next_button_var\n_support_next_button_label\nopen_latest_support_bundle_location_action\n最新問い合わせ一式ZIPの場所を開きました\ncopy_latest_support_bundle_path_action\n最新問い合わせ一式ZIPのパスをコピーしました\nself.clipboard_append(str(latest.resolve()))\ncopy_support_contact_action\nサポート連絡先をコピーしました\nself.clipboard_append(contact)\ncopy_support_send_message_action\nサポート送付メモをコピーしました\nself.clipboard_append(message)\n問い合わせ一式ZIP:\nfocus_support_contact_field\nサポート連絡先を設定\nサポート連絡先を入力して保存してください\nsupport_contact_status_pill\n_support_contact_indicator_style\nself._refresh_support_summary()\n        self._set_text(self.help_text, format_support_bundle_verification\nself._refresh_support_summary()\n        try:\n            send_checklist\nread_support_send_checklist\nsupport_bundle_status_var\nsupport_send_readiness_var\nsupport_send_readiness_status_pill\n_set_support_send_readiness\n_support_send_readiness_indicator_style\n準備OK\n連絡先未設定\nsupport_bundle_freshness_var\nSUPPORT_BUNDLE_FRESHNESS_WARNING_HOURS\n要更新\n確認不可\nsupport_bundle_status_pill\n_support_bundle_indicator_style\n_set_support_bundle_status\nfirst_run_count_vars\nfirst_run_action_filter_var\ntoggle_first_run_action_filter\n_populate_first_run_tree\n要対応項目はありません\nrun_home_sales_next_action\ntitle == \"危険生成物を確認する\"\n_home_sales_lightweight_next_step\n_home_sales_rc_target_text\n販売RC目途\n今回の目途:\n次: 危険生成物確認\n販売者設定をまとめて保存\nbuyer_messages\nseller_receipts\n_home_sales_screenshot_text\n_home_sales_artifact_text\n_home_sales_freshness_text\nartifact_ng_count\nartifact_stale_count\n販売者テンプレ\nテンプレ適用\n販売一式作成\n購入者ZIP抽出\n購入者ZIP検証\n送付前チェック\nrun_buyer_send_readiness_to_tab\n送付前保存\ncreate_buyer_send_readiness_report_action\n送付記録\ncreate_seller_delivery_receipt_action\n送付記録コピー\ncopy_latest_seller_delivery_receipt_action\nself.clipboard_append(receipt_text.rstrip() + \"\\n\")\n送付記録をコピーしました\n問い合わせ票\nopen_latest_buyer_support_request_action\n購入者ZIP場所\nopen_latest_buyer_delivery_location_action\n送付前チェックNGのため購入者ZIP場所を開きませんでした\n購入者向けZIPの場所を開きました\n送付文コピー\ncopy_latest_buyer_delivery_message_action\nZIPパスコピー\ncopy_latest_buyer_delivery_zip_path_action\nself.clipboard_append(str(copied_path))\n送付前チェックNGのためZIPパスをコピーしませんでした\n送付情報コピー\ncopy_latest_buyer_delivery_sheet_action\nBuyer delivery copy sheet / 購入者送付の照合値\nself.clipboard_append(sheet_text + \"\\n\")\n送付前チェックNGのため送付情報をコピーしませんでした\n販売素材作成\n販売素材検証\n掲載画像作成\n掲載画像検証\ncreate_sales_screenshots_action\nverify_latest_sales_screenshots_action\nlist_sales_screenshot_packs\nテンプレ取込一括\n販売一括作成\nbuyer_delivery_dir\nbuyer_delivery_package_path\nbuyer_delivery_message_path\n_buyer_support_request_for\nsales_plan_report_path\nseller_send_checklist_path\nsales_evidence_manifest_path\nsales_screenshot_pack_path\nsales_listing_package_path\n販売ナビ\n販売ナビ保存\nrun_sales_launch_to_tab\ncreate_sales_launch_checklist_action\n販売直前\n直前保存\nrun_release_check_full_action\nthreading.Thread\nrelease-check-\n販売前一括チェック\nRC引き渡し\nopen_rc_handoff\nsales_action_items\n",
                 encoding="utf-8",
             )
             gui_fixture = project / "src" / "auto_note" / "gui.py"
             gui_fixture.write_text(
                 gui_fixture.read_text(encoding="utf-8")
+                + "_backup_restore_blocked_message\n"
+                + "backup_restore_blockers(inspection)\n"
+                + "Restore status:\n"
+                + "format_commercial_setup_apply_error\n"
                 + '"screenshots", "掲載画像"\n'
                 + "screenshot_packs\n",
                 encoding="utf-8",
@@ -4461,6 +5833,8 @@ tags:
                 + "販売確認記録\n"
                 + "販売確認コピー\n"
                 + "販売確認\n"
+                + "販売確認記録には確認メモが必要です\n"
+                + "最新の購入者ZIP名とSHA-256\n"
                 + '"Yu Gothic"\n'
                 + '"Noto Sans JP"\n'
                 + '"Yu Gothic",\n    "Meiryo UI",\n    "Meiryo"\n'
@@ -4516,6 +5890,8 @@ tags:
                 + "表示診断\n"
                 + "表示診断コピー\n"
                 + "format_cleanup_confirmation(preview\n"
+                + "privacy_failed=True\n"
+                + "privacy_failed_cleanup_apply_command\n"
                 + "set_ui_density_action\n"
                 + "focus_ui_density_setting_action\n"
                 + "reset_display_action\n"
@@ -4760,6 +6136,7 @@ tags:
                 + "home_release_check_status_pill\n"
                 + "_home_commercial_focus_button_label\n"
                 + "_home_release_check_button_label\n"
+                + "_home_commercial_focus_action_summary\n"
                 + "_home_release_check_should_run\n"
                 + "_home_release_check_summary\n"
                 + "_home_release_check_timeline_detail\n"
@@ -4859,13 +6236,14 @@ tags:
                 "ログイン安全ガイド\nauto-note safe display\nauto-note safe display.lnk\n"
                 "auto-note-gui.bat --safe-display\n最初の3分\n表示診断コピー\n"
                 "starter-pack\nauto-note repair\nauto-note troubleshoot\n"
-                "auto-note acceptance\nauto-note acceptance --project-dir . --full\n",
+                "auto-note acceptance\nauto-note acceptance --project-dir . --full\n"
+                "duplicate archive path\n",
                 encoding="utf-8",
             )
             (project / "README.md").write_text(
-                "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n今日のオペレーション\n要約コピー\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n納品照合\n送付証跡\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
-                encoding="utf-8",
-            )
+                    "starter-pack\n復旧セット\n最新復旧レポート\n直近レポート\nパスコピー\n作業進行\n操作検索\nコンパクト概要\n今日のオペレーション\n要約コピー\n選択記事フォーカス\n作業進行レーンの各工程の `開く`\n作業進行: 初回\n初回セットアップのスコアと次項目\n購入者ZIP/送付文/送付記録\n購入者ZIP、購入者送付文、送付記録\n状態に応じた購入者送付ボタン\n送付文と最新ZIP名/SHA-256の照合\n送付記録と最新ZIP/送付文の照合\n納品照合\n送付証跡\n一致するコマンドがない時\n上下キーで候補を選び\nスペース区切りの複数語\n要対応だけ\n表示サイズ\n表示サイズ: 大きめ\nYu Gothic` / `Meiryo UI` / `Meiryo\nNoto Sans JP\n実際の表示フォント\nauto-note safe display.lnk\nauto-note gui --project-dir . --safe-display\nauto-note-gui.bat --safe-display\n表示リセット\n表示診断\n表示診断コピー\nヘッダーの `表示`\nGUIログ場所\nGUIログクリア\ngui-error-cleared-*.log\nGUI操作中にエラー\ninstall-info.json\nインストール/アンインストール補助ファイル\ncleanup --project-dir . --privacy-failed --include-releases\n更新前バックアップの参照切れ\n`Ctrl+K` のコマンド検索\nホームの `復旧ステータス`\nログイン安全ガイド\nauto-note login --default-browser\n診断ZIP検証\n診断ZIPパス\nauto-note recovery-kit --project-dir . --report\nrecovery-kit-*.txt\nランチャー健康チェック\nauto-note repair\nauto-note troubleshoot\nauto-note acceptance\nauto-note acceptance --project-dir . --full\nauto-note commercial-readiness\ncommercial-readiness --project-dir . --policy-review\nauto-note commercial-setup\n販売準備サマリー\n販売準備タイムライン\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力のプレースホルダー\n次の不足へ\n販売者テンプレート\nauto-note sales-handoff\nsales-handoff --project-dir . --extract-buyer\nsales-handoff --project-dir . --verify-buyer\nsales-handoff --project-dir . --package-buyer\nsales-handoff --project-dir . --verify-buyer-package\nauto-note sales-materials\nsales-materials --project-dir . --verify\nauto-note sales-screenshots\nsales-screenshots --project-dir . --verify\n.auto-note\\sales\\screenshots\nauto-note sales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nauto-note sales-plan\nUpload guidance\nsales-plan --project-dir . --report\nauto-note sales-review\nsales-review --project-dir . --report\nauto-note sales-launch\nsales-launch --project-dir . --report\nsales-launch-checklist-*.txt\n販売前一括チェック\nrelease-check-*.txt\nsales-evidence-manifest\ndocs\\RC_HANDOFF.md\nSUPPORT_SEND_CHECKLIST.txt\n",
+                    encoding="utf-8",
+                )
             readme_fixture = project / "README.md"
             readme_fixture.write_text(
                 readme_fixture.read_text(encoding="utf-8")
@@ -4877,7 +6255,8 @@ tags:
                 + "販売確認記録\n"
                 + "販売確認コピー\n"
                 + "注文管理コピー欄\n"
-                + "注文控えコピー\n",
+                + "注文控えコピー\n"
+                + "元の配布ZIPを別添しないこと\n",
                 encoding="utf-8",
             )
             (project / "docs").mkdir(exist_ok=True)
@@ -4903,7 +6282,10 @@ tags:
             )
             (project / "docs" / "INSTALL.md").write_text(
                 "auto-note safe display\n"
-                "auto-note-gui.bat --safe-display\n",
+                "auto-note-gui.bat --safe-display\n"
+                "install-info.json\n"
+                "インストール/アンインストール補助ファイル\n"
+                "更新前バックアップの参照切れ\n",
                 encoding="utf-8",
             )
             (project / "docs" / "UPDATE.md").write_text(
@@ -4911,17 +6293,17 @@ tags:
                 encoding="utf-8",
             )
             (project / "docs" / "SUPPORT.md").write_text(
-                "SUPPORT_SEND_CHECKLIST.txt\nログイン安全ガイド\nauto-note login --default-browser\nGUIログ表示\nGUIログコピー\nGUIログ場所\nGUIログクリア\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
-                encoding="utf-8",
-            )
+                  "SUPPORT_SEND_CHECKLIST.txt\nログイン安全ガイド\nauto-note login --default-browser\ninstall-info.json\nインストール/アンインストール補助ファイル\ncleanup --project-dir . --privacy-failed --include-releases\n更新前バックアップ\nGUIログ表示\nGUIログコピー\nGUIログ場所\nGUIログクリア\n診断ZIP検証\n診断ZIPパス\nGUI_LOG_SUMMARY.txt\nDISPLAY_DIAGNOSTICS.txt\n表示診断コピー\nZIPログ要約\nZIP表示診断\n復旧レポートコピー\n直近レポート\nパスコピー\nlauncher health\n",
+                  encoding="utf-8",
+              )
             (project / "docs" / "PRIVACY.md").write_text(
                 "SUPPORT_SEND_CHECKLIST.txt\n",
                 encoding="utf-8",
             )
             (project / "docs" / "PRODUCT_READINESS.md").write_text(
-                "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n今日のオペレーション\n要約コピー\n販売準備タイムライン\n軽量判定\n送付文有無\n納品照合\n送付証跡\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
-                encoding="utf-8",
-            )
+                  "auto-note acceptance --project-dir . --full\ncommercial-readiness\ncommercial-readiness --project-dir . --policy-review\ncommercial-setup\n販売準備サマリー\n今日のオペレーション\n要約コピー\n販売準備タイムライン\n軽量判定\n送付文有無\n納品照合\n送付証跡\n最新復旧レポート\n直近レポート\nパスコピー\n要対応だけ\nランチャー健康チェック\nインストール/アンインストール補助ファイル\ncleanup --project-dir . --privacy-failed --include-releases\nGUI safe display smokeをpush/PRごとに確認できる\nGUI smoke、GUI safe display smokeを一括確認でき\n販売前一括チェック\nrelease-check-*.txt\ncommercial-setup --project-dir . --template\ncommercial-setup --project-dir . --apply-latest-template\n未入力プレースホルダー\n次の不足へ\nsales-handoff\n--extract-buyer\n--verify-buyer\n--package-buyer\n--verify-buyer-package\nsales-materials\nsales-materials --project-dir . --verify\nsales-screenshots\nsales-screenshots --project-dir . --verify\nsales-finalize\nsales-finalize --project-dir . --apply-latest-template\nsales-finalize --project-dir . --send-check --send-check-report\nsales-finalize --project-dir . --delivery-receipt\nsales-finalize --project-dir . --order-note\n元の配布ZIPを別添しないこと\n送付前チェック\n送付記録\n送付記録コピー\n送付文コピー\n購入者ZIP場所\nZIPパスコピー\n送付情報コピー\nsales-plan\nUpload guidance\nsales-plan --project-dir . --report\nsales-review\nsales-review --project-dir . --report\nsales-launch\nsales-launch --project-dir . --report\nsales-evidence-manifest\n",
+                  encoding="utf-8",
+              )
             product_readiness_fixture = project / "docs" / "PRODUCT_READINESS.md"
             product_readiness_fixture.write_text(
                 product_readiness_fixture.read_text(encoding="utf-8")
@@ -4964,6 +6346,9 @@ tags:
         self.assertIn("quickstart acceptance GUI smoke guidance:fail", product_details)
         self.assertIn("install guide safe display shortcut guidance:fail", product_details)
         self.assertIn("install guide safe display CLI guidance:fail", product_details)
+        self.assertIn("install guide install info diagnostic guidance:fail", product_details)
+        self.assertIn("install guide install helper diagnostic guidance:fail", product_details)
+        self.assertIn("install guide preinstall backup diagnostic guidance:fail", product_details)
         self.assertIn("update guide safe display shortcut guidance:fail", product_details)
         self.assertIn("GUI launcher smoke check:fail", product_details)
         self.assertIn("GUI launcher safe display argument:fail", product_details)
@@ -4980,6 +6365,30 @@ tags:
         self.assertIn("support bundle GUI log privacy mask:fail", product_details)
         self.assertIn("support bundle GUI log verification detail:fail", product_details)
         self.assertIn("support bundle GUI log summary reader:fail", product_details)
+        self.assertIn("shared archive name safety helper:fail", product_details)
+        self.assertIn("shared archive normalized duplicate safety:fail", product_details)
+        self.assertIn("shared archive entry type safety helper:fail", product_details)
+        self.assertIn("support bundle duplicate entry safety:fail", product_details)
+        self.assertIn("backup restore special entry safety:fail", product_details)
+        self.assertIn("backup restore normalized collision safety:fail", product_details)
+        self.assertIn("backup restore unsafe examples in error:fail", product_details)
+        self.assertIn("CLI backup restore friendly error:fail", product_details)
+        self.assertIn("CLI backup restore inspect hint:fail", product_details)
+        self.assertIn("CLI backup inspect friendly error:fail", product_details)
+        self.assertIn("CLI backup inspect blocked status:fail", product_details)
+        self.assertIn("GUI backup restore blocked message:fail", product_details)
+        self.assertIn("GUI backup restore blockers:fail", product_details)
+        self.assertIn("GUI backup restore status line:fail", product_details)
+        self.assertIn("backup unsafe entry formatter:fail", product_details)
+        self.assertIn("backup inspection restore blockers:fail", product_details)
+        self.assertIn("backup inspection restore blockers heading:fail", product_details)
+        self.assertIn("backup inspection restore status:fail", product_details)
+        self.assertIn("backup inspection restore status line:fail", product_details)
+        self.assertIn("quickstart backup restore status:fail", product_details)
+        self.assertIn("quickstart backup restore blockers:fail", product_details)
+        self.assertIn("readiness backup unsafe examples:fail", product_details)
+        self.assertIn("readiness backup restore status:fail", product_details)
+        self.assertIn("readiness backup restore blockers:fail", product_details)
         self.assertIn("support bundle send-only guidance:fail", product_details)
         self.assertIn("support bundle send-ready README flow:fail", product_details)
         self.assertIn("support bundle send-ready checklist summary:fail", product_details)
@@ -4994,26 +6403,63 @@ tags:
         self.assertIn("diagnostic support fast omissions:fail", product_details)
         self.assertIn("diagnostic support bundle age summary:fail", product_details)
         self.assertIn("diagnostic support bundle freshness summary:fail", product_details)
+        self.assertIn("diagnostic backup unsafe examples:fail", product_details)
+        self.assertIn("diagnostic preview backup unsafe examples:fail", product_details)
+        self.assertIn("diagnostic privacy cleanup RC recheck summary:fail", product_details)
+        self.assertIn("diagnostic privacy cleanup apply summary:fail", product_details)
+        self.assertIn("diagnostic backup restore status:fail", product_details)
+        self.assertIn("diagnostic backup restore blockers:fail", product_details)
         self.assertIn("first-run support bundle freshness warning:fail", product_details)
         self.assertIn("first-run display readability item:fail", product_details)
         self.assertIn("first-run display safe display action:fail", product_details)
         self.assertIn("first-run nested NG detail:fail", product_details)
+        self.assertIn("first-run deduplicated next actions:fail", product_details)
+        self.assertIn("first-run command-keyed next actions:fail", product_details)
+        self.assertIn("first-run contained next action collapse:fail", product_details)
+        self.assertIn("first-run next actions GUI guidance:fail", product_details)
+        self.assertIn("first-run privacy cleanup GUI target:fail", product_details)
         self.assertIn("quickstart note login safety guide:fail", product_details)
+        self.assertIn("quickstart content inspection GUI guidance:fail", product_details)
+        self.assertIn("quickstart content polish GUI guidance:fail", product_details)
         self.assertIn("first-run note login safety guide:fail", product_details)
         self.assertIn("acceptance support bundle freshness warning:fail", product_details)
         self.assertIn("acceptance display readability item:fail", product_details)
         self.assertIn("acceptance display safe display action:fail", product_details)
         self.assertIn("acceptance nested NG detail:fail", product_details)
+        self.assertIn("acceptance privacy cleanup GUI target:fail", product_details)
         self.assertIn("acceptance deduplicated next actions:fail", product_details)
         self.assertIn("acceptance GUI smoke summary:fail", product_details)
         self.assertIn("acceptance Japanese display summary:fail", product_details)
         self.assertIn("self-test privacy first NG detail:fail", product_details)
+        self.assertIn("self-test deduplicated next actions:fail", product_details)
         self.assertIn("self-test privacy specific action:fail", product_details)
+        self.assertIn("privacy failed cleanup shared action helper:fail", product_details)
+        self.assertIn("privacy failed cleanup apply command guidance:fail", product_details)
+        self.assertIn("privacy failed cleanup GUI guidance:fail", product_details)
+        self.assertIn("privacy failed cleanup RC recheck guidance:fail", product_details)
+        self.assertIn("self-test privacy cleanup action:fail", product_details)
+        self.assertIn("commercial readiness privacy cleanup direct target:fail", product_details)
+        self.assertIn("commercial readiness deduplicated next actions:fail", product_details)
+        self.assertIn("commercial readiness command-keyed next actions:fail", product_details)
+        self.assertIn("commercial readiness GUI next action targets:fail", product_details)
+        self.assertIn("commercial readiness RC milestone:fail", product_details)
+        self.assertIn("commercial readiness RC path summary:fail", product_details)
+        self.assertIn("commercial readiness RC checkpoint:fail", product_details)
+        self.assertIn("commercial readiness item template GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness item review GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness acceptance GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness acceptance report command:fail", product_details)
+        self.assertIn("commercial readiness install smoke GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness contained next action collapse:fail", product_details)
+        self.assertIn("commercial readiness acceptance first NG detail:fail", product_details)
+        self.assertIn("commercial readiness existing template apply guidance:fail", product_details)
         self.assertIn("recovery kit workflow:fail", product_details)
         self.assertIn("recovery kit support bundle fallback:fail", product_details)
         self.assertIn("recovery kit report writer:fail", product_details)
         self.assertIn("recovery kit report lister:fail", product_details)
         self.assertIn("README self-test launcher health guidance:fail", product_details)
+        self.assertIn("README self-test install helper guidance:fail", product_details)
+        self.assertIn("README self-test privacy cleanup guidance:fail", product_details)
         self.assertIn("hidden GUI launcher check mode:fail", product_details)
         self.assertIn("hidden GUI launcher forwards arguments:fail", product_details)
         self.assertIn("hidden GUI launcher quotes arguments:fail", product_details)
@@ -5024,6 +6470,17 @@ tags:
         self.assertIn("installer safe display shortcut name:fail", product_details)
         self.assertIn("installer custom desktop shortcut directory:fail", product_details)
         self.assertIn("installer custom start menu shortcut directory:fail", product_details)
+        self.assertIn("install info status model:fail", product_details)
+        self.assertIn("install info inspector:fail", product_details)
+        self.assertIn("install info invalid JSON diagnostic:fail", product_details)
+        self.assertIn("install info preinstall backup missing diagnostic:fail", product_details)
+        self.assertIn("install info invalid archive helper:fail", product_details)
+        self.assertIn("install info recovery lister:fail", product_details)
+        self.assertIn("diagnostics install info status:fail", product_details)
+        self.assertIn("diagnostics install info recovery count:fail", product_details)
+        self.assertIn("diagnostics install helper item:fail", product_details)
+        self.assertIn("diagnostics install helper safe display:fail", product_details)
+        self.assertIn("diagnostics install helper uninstall:fail", product_details)
         self.assertIn("uninstaller safe display shortcut cleanup:fail", product_details)
         self.assertIn("uninstaller custom desktop shortcut directory:fail", product_details)
         self.assertIn("uninstaller custom start menu shortcut directory:fail", product_details)
@@ -5043,6 +6500,9 @@ tags:
         self.assertIn("sales delivery smoke seller order note assertion:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist:fail", product_details)
         self.assertIn("sales delivery smoke launch checklist assertion:fail", product_details)
+        self.assertIn("sales delivery smoke launch confirmation assertion:fail", product_details)
+        self.assertIn("sales delivery smoke launch confirmation note detail:fail", product_details)
+        self.assertIn("sales delivery smoke launch confirmation exact hash:fail", product_details)
         self.assertIn("sales delivery smoke latest launch confirmation:fail", product_details)
         self.assertIn("sales delivery smoke latest launch confirmation assertion:fail", product_details)
         self.assertIn("sales delivery smoke platform checklist assertion:fail", product_details)
@@ -5053,6 +6513,10 @@ tags:
         self.assertIn("install smoke checks safe display argument:fail", product_details)
         self.assertIn("install smoke uses isolated shortcut directories:fail", product_details)
         self.assertIn("install smoke uses isolated start menu directory:fail", product_details)
+        self.assertIn("install smoke runs installed version:fail", product_details)
+        self.assertIn("install smoke runs installed diagnostics:fail", product_details)
+        self.assertIn("install smoke verifies install info OK:fail", product_details)
+        self.assertIn("install smoke verifies preinstall backup status:fail", product_details)
         self.assertIn("release candidate handoff:fail", product_details)
         self.assertIn("RC handoff release check:fail", product_details)
         self.assertIn("RC handoff GUI full release check:fail", product_details)
@@ -5088,11 +6552,23 @@ tags:
         self.assertIn("CLI recovery kit report option:fail", product_details)
         self.assertIn("self-test launcher health item:fail", product_details)
         self.assertIn("self-test launcher health included:fail", product_details)
+        self.assertIn("self-test launcher install helpers:fail", product_details)
+        self.assertIn("self-test safe display shortcut health:fail", product_details)
+        self.assertIn("self-test install helper warning:fail", product_details)
         self.assertIn("self-test hidden launcher syntax check:fail", product_details)
         self.assertIn("self-test direct launcher fallback:fail", product_details)
         self.assertIn("CLI troubleshoot command:fail", product_details)
         self.assertIn("troubleshoot privacy first NG detail:fail", product_details)
         self.assertIn("troubleshoot privacy specific action:fail", product_details)
+        self.assertIn("troubleshoot privacy cleanup action:fail", product_details)
+        self.assertIn("troubleshoot cleanup preview action:fail", product_details)
+        self.assertIn("troubleshoot cleanup GUI guidance:fail", product_details)
+        self.assertIn("troubleshoot cleanup include releases guidance:fail", product_details)
+        self.assertIn("troubleshoot install info item:fail", product_details)
+        self.assertIn("troubleshoot install info reinstall action:fail", product_details)
+        self.assertIn("troubleshoot install info backup action:fail", product_details)
+        self.assertIn("repair install info archive action:fail", product_details)
+        self.assertIn("repair install info missing backup guard:fail", product_details)
         self.assertIn("CLI support open option:fail", product_details)
         self.assertIn("CLI GUI safe display option:fail", product_details)
         self.assertIn("CLI acceptance command:fail", product_details)
@@ -5104,16 +6580,58 @@ tags:
         self.assertIn("CLI commercial setup command:fail", product_details)
         self.assertIn("CLI commercial setup template command:fail", product_details)
         self.assertIn("CLI commercial setup template apply command:fail", product_details)
+        self.assertIn("CLI commercial setup template apply error details:fail", product_details)
+        self.assertIn("CLI commercial setup relative template paths:fail", product_details)
         self.assertIn("commercial setup URL/contact warnings:fail", product_details)
         self.assertIn("commercial setup next actions:fail", product_details)
         self.assertIn("commercial setup completion progress:fail", product_details)
         self.assertIn("commercial setup next field helper:fail", product_details)
         self.assertIn("commercial setup next focus helper:fail", product_details)
         self.assertIn("commercial setup safe template apply:fail", product_details)
+        self.assertIn("commercial setup placeholder CLI guard:fail", product_details)
+        self.assertIn("commercial setup deduplicated template action:fail", product_details)
+        self.assertIn("commercial setup template apply next action:fail", product_details)
+        self.assertIn("commercial setup template GUI next action:fail", product_details)
+        self.assertIn("commercial setup apply GUI next action:fail", product_details)
+        self.assertIn("commercial setup template apply error formatter:fail", product_details)
+        self.assertIn("commercial setup unedited template apply guard:fail", product_details)
+        self.assertIn("commercial setup unedited template path guidance:fail", product_details)
+        self.assertIn("commercial setup combined review flags action:fail", product_details)
+        self.assertIn("commercial setup review GUI next action:fail", product_details)
+        self.assertIn("commercial setup ready GUI next action:fail", product_details)
         self.assertIn("commercial setup sales finalize followup:fail", product_details)
         self.assertIn("commercial setup sales plan followup:fail", product_details)
+        self.assertIn("commercial readiness privacy cleanup direct target:fail", product_details)
+        self.assertIn("commercial readiness acceptance first NG detail:fail", product_details)
+        self.assertIn("commercial readiness actionable review command:fail", product_details)
+        self.assertIn("commercial readiness command-keyed next actions:fail", product_details)
+        self.assertIn("commercial readiness GUI next action targets:fail", product_details)
+        self.assertIn("commercial readiness RC milestone:fail", product_details)
+        self.assertIn("commercial readiness RC path summary:fail", product_details)
+        self.assertIn("commercial readiness RC checkpoint:fail", product_details)
+        self.assertIn("commercial readiness contained next action collapse:fail", product_details)
+        self.assertIn("commercial readiness existing template apply guidance:fail", product_details)
+        self.assertIn("commercial readiness item template GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness item review GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness acceptance GUI guidance:fail", product_details)
+        self.assertIn("commercial readiness acceptance report command:fail", product_details)
+        self.assertIn("commercial readiness install smoke GUI guidance:fail", product_details)
         self.assertIn("action plan commercial setup guidance:fail", product_details)
         self.assertIn("action plan commercial setup next missing GUI guidance:fail", product_details)
+        self.assertIn("action plan commercial setup next actions summary:fail", product_details)
+        self.assertIn("action plan backup blocked rebuild title:fail", product_details)
+        self.assertIn("action plan backup blocked guidance:fail", product_details)
+        self.assertIn("action plan privacy cleanup direct target:fail", product_details)
+        self.assertIn("action plan privacy cleanup GUI guidance:fail", product_details)
+        self.assertIn("action plan privacy cleanup action message:fail", product_details)
+        self.assertIn("action plan RC milestone:fail", product_details)
+        self.assertIn("action plan RC milestone helper:fail", product_details)
+        self.assertIn("action plan RC path summary:fail", product_details)
+        self.assertIn("action plan RC checkpoint:fail", product_details)
+        self.assertIn("action plan RC path helper:fail", product_details)
+        self.assertIn("action plan RC checkpoint helper:fail", product_details)
+        self.assertIn("action plan RC all steps source:fail", product_details)
+        self.assertIn("action plan hidden priority count:fail", product_details)
         self.assertIn("CLI sales handoff command:fail", product_details)
         self.assertIn("CLI sales materials command:fail", product_details)
         self.assertIn("CLI sales materials verify command:fail", product_details)
@@ -5130,6 +6648,7 @@ tags:
         self.assertIn("sales listing kit manifest:fail", product_details)
         self.assertIn("sales listing kit checksum:fail", product_details)
         self.assertIn("sales listing kit buyer guard:fail", product_details)
+        self.assertIn("sales listing kit zip safety:fail", product_details)
         self.assertIn("sales handoff buyer first 10 minutes:fail", product_details)
         self.assertIn("sales handoff delivery checklist:fail", product_details)
         self.assertIn("sales handoff creates sales screenshots:fail", product_details)
@@ -5142,6 +6661,11 @@ tags:
         self.assertIn("CLI sales handoff buyer package verify command:fail", product_details)
         self.assertIn("sales handoff buyer delivery extractor:fail", product_details)
         self.assertIn("sales handoff buyer delivery verifier:fail", product_details)
+        self.assertIn("sales handoff buyer delivery send-only guidance:fail", product_details)
+        self.assertIn("sales handoff avoids direct release ZIP send guidance:fail", product_details)
+        self.assertIn("sales handoff buyer handoff delivery ZIP wording:fail", product_details)
+        self.assertIn("sales handoff avoids legacy buyer release attachment wording:fail", product_details)
+        self.assertIn("sales handoff duplicate entry safety:fail", product_details)
         self.assertIn("sales handoff buyer support guide:fail", product_details)
         self.assertIn("sales handoff buyer support request:fail", product_details)
         self.assertIn("sales handoff buyer support request template:fail", product_details)
@@ -5149,6 +6673,8 @@ tags:
         self.assertIn("sales handoff buyer delivery manifest verifier:fail", product_details)
         self.assertIn("sales handoff buyer delivery package:fail", product_details)
         self.assertIn("sales handoff buyer delivery package verifier:fail", product_details)
+        self.assertIn("sales handoff buyer delivery package SHA-256:fail", product_details)
+        self.assertIn("sales handoff buyer delivery package NG stop guidance:fail", product_details)
         self.assertIn("CLI sales finalize command:fail", product_details)
         self.assertIn("CLI sales finalize template apply command:fail", product_details)
         self.assertIn("CLI seller order note command:fail", product_details)
@@ -5157,11 +6683,15 @@ tags:
         self.assertIn("sales finalize creates buyer delivery:fail", product_details)
         self.assertIn("sales finalize verifies buyer delivery:fail", product_details)
         self.assertIn("sales finalize verifies buyer delivery zip:fail", product_details)
+        self.assertIn("sales finalize buyer delivery message ZIP-only wording:fail", product_details)
+        self.assertIn("sales finalize buyer delivery message no separate release ZIP:fail", product_details)
         self.assertIn("sales finalize buyer support request message:fail", product_details)
         self.assertIn("sales finalize seller send checklist:fail", product_details)
+        self.assertIn("sales finalize seller checklist no separate release ZIP:fail", product_details)
         self.assertIn("privacy audit seller send checklist:fail", product_details)
         self.assertIn("diagnostic seller send checklist:fail", product_details)
         self.assertIn("diagnostic report verifier:fail", product_details)
+        self.assertIn("diagnostic report duplicate entry safety:fail", product_details)
         self.assertIn("diagnostic report verification formatter:fail", product_details)
         self.assertIn("diagnostic preview bounded sections:fail", product_details)
         self.assertIn("diagnostic preview section formatter:fail", product_details)
@@ -5177,6 +6707,13 @@ tags:
         self.assertIn("sales plan seller setup remaining summary:fail", product_details)
         self.assertIn("sales plan tool artifact remaining summary:fail", product_details)
         self.assertIn("sales plan upload guidance:fail", product_details)
+        self.assertIn("sales plan deduplicated next actions:fail", product_details)
+        self.assertIn("sales plan contained next action collapse:fail", product_details)
+        self.assertIn("sales plan combined commercial setup action:fail", product_details)
+        self.assertIn("sales plan extracts commercial setup command:fail", product_details)
+        self.assertIn("sales plan privacy cleanup direct target:fail", product_details)
+        self.assertIn("sales plan privacy cleanup GUI guidance:fail", product_details)
+        self.assertIn("sales plan readiness followup target helper:fail", product_details)
         self.assertIn("sales plan buyer delivery package freshness:fail", product_details)
         self.assertIn("sales plan report writer:fail", product_details)
         self.assertIn("sales plan report lister:fail", product_details)
@@ -5196,8 +6733,16 @@ tags:
         self.assertIn("maintenance sales review report summary:fail", product_details)
         self.assertIn("CLI sales launch command:fail", product_details)
         self.assertIn("CLI sales launch report command:fail", product_details)
+        self.assertIn("CLI sales launch confirmation note guard:fail", product_details)
+        self.assertIn("CLI sales launch note required help:fail", product_details)
         self.assertIn("sales launch checker:fail", product_details)
         self.assertIn("sales launch checklist writer:fail", product_details)
+        self.assertIn("sales launch confirmation note required:fail", product_details)
+        self.assertIn("sales launch confirmation note validator:fail", product_details)
+        self.assertIn("sales launch confirmation delivery match guidance:fail", product_details)
+        self.assertIn("sales launch confirmation delivery match validator:fail", product_details)
+        self.assertIn("sales launch confirmation blocker guard:fail", product_details)
+        self.assertIn("sales launch confirmation blocker guidance:fail", product_details)
         self.assertIn("sales launch depends on final review:fail", product_details)
         self.assertIn("sales launch listing kit gate:fail", product_details)
         self.assertIn("sales launch listing kit buyer guard:fail", product_details)
@@ -5237,18 +6782,34 @@ tags:
         self.assertIn("cleanup report estimated reclaim summary:fail", product_details)
         self.assertIn("cleanup report reason breakdown:fail", product_details)
         self.assertIn("cleanup report dry-run safety guidance:fail", product_details)
+        self.assertIn("cleanup report explicit apply command:fail", product_details)
+        self.assertIn("cleanup privacy report target guidance:fail", product_details)
+        self.assertIn("cleanup privacy priority display guidance:fail", product_details)
+        self.assertIn("cleanup release package target guidance:fail", product_details)
+        self.assertIn("cleanup privacy RC recheck guidance:fail", product_details)
+        self.assertIn("cleanup privacy sales handoff regeneration guidance:fail", product_details)
+        self.assertIn("cleanup report bounded item list:fail", product_details)
+        self.assertIn("cleanup report hidden item summary:fail", product_details)
+        self.assertIn("cleanup report project-relative paths:fail", product_details)
         self.assertIn("cleanup privacy summary grouping:fail", product_details)
         self.assertIn("cleanup confirmation formatter:fail", product_details)
         self.assertIn("cleanup confirmation irreversible warning:fail", product_details)
+        self.assertIn("cleanup confirmation release package warning:fail", product_details)
         self.assertIn("cleanup shared byte formatter:fail", product_details)
         self.assertIn("readiness privacy cleanup estimated reclaim:fail", product_details)
         self.assertIn("readiness privacy cleanup preview safety:fail", product_details)
+        self.assertIn("readiness privacy cleanup apply guidance:fail", product_details)
+        self.assertIn("readiness privacy cleanup RC recheck guidance:fail", product_details)
         self.assertIn("readiness article content next focus:fail", product_details)
         self.assertIn("readiness article content anonymous focus:fail", product_details)
         self.assertIn("GUI cleanup confirmation summary:fail", product_details)
+        self.assertIn("GUI privacy cleanup report context:fail", product_details)
+        self.assertIn("GUI privacy cleanup apply command guidance:fail", product_details)
         self.assertIn("GUI starter pack action:fail", product_details)
         self.assertIn("GUI starter cleanup action:fail", product_details)
         self.assertIn("GUI repair action:fail", product_details)
+        self.assertIn("GUI repair install info guidance:fail", product_details)
+        self.assertIn("GUI troubleshoot install info guidance:fail", product_details)
         self.assertIn("GUI troubleshoot action:fail", product_details)
         self.assertIn("GUI acceptance action:fail", product_details)
         self.assertIn("GUI acceptance full action:fail", product_details)
@@ -5257,6 +6818,7 @@ tags:
         self.assertIn("GUI commercial setup fields:fail", product_details)
         self.assertIn("GUI commercial setup template action:fail", product_details)
         self.assertIn("GUI commercial setup template apply action:fail", product_details)
+        self.assertIn("GUI commercial setup template apply error details:fail", product_details)
         self.assertIn("GUI commercial setup status action:fail", product_details)
         self.assertIn("GUI commercial setup save feedback:fail", product_details)
         self.assertIn("GUI commercial setup progress panel:fail", product_details)
@@ -5616,7 +7178,12 @@ tags:
         self.assertIn("GUI smoke home sales timeline count:fail", product_details)
         self.assertIn("GUI smoke home sales timeline chars:fail", product_details)
         self.assertIn("GUI home sales next action:fail", product_details)
+        self.assertIn("GUI home sales privacy cleanup next action:fail", product_details)
         self.assertIn("GUI home sales lightweight summary:fail", product_details)
+        self.assertIn("GUI home sales RC target:fail", product_details)
+        self.assertIn("GUI home sales RC target next action:fail", product_details)
+        self.assertIn("GUI home sales RC checkpoint:fail", product_details)
+        self.assertIn("GUI home sales combined seller setup guidance:fail", product_details)
         self.assertIn("GUI home commercial setup focus summary:fail", product_details)
         self.assertIn("GUI home release check summary:fail", product_details)
         self.assertIn("GUI home release check status pill:fail", product_details)
@@ -5627,6 +7194,7 @@ tags:
         self.assertIn("GUI home release check timeline freshness:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic action:fail", product_details)
         self.assertIn("GUI home commercial setup dynamic button:fail", product_details)
+        self.assertIn("GUI home commercial setup action summary:fail", product_details)
         self.assertIn("GUI sales handoff action:fail", product_details)
         self.assertIn("GUI sales handoff buyer extract action:fail", product_details)
         self.assertIn("GUI sales handoff buyer verify action:fail", product_details)
@@ -5672,6 +7240,8 @@ tags:
         self.assertIn("GUI sales review report action:fail", product_details)
         self.assertIn("GUI sales launch action:fail", product_details)
         self.assertIn("GUI sales launch checklist action:fail", product_details)
+        self.assertIn("GUI sales launch confirmation note guard:fail", product_details)
+        self.assertIn("GUI sales launch confirmation exact values prompt:fail", product_details)
         self.assertIn("GUI full release check action:fail", product_details)
         self.assertIn("GUI full release check background thread:fail", product_details)
         self.assertIn("GUI full release check report:fail", product_details)
@@ -5713,6 +7283,9 @@ tags:
         self.assertIn("README home recent reports guidance:fail", product_details)
         self.assertIn("README home recent reports copy guidance:fail", product_details)
         self.assertIn("README home recent reports buyer delivery guidance:fail", product_details)
+        self.assertIn("README install info diagnostic guidance:fail", product_details)
+        self.assertIn("README install helper diagnostic guidance:fail", product_details)
+        self.assertIn("README preinstall backup diagnostic guidance:fail", product_details)
         self.assertIn("README first-run actionable filter guidance:fail", product_details)
         self.assertIn("README repair guidance:fail", product_details)
         self.assertIn("README troubleshoot guidance:fail", product_details)
@@ -5746,6 +7319,7 @@ tags:
         self.assertIn("README sales listing verify guidance:fail", product_details)
         self.assertIn("README sales finalize guidance:fail", product_details)
         self.assertIn("README sales finalize template apply guidance:fail", product_details)
+        self.assertIn("README sales finalize no separate release ZIP guidance:fail", product_details)
         self.assertIn("README buyer delivery ZIP path copy guidance:fail", product_details)
         self.assertIn("README buyer delivery ZIP location guidance:fail", product_details)
         self.assertIn("README buyer delivery sheet copy guidance:fail", product_details)
@@ -5779,6 +7353,9 @@ tags:
         self.assertIn("support guide send checklist guidance:fail", product_details)
         self.assertIn("support guide note login safety guidance:fail", product_details)
         self.assertIn("support guide note login default browser guidance:fail", product_details)
+        self.assertIn("support guide troubleshoot install info guidance:fail", product_details)
+        self.assertIn("support guide install helper diagnostic guidance:fail", product_details)
+        self.assertIn("support guide troubleshoot preinstall backup guidance:fail", product_details)
         self.assertIn("support guide GUI log display guidance:fail", product_details)
         self.assertIn("support guide GUI log copy guidance:fail", product_details)
         self.assertIn("support guide GUI log folder guidance:fail", product_details)
@@ -5794,6 +7371,8 @@ tags:
         self.assertIn("support guide home recent reports guidance:fail", product_details)
         self.assertIn("support guide home recent reports copy guidance:fail", product_details)
         self.assertIn("support guide self-test launcher health guidance:fail", product_details)
+        self.assertIn("support guide self-test install helper guidance:fail", product_details)
+        self.assertIn("support guide self-test privacy cleanup guidance:fail", product_details)
         self.assertIn("privacy guide support send checklist guidance:fail", product_details)
         self.assertIn("product readiness acceptance full command:fail", product_details)
         self.assertIn("product readiness commercial command:fail", product_details)
@@ -5812,6 +7391,9 @@ tags:
         self.assertIn("product readiness home recent reports copy guidance:fail", product_details)
         self.assertIn("product readiness first-run actionable filter guidance:fail", product_details)
         self.assertIn("product readiness self-test launcher health guidance:fail", product_details)
+        self.assertIn("product readiness self-test install helper guidance:fail", product_details)
+        self.assertIn("product readiness self-test privacy cleanup guidance:fail", product_details)
+        self.assertIn("product readiness install helper diagnostic guidance:fail", product_details)
         self.assertIn("product readiness CI safe display smoke guidance:fail", product_details)
         self.assertIn("product readiness release check safe display smoke guidance:fail", product_details)
         self.assertIn("product readiness GUI full release check guidance:fail", product_details)
@@ -5832,6 +7414,7 @@ tags:
         self.assertIn("product readiness sales listing verify command:fail", product_details)
         self.assertIn("product readiness sales finalize command:fail", product_details)
         self.assertIn("product readiness sales finalize template apply command:fail", product_details)
+        self.assertIn("product readiness sales finalize no separate release ZIP guidance:fail", product_details)
         self.assertIn("product readiness buyer delivery ZIP path copy guidance:fail", product_details)
         self.assertIn("product readiness buyer delivery ZIP location guidance:fail", product_details)
         self.assertIn("product readiness buyer delivery sheet copy guidance:fail", product_details)
@@ -5847,6 +7430,7 @@ tags:
         self.assertIn("product readiness sales launch report guidance:fail", product_details)
         self.assertIn("product readiness sales evidence manifest guidance:fail", product_details)
         self.assertIn("release starter pack guidance:fail", product_details)
+        self.assertIn("release package duplicate path safety:fail", product_details)
         self.assertIn("release repair guidance:fail", product_details)
         self.assertIn("release troubleshoot guidance:fail", product_details)
         self.assertIn("release buyer acceptance checklist:fail", product_details)
@@ -5854,6 +7438,9 @@ tags:
         self.assertIn("version consistency:pass", launcher_details)
         self.assertIn("install guide safe display shortcut guidance:pass", launcher_details)
         self.assertIn("install guide safe display CLI guidance:pass", launcher_details)
+        self.assertIn("install guide install info diagnostic guidance:pass", launcher_details)
+        self.assertIn("install guide install helper diagnostic guidance:pass", launcher_details)
+        self.assertIn("install guide preinstall backup diagnostic guidance:pass", launcher_details)
         self.assertIn("update guide safe display shortcut guidance:pass", launcher_details)
         self.assertIn("GitHub Actions CI:pass", launcher_details)
         self.assertIn("CI Windows runner:pass", launcher_details)
@@ -5883,6 +7470,8 @@ tags:
         self.assertIn("sales delivery smoke launch checklist:pass", launcher_details)
         self.assertIn("sales delivery smoke launch checklist assertion:pass", launcher_details)
         self.assertIn("sales delivery smoke launch confirmation assertion:pass", launcher_details)
+        self.assertIn("sales delivery smoke launch confirmation note detail:pass", launcher_details)
+        self.assertIn("sales delivery smoke launch confirmation exact hash:pass", launcher_details)
         self.assertIn("sales delivery smoke launch confirmation seller-only guard:pass", launcher_details)
         self.assertIn("sales delivery smoke latest launch confirmation:pass", launcher_details)
         self.assertIn("sales delivery smoke latest launch confirmation assertion:pass", launcher_details)
@@ -5894,6 +7483,10 @@ tags:
         self.assertIn("install smoke checks safe display argument:pass", launcher_details)
         self.assertIn("install smoke uses isolated shortcut directories:pass", launcher_details)
         self.assertIn("install smoke uses isolated start menu directory:pass", launcher_details)
+        self.assertIn("install smoke runs installed version:pass", launcher_details)
+        self.assertIn("install smoke runs installed diagnostics:pass", launcher_details)
+        self.assertIn("install smoke verifies install info OK:pass", launcher_details)
+        self.assertIn("install smoke verifies preinstall backup status:pass", launcher_details)
         self.assertIn("release candidate handoff:pass", launcher_details)
         self.assertIn("RC handoff release check:pass", launcher_details)
         self.assertIn("RC handoff GUI full release check:pass", launcher_details)
@@ -5923,9 +7516,17 @@ tags:
         self.assertIn("CLI recovery kit report option:pass", launcher_details)
         self.assertIn("self-test launcher health item:pass", launcher_details)
         self.assertIn("self-test launcher health included:pass", launcher_details)
+        self.assertIn("self-test launcher install helpers:pass", launcher_details)
+        self.assertIn("self-test safe display shortcut health:pass", launcher_details)
+        self.assertIn("self-test install helper warning:pass", launcher_details)
         self.assertIn("self-test hidden launcher syntax check:pass", launcher_details)
         self.assertIn("self-test direct launcher fallback:pass", launcher_details)
         self.assertIn("CLI troubleshoot command:pass", launcher_details)
+        self.assertIn("troubleshoot install info item:pass", launcher_details)
+        self.assertIn("troubleshoot install info reinstall action:pass", launcher_details)
+        self.assertIn("troubleshoot install info backup action:pass", launcher_details)
+        self.assertIn("repair install info archive action:pass", launcher_details)
+        self.assertIn("repair install info missing backup guard:pass", launcher_details)
         self.assertIn("CLI support open option:pass", launcher_details)
         self.assertIn("CLI GUI safe display option:pass", launcher_details)
         self.assertIn("CLI acceptance command:pass", launcher_details)
@@ -5937,16 +7538,58 @@ tags:
         self.assertIn("CLI commercial setup command:pass", launcher_details)
         self.assertIn("CLI commercial setup template command:pass", launcher_details)
         self.assertIn("CLI commercial setup template apply command:pass", launcher_details)
+        self.assertIn("CLI commercial setup template apply error details:pass", launcher_details)
+        self.assertIn("CLI commercial setup relative template paths:pass", launcher_details)
         self.assertIn("commercial setup URL/contact warnings:pass", launcher_details)
         self.assertIn("commercial setup next actions:pass", launcher_details)
         self.assertIn("commercial setup completion progress:pass", launcher_details)
         self.assertIn("commercial setup next field helper:pass", launcher_details)
         self.assertIn("commercial setup next focus helper:pass", launcher_details)
         self.assertIn("commercial setup safe template apply:pass", launcher_details)
+        self.assertIn("commercial setup placeholder CLI guard:pass", launcher_details)
+        self.assertIn("commercial setup deduplicated template action:pass", launcher_details)
+        self.assertIn("commercial setup template apply next action:pass", launcher_details)
+        self.assertIn("commercial setup template GUI next action:pass", launcher_details)
+        self.assertIn("commercial setup apply GUI next action:pass", launcher_details)
+        self.assertIn("commercial setup template apply error formatter:pass", launcher_details)
+        self.assertIn("commercial setup unedited template apply guard:pass", launcher_details)
+        self.assertIn("commercial setup unedited template path guidance:pass", launcher_details)
+        self.assertIn("commercial setup combined review flags action:pass", launcher_details)
+        self.assertIn("commercial setup review GUI next action:pass", launcher_details)
+        self.assertIn("commercial setup ready GUI next action:pass", launcher_details)
         self.assertIn("commercial setup sales finalize followup:pass", launcher_details)
         self.assertIn("commercial setup sales plan followup:pass", launcher_details)
+        self.assertIn("commercial readiness privacy cleanup direct target:pass", launcher_details)
+        self.assertIn("commercial readiness acceptance first NG detail:pass", launcher_details)
+        self.assertIn("commercial readiness actionable review command:pass", launcher_details)
+        self.assertIn("commercial readiness command-keyed next actions:pass", launcher_details)
+        self.assertIn("commercial readiness GUI next action targets:pass", launcher_details)
+        self.assertIn("commercial readiness RC milestone:pass", launcher_details)
+        self.assertIn("commercial readiness RC path summary:pass", launcher_details)
+        self.assertIn("commercial readiness RC checkpoint:pass", launcher_details)
+        self.assertIn("commercial readiness item template GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness item review GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness acceptance GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness acceptance report command:pass", launcher_details)
+        self.assertIn("commercial readiness install smoke GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness contained next action collapse:pass", launcher_details)
+        self.assertIn("commercial readiness existing template apply guidance:pass", launcher_details)
         self.assertIn("action plan commercial setup guidance:pass", launcher_details)
         self.assertIn("action plan commercial setup next missing GUI guidance:pass", launcher_details)
+        self.assertIn("action plan commercial setup next actions summary:pass", launcher_details)
+        self.assertIn("action plan backup blocked rebuild title:pass", launcher_details)
+        self.assertIn("action plan backup blocked guidance:pass", launcher_details)
+        self.assertIn("action plan privacy cleanup direct target:pass", launcher_details)
+        self.assertIn("action plan privacy cleanup GUI guidance:pass", launcher_details)
+        self.assertIn("action plan privacy cleanup action message:pass", launcher_details)
+        self.assertIn("action plan RC milestone:pass", launcher_details)
+        self.assertIn("action plan RC milestone helper:pass", launcher_details)
+        self.assertIn("action plan RC path summary:pass", launcher_details)
+        self.assertIn("action plan RC checkpoint:pass", launcher_details)
+        self.assertIn("action plan RC path helper:pass", launcher_details)
+        self.assertIn("action plan RC checkpoint helper:pass", launcher_details)
+        self.assertIn("action plan RC all steps source:pass", launcher_details)
+        self.assertIn("action plan hidden priority count:pass", launcher_details)
         self.assertIn("CLI sales handoff command:pass", launcher_details)
         self.assertIn("CLI sales materials command:pass", launcher_details)
         self.assertIn("CLI sales materials verify command:pass", launcher_details)
@@ -5963,6 +7606,7 @@ tags:
         self.assertIn("sales listing kit manifest:pass", launcher_details)
         self.assertIn("sales listing kit checksum:pass", launcher_details)
         self.assertIn("sales listing kit buyer guard:pass", launcher_details)
+        self.assertIn("sales listing kit zip safety:pass", launcher_details)
         self.assertIn("sales handoff buyer first 10 minutes:pass", launcher_details)
         self.assertIn("sales handoff delivery checklist:pass", launcher_details)
         self.assertIn("sales handoff creates sales screenshots:pass", launcher_details)
@@ -5975,6 +7619,11 @@ tags:
         self.assertIn("CLI sales handoff buyer package verify command:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery extractor:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery verifier:pass", launcher_details)
+        self.assertIn("sales handoff buyer delivery send-only guidance:pass", launcher_details)
+        self.assertIn("sales handoff avoids direct release ZIP send guidance:pass", launcher_details)
+        self.assertIn("sales handoff buyer handoff delivery ZIP wording:pass", launcher_details)
+        self.assertIn("sales handoff avoids legacy buyer release attachment wording:pass", launcher_details)
+        self.assertIn("sales handoff duplicate entry safety:pass", launcher_details)
         self.assertIn("sales handoff buyer support guide:pass", launcher_details)
         self.assertIn("sales handoff buyer support request:pass", launcher_details)
         self.assertIn("sales handoff buyer support request template:pass", launcher_details)
@@ -5982,6 +7631,8 @@ tags:
         self.assertIn("sales handoff buyer delivery manifest verifier:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery package:pass", launcher_details)
         self.assertIn("sales handoff buyer delivery package verifier:pass", launcher_details)
+        self.assertIn("sales handoff buyer delivery package SHA-256:pass", launcher_details)
+        self.assertIn("sales handoff buyer delivery package NG stop guidance:pass", launcher_details)
         self.assertIn("CLI sales finalize command:pass", launcher_details)
         self.assertIn("CLI sales finalize template apply command:pass", launcher_details)
         self.assertIn("CLI seller order note command:pass", launcher_details)
@@ -5990,11 +7641,15 @@ tags:
         self.assertIn("sales finalize creates buyer delivery:pass", launcher_details)
         self.assertIn("sales finalize verifies buyer delivery:pass", launcher_details)
         self.assertIn("sales finalize verifies buyer delivery zip:pass", launcher_details)
+        self.assertIn("sales finalize buyer delivery message ZIP-only wording:pass", launcher_details)
+        self.assertIn("sales finalize buyer delivery message no separate release ZIP:pass", launcher_details)
         self.assertIn("sales finalize buyer support request message:pass", launcher_details)
         self.assertIn("sales finalize seller send checklist:pass", launcher_details)
+        self.assertIn("sales finalize seller checklist no separate release ZIP:pass", launcher_details)
         self.assertIn("privacy audit seller send checklist:pass", launcher_details)
         self.assertIn("diagnostic seller send checklist:pass", launcher_details)
         self.assertIn("diagnostic report verifier:pass", launcher_details)
+        self.assertIn("diagnostic report duplicate entry safety:pass", launcher_details)
         self.assertIn("diagnostic report verification formatter:pass", launcher_details)
         self.assertIn("diagnostic preview bounded sections:pass", launcher_details)
         self.assertIn("diagnostic preview section formatter:pass", launcher_details)
@@ -6010,6 +7665,13 @@ tags:
         self.assertIn("sales plan seller setup remaining summary:pass", launcher_details)
         self.assertIn("sales plan tool artifact remaining summary:pass", launcher_details)
         self.assertIn("sales plan upload guidance:pass", launcher_details)
+        self.assertIn("sales plan deduplicated next actions:pass", launcher_details)
+        self.assertIn("sales plan contained next action collapse:pass", launcher_details)
+        self.assertIn("sales plan combined commercial setup action:pass", launcher_details)
+        self.assertIn("sales plan extracts commercial setup command:pass", launcher_details)
+        self.assertIn("sales plan privacy cleanup direct target:pass", launcher_details)
+        self.assertIn("sales plan privacy cleanup GUI guidance:pass", launcher_details)
+        self.assertIn("sales plan readiness followup target helper:pass", launcher_details)
         self.assertIn("sales plan buyer delivery package freshness:pass", launcher_details)
         self.assertIn("sales plan report writer:pass", launcher_details)
         self.assertIn("sales plan report lister:pass", launcher_details)
@@ -6031,6 +7693,8 @@ tags:
         self.assertIn("CLI sales launch report command:pass", launcher_details)
         self.assertIn("CLI sales launch confirmation command:pass", launcher_details)
         self.assertIn("CLI sales launch confirmation output:pass", launcher_details)
+        self.assertIn("CLI sales launch confirmation note guard:pass", launcher_details)
+        self.assertIn("CLI sales launch note required help:pass", launcher_details)
         self.assertIn("CLI latest sales launch confirmation command:pass", launcher_details)
         self.assertIn("sales launch checker:pass", launcher_details)
         self.assertIn("sales launch checklist writer:pass", launcher_details)
@@ -6038,6 +7702,12 @@ tags:
         self.assertIn("sales launch confirmation lister:pass", launcher_details)
         self.assertIn("sales launch confirmation latest finder:pass", launcher_details)
         self.assertIn("sales launch confirmation seller-only guard:pass", launcher_details)
+        self.assertIn("sales launch confirmation note required:pass", launcher_details)
+        self.assertIn("sales launch confirmation note validator:pass", launcher_details)
+        self.assertIn("sales launch confirmation delivery match guidance:pass", launcher_details)
+        self.assertIn("sales launch confirmation delivery match validator:pass", launcher_details)
+        self.assertIn("sales launch confirmation blocker guard:pass", launcher_details)
+        self.assertIn("sales launch confirmation blocker guidance:pass", launcher_details)
         self.assertIn("sales launch depends on final review:pass", launcher_details)
         self.assertIn("sales launch listing kit gate:pass", launcher_details)
         self.assertIn("sales launch listing kit buyer guard:pass", launcher_details)
@@ -6080,18 +7750,34 @@ tags:
         self.assertIn("cleanup report estimated reclaim summary:pass", launcher_details)
         self.assertIn("cleanup report reason breakdown:pass", launcher_details)
         self.assertIn("cleanup report dry-run safety guidance:pass", launcher_details)
+        self.assertIn("cleanup report explicit apply command:pass", launcher_details)
+        self.assertIn("cleanup privacy report target guidance:pass", launcher_details)
+        self.assertIn("cleanup privacy priority display guidance:pass", launcher_details)
+        self.assertIn("cleanup release package target guidance:pass", launcher_details)
+        self.assertIn("cleanup privacy RC recheck guidance:pass", launcher_details)
+        self.assertIn("cleanup privacy sales handoff regeneration guidance:pass", launcher_details)
+        self.assertIn("cleanup report bounded item list:pass", launcher_details)
+        self.assertIn("cleanup report hidden item summary:pass", launcher_details)
+        self.assertIn("cleanup report project-relative paths:pass", launcher_details)
         self.assertIn("cleanup privacy summary grouping:pass", launcher_details)
         self.assertIn("cleanup confirmation formatter:pass", launcher_details)
         self.assertIn("cleanup confirmation irreversible warning:pass", launcher_details)
+        self.assertIn("cleanup confirmation release package warning:pass", launcher_details)
         self.assertIn("cleanup shared byte formatter:pass", launcher_details)
         self.assertIn("readiness privacy cleanup estimated reclaim:pass", launcher_details)
         self.assertIn("readiness privacy cleanup preview safety:pass", launcher_details)
+        self.assertIn("readiness privacy cleanup apply guidance:pass", launcher_details)
+        self.assertIn("readiness privacy cleanup RC recheck guidance:pass", launcher_details)
         self.assertIn("readiness article content next focus:pass", launcher_details)
         self.assertIn("readiness article content anonymous focus:pass", launcher_details)
         self.assertIn("GUI cleanup confirmation summary:pass", launcher_details)
+        self.assertIn("GUI privacy cleanup report context:pass", launcher_details)
+        self.assertIn("GUI privacy cleanup apply command guidance:pass", launcher_details)
         self.assertIn("GUI starter pack action:pass", launcher_details)
         self.assertIn("GUI starter cleanup action:pass", launcher_details)
         self.assertIn("GUI repair action:pass", launcher_details)
+        self.assertIn("GUI repair install info guidance:pass", launcher_details)
+        self.assertIn("GUI troubleshoot install info guidance:pass", launcher_details)
         self.assertIn("GUI troubleshoot action:pass", launcher_details)
         self.assertIn("GUI acceptance action:pass", launcher_details)
         self.assertIn("GUI acceptance full action:pass", launcher_details)
@@ -6100,6 +7786,7 @@ tags:
         self.assertIn("GUI commercial setup fields:pass", launcher_details)
         self.assertIn("GUI commercial setup template action:pass", launcher_details)
         self.assertIn("GUI commercial setup template apply action:pass", launcher_details)
+        self.assertIn("GUI commercial setup template apply error details:pass", launcher_details)
         self.assertIn("GUI commercial setup status action:pass", launcher_details)
         self.assertIn("GUI commercial setup save feedback:pass", launcher_details)
         self.assertIn("GUI commercial setup progress panel:pass", launcher_details)
@@ -6459,7 +8146,12 @@ tags:
         self.assertIn("GUI smoke home sales timeline count:pass", launcher_details)
         self.assertIn("GUI smoke home sales timeline chars:pass", launcher_details)
         self.assertIn("GUI home sales next action:pass", launcher_details)
+        self.assertIn("GUI home sales privacy cleanup next action:pass", launcher_details)
         self.assertIn("GUI home sales lightweight summary:pass", launcher_details)
+        self.assertIn("GUI home sales RC target:pass", launcher_details)
+        self.assertIn("GUI home sales RC target next action:pass", launcher_details)
+        self.assertIn("GUI home sales RC checkpoint:pass", launcher_details)
+        self.assertIn("GUI home sales combined seller setup guidance:pass", launcher_details)
         self.assertIn("GUI home commercial setup focus summary:pass", launcher_details)
         self.assertIn("GUI home release check summary:pass", launcher_details)
         self.assertIn("GUI home release check status pill:pass", launcher_details)
@@ -6470,6 +8162,7 @@ tags:
         self.assertIn("GUI home release check timeline freshness:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic action:pass", launcher_details)
         self.assertIn("GUI home commercial setup dynamic button:pass", launcher_details)
+        self.assertIn("GUI home commercial setup action summary:pass", launcher_details)
         self.assertIn("GUI sales handoff action:pass", launcher_details)
         self.assertIn("GUI sales handoff buyer extract action:pass", launcher_details)
         self.assertIn("GUI sales handoff buyer verify action:pass", launcher_details)
@@ -6516,6 +8209,8 @@ tags:
         self.assertIn("GUI sales launch action:pass", launcher_details)
         self.assertIn("GUI sales launch checklist action:pass", launcher_details)
         self.assertIn("GUI sales launch confirmation action:pass", launcher_details)
+        self.assertIn("GUI sales launch confirmation note guard:pass", launcher_details)
+        self.assertIn("GUI sales launch confirmation exact values prompt:pass", launcher_details)
         self.assertIn("GUI sales launch confirmation recent report:pass", launcher_details)
         self.assertIn("GUI sales launch confirmation copy action:pass", launcher_details)
         self.assertIn("GUI sales launch confirmation copy clipboard:pass", launcher_details)
@@ -6551,9 +8246,14 @@ tags:
         self.assertIn("README recovery kit report guidance:pass", launcher_details)
         self.assertIn("README recovery kit GUI report guidance:pass", launcher_details)
         self.assertIn("README self-test launcher health guidance:pass", launcher_details)
+        self.assertIn("README self-test install helper guidance:pass", launcher_details)
+        self.assertIn("README self-test privacy cleanup guidance:pass", launcher_details)
         self.assertIn("README home recent reports guidance:pass", launcher_details)
         self.assertIn("README home recent reports copy guidance:pass", launcher_details)
         self.assertIn("README home recent reports buyer delivery guidance:pass", launcher_details)
+        self.assertIn("README install info diagnostic guidance:pass", launcher_details)
+        self.assertIn("README install helper diagnostic guidance:pass", launcher_details)
+        self.assertIn("README preinstall backup diagnostic guidance:pass", launcher_details)
         self.assertIn("README first-run actionable filter guidance:pass", launcher_details)
         self.assertIn("README repair guidance:pass", launcher_details)
         self.assertIn("README troubleshoot guidance:pass", launcher_details)
@@ -6587,6 +8287,7 @@ tags:
         self.assertIn("README sales listing verify guidance:pass", launcher_details)
         self.assertIn("README sales finalize guidance:pass", launcher_details)
         self.assertIn("README sales finalize template apply guidance:pass", launcher_details)
+        self.assertIn("README sales finalize no separate release ZIP guidance:pass", launcher_details)
         self.assertIn("README buyer delivery ZIP path copy guidance:pass", launcher_details)
         self.assertIn("README buyer delivery ZIP location guidance:pass", launcher_details)
         self.assertIn("README buyer delivery sheet copy guidance:pass", launcher_details)
@@ -6624,6 +8325,9 @@ tags:
         self.assertIn("support guide send checklist guidance:pass", launcher_details)
         self.assertIn("support guide note login safety guidance:pass", launcher_details)
         self.assertIn("support guide note login default browser guidance:pass", launcher_details)
+        self.assertIn("support guide troubleshoot install info guidance:pass", launcher_details)
+        self.assertIn("support guide install helper diagnostic guidance:pass", launcher_details)
+        self.assertIn("support guide troubleshoot preinstall backup guidance:pass", launcher_details)
         self.assertIn("support guide GUI log display guidance:pass", launcher_details)
         self.assertIn("support guide GUI log copy guidance:pass", launcher_details)
         self.assertIn("support guide GUI log folder guidance:pass", launcher_details)
@@ -6639,6 +8343,8 @@ tags:
         self.assertIn("support guide home recent reports guidance:pass", launcher_details)
         self.assertIn("support guide home recent reports copy guidance:pass", launcher_details)
         self.assertIn("support guide self-test launcher health guidance:pass", launcher_details)
+        self.assertIn("support guide self-test install helper guidance:pass", launcher_details)
+        self.assertIn("support guide self-test privacy cleanup guidance:pass", launcher_details)
         self.assertIn("privacy guide support send checklist guidance:pass", launcher_details)
         self.assertIn("product readiness acceptance full command:pass", launcher_details)
         self.assertIn("product readiness commercial command:pass", launcher_details)
@@ -6656,6 +8362,9 @@ tags:
         self.assertIn("product readiness home recent reports copy guidance:pass", launcher_details)
         self.assertIn("product readiness first-run actionable filter guidance:pass", launcher_details)
         self.assertIn("product readiness self-test launcher health guidance:pass", launcher_details)
+        self.assertIn("product readiness self-test install helper guidance:pass", launcher_details)
+        self.assertIn("product readiness self-test privacy cleanup guidance:pass", launcher_details)
+        self.assertIn("product readiness install helper diagnostic guidance:pass", launcher_details)
         self.assertIn("product readiness CI safe display smoke guidance:pass", launcher_details)
         self.assertIn("product readiness release check safe display smoke guidance:pass", launcher_details)
         self.assertIn("product readiness GUI full release check guidance:pass", launcher_details)
@@ -6677,6 +8386,7 @@ tags:
         self.assertIn("product readiness sales listing verify command:pass", launcher_details)
         self.assertIn("product readiness sales finalize command:pass", launcher_details)
         self.assertIn("product readiness sales finalize template apply command:pass", launcher_details)
+        self.assertIn("product readiness sales finalize no separate release ZIP guidance:pass", launcher_details)
         self.assertIn("product readiness buyer delivery ZIP path copy guidance:pass", launcher_details)
         self.assertIn("product readiness buyer delivery ZIP location guidance:pass", launcher_details)
         self.assertIn("product readiness buyer delivery sheet copy guidance:pass", launcher_details)
@@ -6696,6 +8406,7 @@ tags:
         self.assertIn("product readiness sales launch confirmation copy guidance:pass", launcher_details)
         self.assertIn("product readiness sales evidence manifest guidance:pass", launcher_details)
         self.assertIn("release starter pack guidance:pass", launcher_details)
+        self.assertIn("release package duplicate path safety:pass", launcher_details)
         self.assertIn("release repair guidance:pass", launcher_details)
         self.assertIn("release troubleshoot guidance:pass", launcher_details)
         self.assertIn("release buyer acceptance checklist:pass", launcher_details)
@@ -6715,9 +8426,37 @@ tags:
         self.assertIn("support bundle GUI log privacy mask:pass", launcher_details)
         self.assertIn("support bundle GUI log verification detail:pass", launcher_details)
         self.assertIn("support bundle GUI log summary reader:pass", launcher_details)
+        self.assertIn("shared archive name safety helper:pass", launcher_details)
+        self.assertIn("shared archive normalized duplicate safety:pass", launcher_details)
+        self.assertIn("shared archive entry type safety helper:pass", launcher_details)
+        self.assertIn("support bundle duplicate entry safety:pass", launcher_details)
+        self.assertIn("backup restore special entry safety:pass", launcher_details)
+        self.assertIn("backup restore normalized collision safety:pass", launcher_details)
+        self.assertIn("backup restore unsafe examples in error:pass", launcher_details)
+        self.assertIn("CLI backup restore friendly error:pass", launcher_details)
+        self.assertIn("CLI backup restore inspect hint:pass", launcher_details)
+        self.assertIn("CLI backup inspect friendly error:pass", launcher_details)
+        self.assertIn("CLI backup inspect blocked status:pass", launcher_details)
+        self.assertIn("GUI backup restore blocked message:pass", launcher_details)
+        self.assertIn("GUI backup restore blockers:pass", launcher_details)
+        self.assertIn("GUI backup restore status line:pass", launcher_details)
+        self.assertIn("backup unsafe entry formatter:pass", launcher_details)
+        self.assertIn("backup inspection restore blockers:pass", launcher_details)
+        self.assertIn("backup inspection restore blockers heading:pass", launcher_details)
+        self.assertIn("backup inspection restore status:pass", launcher_details)
+        self.assertIn("backup inspection restore status line:pass", launcher_details)
+        self.assertIn("quickstart backup restore status:pass", launcher_details)
+        self.assertIn("quickstart backup restore blockers:pass", launcher_details)
+        self.assertIn("readiness backup unsafe examples:pass", launcher_details)
+        self.assertIn("readiness backup restore status:pass", launcher_details)
+        self.assertIn("readiness backup restore blockers:pass", launcher_details)
         self.assertIn("support bundle send-only guidance:pass", launcher_details)
         self.assertIn("troubleshoot privacy first NG detail:pass", launcher_details)
         self.assertIn("troubleshoot privacy specific action:pass", launcher_details)
+        self.assertIn("troubleshoot privacy cleanup action:pass", launcher_details)
+        self.assertIn("troubleshoot cleanup preview action:pass", launcher_details)
+        self.assertIn("troubleshoot cleanup GUI guidance:pass", launcher_details)
+        self.assertIn("troubleshoot cleanup include releases guidance:pass", launcher_details)
         self.assertIn("support bundle freshness threshold:pass", launcher_details)
         self.assertIn("support bundle stale helper:pass", launcher_details)
         self.assertIn("support bundle verification freshness detail:pass", launcher_details)
@@ -6727,21 +8466,54 @@ tags:
         self.assertIn("diagnostic support fast omissions:pass", launcher_details)
         self.assertIn("diagnostic support bundle age summary:pass", launcher_details)
         self.assertIn("diagnostic support bundle freshness summary:pass", launcher_details)
+        self.assertIn("diagnostic backup unsafe examples:pass", launcher_details)
+        self.assertIn("diagnostic preview backup unsafe examples:pass", launcher_details)
+        self.assertIn("diagnostic privacy cleanup RC recheck summary:pass", launcher_details)
+        self.assertIn("diagnostic privacy cleanup apply summary:pass", launcher_details)
+        self.assertIn("diagnostic backup restore status:pass", launcher_details)
+        self.assertIn("diagnostic backup restore blockers:pass", launcher_details)
         self.assertIn("first-run support bundle freshness warning:pass", launcher_details)
         self.assertIn("first-run display readability item:pass", launcher_details)
         self.assertIn("first-run display safe display action:pass", launcher_details)
         self.assertIn("first-run nested NG detail:pass", launcher_details)
+        self.assertIn("first-run deduplicated next actions:pass", launcher_details)
+        self.assertIn("first-run command-keyed next actions:pass", launcher_details)
+        self.assertIn("first-run contained next action collapse:pass", launcher_details)
+        self.assertIn("first-run next actions GUI guidance:pass", launcher_details)
+        self.assertIn("first-run privacy cleanup GUI target:pass", launcher_details)
         self.assertIn("quickstart note login safety guide:pass", launcher_details)
+        self.assertIn("quickstart content inspection GUI guidance:pass", launcher_details)
+        self.assertIn("quickstart content polish GUI guidance:pass", launcher_details)
         self.assertIn("first-run note login safety guide:pass", launcher_details)
         self.assertIn("acceptance support bundle freshness warning:pass", launcher_details)
         self.assertIn("acceptance display readability item:pass", launcher_details)
         self.assertIn("acceptance display safe display action:pass", launcher_details)
         self.assertIn("acceptance nested NG detail:pass", launcher_details)
+        self.assertIn("acceptance privacy cleanup GUI target:pass", launcher_details)
         self.assertIn("acceptance deduplicated next actions:pass", launcher_details)
         self.assertIn("acceptance GUI smoke summary:pass", launcher_details)
         self.assertIn("acceptance Japanese display summary:pass", launcher_details)
         self.assertIn("self-test privacy first NG detail:pass", launcher_details)
+        self.assertIn("self-test deduplicated next actions:pass", launcher_details)
         self.assertIn("self-test privacy specific action:pass", launcher_details)
+        self.assertIn("privacy failed cleanup shared action helper:pass", launcher_details)
+        self.assertIn("privacy failed cleanup apply command guidance:pass", launcher_details)
+        self.assertIn("privacy failed cleanup GUI guidance:pass", launcher_details)
+        self.assertIn("privacy failed cleanup RC recheck guidance:pass", launcher_details)
+        self.assertIn("self-test privacy cleanup action:pass", launcher_details)
+        self.assertIn("commercial readiness deduplicated next actions:pass", launcher_details)
+        self.assertIn("commercial readiness command-keyed next actions:pass", launcher_details)
+        self.assertIn("commercial readiness GUI next action targets:pass", launcher_details)
+        self.assertIn("commercial readiness RC milestone:pass", launcher_details)
+        self.assertIn("commercial readiness RC path summary:pass", launcher_details)
+        self.assertIn("commercial readiness RC checkpoint:pass", launcher_details)
+        self.assertIn("commercial readiness item template GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness item review GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness acceptance GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness acceptance report command:pass", launcher_details)
+        self.assertIn("commercial readiness install smoke GUI guidance:pass", launcher_details)
+        self.assertIn("commercial readiness contained next action collapse:pass", launcher_details)
+        self.assertIn("commercial readiness acceptance first NG detail:pass", launcher_details)
         self.assertIn("recovery kit workflow:pass", launcher_details)
         self.assertIn("recovery kit support bundle fallback:pass", launcher_details)
         self.assertIn("recovery kit report writer:pass", launcher_details)
@@ -6760,6 +8532,17 @@ tags:
         self.assertIn("installer safe display shortcut name:pass", launcher_details)
         self.assertIn("installer custom desktop shortcut directory:pass", launcher_details)
         self.assertIn("installer custom start menu shortcut directory:pass", launcher_details)
+        self.assertIn("install info status model:pass", launcher_details)
+        self.assertIn("install info inspector:pass", launcher_details)
+        self.assertIn("install info invalid JSON diagnostic:pass", launcher_details)
+        self.assertIn("install info preinstall backup missing diagnostic:pass", launcher_details)
+        self.assertIn("install info invalid archive helper:pass", launcher_details)
+        self.assertIn("install info recovery lister:pass", launcher_details)
+        self.assertIn("diagnostics install info status:pass", launcher_details)
+        self.assertIn("diagnostics install info recovery count:pass", launcher_details)
+        self.assertIn("diagnostics install helper item:pass", launcher_details)
+        self.assertIn("diagnostics install helper safe display:pass", launcher_details)
+        self.assertIn("diagnostics install helper uninstall:pass", launcher_details)
         self.assertIn("uninstaller safe display shortcut cleanup:pass", launcher_details)
         self.assertIn("uninstaller custom desktop shortcut directory:pass", launcher_details)
         self.assertIn("uninstaller custom start menu shortcut directory:pass", launcher_details)
@@ -6791,6 +8574,23 @@ tags:
         self.assertIn("有料エリアまたは購入後に見える本文", text)
         self.assertIn("外部ダウンロードURL", text)
 
+    def test_sales_launch_confirmation_rejects_blocked_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            report = run_sales_launch_check(project)
+
+            with self.assertRaisesRegex(ValueError, "sales launch confirmation requires zero launch blockers"):
+                write_sales_launch_confirmation(
+                    project,
+                    report=report,
+                    note="checkout preview checked: missing-buyer.zip / abc123",
+                )
+
+            confirmations = list_sales_launch_confirmations(project)
+
+        self.assertTrue(has_sales_launch_blockers(report))
+        self.assertEqual(confirmations, [])
+
     def test_update_article_metadata_preserves_body(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -6811,6 +8611,37 @@ tags:
             self.assertEqual(loaded.tags, ["note", "自動化"])
             self.assertEqual(loaded.cover, "cover.png")
             self.assertEqual(loaded.body, original_body)
+
+    def test_cleanup_report_limits_file_list_and_summarizes_hidden_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            items = []
+            for index in range(3):
+                path = project / f"artifact-{index}.txt"
+                path.write_text("x", encoding="utf-8")
+                items.append(
+                    CleanupItem(
+                        path=path,
+                        size_bytes=path.stat().st_size,
+                        reason="privacy audit NG: sales handoff privacy: sample",
+                    )
+                )
+
+            report = format_cleanup_report(
+                CleanupResult(items=items, deleted=0, reclaimed_bytes=0),
+                max_items=2,
+                project_dir=project,
+                apply_command="auto-note cleanup --project-dir . --apply",
+            )
+
+        self.assertIn("artifact-0.txt", report)
+        self.assertIn("artifact-1.txt", report)
+        self.assertNotIn("artifact-2.txt", report)
+        self.assertNotIn(str(project), report)
+        self.assertIn("実行コマンド例: auto-note cleanup --project-dir . --apply", report)
+        self.assertIn("ほか 1件", report)
+        self.assertIn("種類別サマリー", report)
+        self.assertIn("sales handoff privacy: 3件", report)
 
     def test_cleanup_generated_files_targets_old_helper_html(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -6989,13 +8820,18 @@ tags:
             )
             diagnostics_dir = project / ".auto-note" / "diagnostics"
             support_dir = project / ".auto-note" / "support"
+            sales_dir = project / ".auto-note" / "sales"
             diagnostics_dir.mkdir(parents=True)
             support_dir.mkdir(parents=True)
+            sales_dir.mkdir(parents=True)
             leaked_diagnostic = diagnostics_dir / "auto-note-diagnostic-leak.zip"
             with zipfile.ZipFile(leaked_diagnostic, "w") as archive:
                 archive.writestr("diagnostics.txt", f"path={project}\nfile={article.name}\n")
             leaked_request = support_dir / "support-request-leak.md"
             leaked_request.write_text(f"title=秘密の整理対象記事タイトル\n", encoding="utf-8")
+            broken_handoff = sales_dir / "auto-note-sales-handoff-20990101-010000.zip"
+            with zipfile.ZipFile(broken_handoff, "w") as archive:
+                archive.writestr("README.md", "incomplete")
             (project / "src" / "auto_note").mkdir(parents=True)
             (project / "src" / "auto_note" / "__init__.py").write_text("", encoding="utf-8")
             (project / "auto-note-gui.bat").write_text("@echo off\n", encoding="utf-8")
@@ -7010,6 +8846,7 @@ tags:
                 privacy_failed=True,
                 include_releases=True,
             )
+            ordered_privacy_items = collect_privacy_failed_artifacts(project, include_releases=True)
             release_confirmation = format_cleanup_confirmation(release_preview, privacy_failed=True)
             cli_output = io.StringIO()
             with redirect_stdout(cli_output):
@@ -7025,33 +8862,76 @@ tags:
             readiness = run_readiness(project)
             readiness_text = format_readiness_report(readiness)
             result = cleanup_generated_files(project, dry_run=False, privacy_failed=True, include_releases=True)
+            applied_report = format_cleanup_report(
+                result,
+                dry_run=False,
+                privacy_failed=True,
+                include_releases=True,
+                project_dir=project,
+            )
             diagnostic_deleted = not leaked_diagnostic.exists()
             request_deleted = not leaked_request.exists()
+            handoff_deleted = not broken_handoff.exists()
             release_deleted = not release.exists()
 
         preview_paths = {item.path.name for item in preview.items}
         release_preview_paths = {item.path.name for item in release_preview.items}
         self.assertIn(leaked_diagnostic.name, preview_paths)
         self.assertIn(leaked_request.name, preview_paths)
+        self.assertIn(broken_handoff.name, preview_paths)
         self.assertNotIn(release.name, preview_paths)
         self.assertIn(release.name, release_preview_paths)
+        self.assertEqual(ordered_privacy_items[0].path.name, broken_handoff.name)
         self.assertTrue(all("privacy audit NG" in item.reason for item in release_preview.items))
         self.assertIn("プライバシー監査NG生成物を削除します。", release_confirmation)
         self.assertIn("privacy audit NG", release_confirmation)
+        self.assertIn("配布ZIPも削除対象に含まれます", release_confirmation)
         self.assertIn("この操作は元に戻せません", release_confirmation)
         self.assertEqual(code, 0)
         self.assertIn("privacy audit NG", cli_output.getvalue())
+        self.assertIn("対象: privacy-audit --all", cli_output.getvalue())
+        self.assertIn("配布ZIP: 対象に含めています", cli_output.getvalue())
+        self.assertIn("表示順: 販売/送付に近いNG", cli_output.getvalue())
+        self.assertNotIn(str(project), cli_output.getvalue())
+        self.assertIn(f".auto-note{os.sep}sales{os.sep}{broken_handoff.name}", cli_output.getvalue())
+        self.assertIn(
+            "実行コマンド例: auto-note cleanup --project-dir <project-dir> "
+            "--privacy-failed --include-releases --apply",
+            cli_output.getvalue(),
+        )
+        self.assertIn(
+            "RC再判定: auto-note commercial-readiness --project-dir <project-dir>",
+            cli_output.getvalue(),
+        )
+        self.assertIn(
+            "再生成: auto-note sales-handoff --project-dir <project-dir>",
+            cli_output.getvalue(),
+        )
+        self.assertLess(cli_output.getvalue().index(broken_handoff.name), cli_output.getvalue().index(release.name))
         self.assertIn("見込み解放容量:", cli_output.getvalue())
         self.assertIn("種類別:", cli_output.getvalue())
         self.assertIn("削除はまだ実行していません", cli_output.getvalue())
         self.assertTrue(any(item.name == "privacy cleanup" and item.status == "info" for item in readiness.items))
         self.assertIn("privacy cleanup", readiness_text)
-        self.assertIn("2 generated artifact(s), 1 release package(s)", readiness_text)
+        self.assertIn("3 generated artifact(s), 1 release package(s)", readiness_text)
         self.assertIn("estimated reclaim", readiness_text)
         self.assertIn("プレビューでは削除しません", readiness_text)
-        self.assertEqual(result.deleted, 3)
+        self.assertIn("auto-note cleanup --project-dir . --privacy-failed --include-releases --apply", readiness_text)
+        self.assertIn("auto-note commercial-readiness --project-dir .", readiness_text)
+        self.assertIn("削除したファイル一覧:", applied_report)
+        self.assertIn(
+            "RC再判定: auto-note commercial-readiness --project-dir <project-dir>",
+            applied_report,
+        )
+        self.assertIn(
+            "再生成: auto-note sales-handoff --project-dir <project-dir>",
+            applied_report,
+        )
+        self.assertNotIn(str(project), applied_report)
+        self.assertEqual(result.deleted, 4)
         self.assertTrue(diagnostic_deleted)
         self.assertTrue(request_deleted)
+        self.assertTrue(handoff_deleted)
         self.assertTrue(release_deleted)
 
     def test_export_article_inventory_csv(self) -> None:
@@ -7187,6 +9067,7 @@ tags:
             self.assertTrue(any(item.name == "latest backup" and item.status == "pass" for item in report.items))
             self.assertTrue(any(item.name == "privacy cleanup" and item.status == "pass" for item in report.items))
             self.assertIn(backup.name, text)
+            self.assertIn("restore status ready", text)
             self.assertIn("privacy cleanup", text)
             self.assertIn("next focus: score", text)
             self.assertIn("FIX", text)
@@ -7222,6 +9103,59 @@ tags:
         self.assertIn("Mode: APPLY", applied_text)
         self.assertEqual(code, 0)
         self.assertIn("Repair report / 自動修復", cli_output.getvalue())
+
+    def test_repair_archives_invalid_install_info(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            info_path = project / ".auto-note" / "install-info.json"
+            info_path.parent.mkdir(parents=True)
+            info_path.write_text("{bad json", encoding="utf-8")
+
+            preview = run_repair(project)
+            preview_text = format_repair_report(preview)
+            preview_recovery_files = list_install_info_recovery_files(project)
+            still_invalid = not inspect_install_info(project).ok
+            applied = run_repair(project, apply=True)
+            applied_text = format_repair_report(applied)
+            repaired_status = inspect_install_info(project)
+            recovery_files = list_install_info_recovery_files(project)
+            recovery_text = recovery_files[0].read_text(encoding="utf-8") if recovery_files else ""
+            troubleshoot_after = run_troubleshoot(project)
+            troubleshoot_item = next(item for item in troubleshoot_after.items if item.name == "install info")
+
+        self.assertTrue(still_invalid)
+        self.assertEqual(preview_recovery_files, [])
+        self.assertIn("[WARN] install info: invalid JSON", preview_text)
+        self.assertIn("can archive invalid install-info.json", preview_text)
+        self.assertTrue(repaired_status.ok)
+        self.assertIn("not created yet", repaired_status.detail)
+        self.assertEqual(len(recovery_files), 1)
+        self.assertEqual(recovery_text, "{bad json")
+        self.assertIn("archived invalid install-info.json", applied_text)
+        self.assertEqual(troubleshoot_item.status, "pass")
+
+    def test_repair_keeps_missing_preinstall_backup_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            info_path = project / ".auto-note" / "install-info.json"
+            info_path.parent.mkdir(parents=True)
+            info_path.write_text(
+                '{"installed_at":"2026-06-06T10:00:00","version":"0.1.0","preinstall_backup":"missing.zip"}',
+                encoding="utf-8",
+            )
+
+            applied = run_repair(project, apply=True)
+            applied_text = format_repair_report(applied)
+            status = inspect_install_info(project)
+            recovery_files = list_install_info_recovery_files(project)
+            info_still_exists = info_path.exists()
+
+        self.assertTrue(info_still_exists)
+        self.assertFalse(status.ok)
+        self.assertIn("preinstall backup missing: missing.zip", status.detail)
+        self.assertEqual(recovery_files, [])
+        self.assertIn("[WARN] install info: preinstall backup missing: missing.zip", applied_text)
+        self.assertIn("auto-note backup --project-dir .", applied_text)
 
     def test_recovery_kit_repairs_and_creates_support_bundle_when_needed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -7322,6 +9256,38 @@ tags:
         self.assertNotIn(str(project), text)
         self.assertIn("Troubleshooting report / トラブル診断", cli_output.getvalue())
 
+    def test_troubleshoot_surfaces_install_info_guidance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            run_setup_check(project, create=True)
+            info_path = project / ".auto-note" / "install-info.json"
+
+            info_path.write_text("{bad json", encoding="utf-8")
+            invalid_report = run_troubleshoot(project)
+            invalid_text = format_troubleshoot_report(invalid_report)
+            invalid_item = next(item for item in invalid_report.items if item.name == "install info")
+
+            info_path.write_text(
+                '{"installed_at":"2026-06-06T10:00:00","version":"0.1.0","preinstall_backup":"missing.zip"}',
+                encoding="utf-8",
+            )
+            missing_report = run_troubleshoot(project)
+            missing_text = format_troubleshoot_report(missing_report)
+            missing_item = next(item for item in missing_report.items if item.name == "install info")
+
+        self.assertEqual(invalid_report.status, "warn")
+        self.assertFalse(has_troubleshoot_blockers(invalid_report))
+        self.assertEqual(invalid_item.status, "warn")
+        self.assertIn("invalid JSON", invalid_item.detail)
+        self.assertIn("shortcuts\\install-auto-note.bat", invalid_item.action)
+        self.assertIn("[WARN] install info", invalid_text)
+        self.assertIn("auto-note diagnose --project-dir .", invalid_text)
+        self.assertEqual(missing_report.status, "warn")
+        self.assertEqual(missing_item.status, "warn")
+        self.assertIn("preinstall backup missing: missing.zip", missing_item.detail)
+        self.assertIn("auto-note backup --project-dir .", missing_item.action)
+        self.assertIn("更新前バックアップ", missing_text)
+
     def test_troubleshoot_surfaces_specific_privacy_failure_action(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -7333,16 +9299,46 @@ tags:
                 archive.writestr("README.md", "incomplete")
 
             report = run_troubleshoot(project)
+            release_report = run_troubleshoot(project, include_releases=True)
             text = format_troubleshoot_report(report)
+            diagnostic_preview = preview_diagnostic_report(project)
 
         item = next(item for item in report.items if item.name == "privacy audit")
+        cleanup_item = next(item for item in report.items if item.name == "privacy cleanup candidates")
+        release_cleanup_item = next(
+            item for item in release_report.items if item.name == "privacy cleanup candidates"
+        )
         self.assertEqual(report.status, "fail")
         self.assertTrue(has_troubleshoot_blockers(report))
         self.assertIn("first NG: sales handoff privacy", item.detail)
         self.assertIn("verification error", item.detail)
         self.assertIn("auto-note sales-handoff --project-dir .", item.action)
+        self.assertIn("auto-note cleanup --project-dir . --privacy-failed --include-releases", item.action)
+        self.assertIn("auto-note commercial-readiness --project-dir .", item.action)
+        self.assertIn("release packages excluded", cleanup_item.detail)
+        self.assertIn("auto-note cleanup --project-dir . --privacy-failed", cleanup_item.action)
+        self.assertIn("GUIでは「診断 > 危険生成物確認」", item.action)
+        self.assertIn("GUIでは「診断 > 危険生成物確認」", cleanup_item.action)
+        self.assertIn("同じコマンドに `--apply`", cleanup_item.action)
+        self.assertIn("配布ZIPも含めて確認", cleanup_item.action)
+        self.assertIn("auto-note cleanup --project-dir . --privacy-failed --include-releases", cleanup_item.action)
+        self.assertIn(
+            "auto-note cleanup --project-dir . --privacy-failed --include-releases",
+            release_cleanup_item.action,
+        )
+        self.assertNotIn("配布ZIPも含めて確認", release_cleanup_item.action)
         self.assertIn("first NG: sales handoff privacy", text)
         self.assertIn("auto-note sales-handoff --project-dir .", text)
+        self.assertIn("auto-note cleanup --project-dir . --privacy-failed --include-releases", text)
+        self.assertIn("auto-note commercial-readiness --project-dir .", text)
+        self.assertIn(
+            "privacy_failed_cleanup_apply: auto-note cleanup --project-dir . --privacy-failed --include-releases --apply",
+            diagnostic_preview,
+        )
+        self.assertIn(
+            "privacy_failed_cleanup_rc_recheck: auto-note commercial-readiness --project-dir .",
+            diagnostic_preview,
+        )
 
     def test_article_review_scores_and_suggests_next_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -7868,6 +9864,13 @@ publish: false
                 archive.writestr(".venv/pyvenv.cfg", "")
                 archive.writestr("desktop.lnk", "")
                 archive.writestr("../evil.txt", "")
+                archive.writestr("nested/", "")
+                link_info = zipfile.ZipInfo("latest-release")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "README.md")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("START_HERE.txt", "")
 
             errors = verify_release_package(package)
             text = "\n".join(errors)
@@ -7876,6 +9879,9 @@ publish: false
         self.assertIn("excluded path must not be included", text)
         self.assertIn("excluded file suffix must not be included", text)
         self.assertIn("unsafe archive path", text)
+        self.assertIn("non-file archive entry: nested/", errors)
+        self.assertIn("unsafe archive entry type: latest-release", errors)
+        self.assertIn("duplicate archive path: START_HERE.txt", errors)
         self.assertIn("manifest privacy flag must be false: includes_user_articles", text)
         self.assertIn("manifest privacy flag must be false: includes_generated_helpers", text)
         self.assertIn("manifest privacy flag must be false: includes_virtualenv", text)
@@ -7894,6 +9900,28 @@ publish: false
         self.assertEqual(code, 1)
         self.assertIn("unreadable package", error_text)
         self.assertIn("unreadable package", output)
+
+    def test_diagnostic_report_verification_rejects_special_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = Path(tmp) / "unsafe-diagnostic.zip"
+            with zipfile.ZipFile(report, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name in REQUIRED_DIAGNOSTIC_REPORT_FILES:
+                    archive.writestr(name, f"{name}\n")
+                archive.writestr("nested/", "")
+                link_info = zipfile.ZipInfo("latest-diagnostics")
+                link_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(link_info, "diagnostics.txt")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr("diagnostics.txt", "duplicate\n")
+
+            errors = verify_diagnostic_report(report)
+            verification_text = format_diagnostic_report_verification(report, errors)
+
+        self.assertIn("non-file archive entry: nested/", errors)
+        self.assertIn("unsafe archive entry type: latest-diagnostics", errors)
+        self.assertIn("duplicate file name: diagnostics.txt", errors)
+        self.assertIn("[NG] diagnostic report verification failed", verification_text)
 
 
 def _write_and_load(text: str):

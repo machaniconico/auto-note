@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .article import ArticleError, load_article
-from .backup import list_backups
+from .backup import backup_restore_blockers, format_backup_restore_status, inspect_backup, list_backups
 from .inspect import inspect_path
 from .manual import write_manual_post_helper
 from .review import review_path
@@ -184,7 +184,7 @@ def _article_check_item(articles_dir: Path, pattern: str, append_tags: bool) -> 
             "article check",
             "warn",
             f"{warnings} warning(s)",
-            "投稿前に警告内容を確認してください。",
+            "GUIのチェックタブで全体チェックを開き、警告内容を直してください。CLIでは `auto-note check .\\articles` で確認できます。",
         )
     return QuickstartItem("article check", "pass", f"{len(reports)} article(s) OK")
 
@@ -207,7 +207,7 @@ def _article_review_item(articles_dir: Path, pattern: str, append_tags: bool) ->
             "article review",
             "warn",
             f"average {average}/100, {blockers} article(s) need fixes, {ready}/{len(reviews)} ready",
-            "`auto-note review .\\articles` で改善項目を確認してください。",
+            "GUIのチェックタブでレビュー更新を開き、改善項目を確認してください。CLIでは `auto-note review .\\articles` を使えます。",
         )
     if ready == len(reviews):
         return QuickstartItem("article review", "pass", f"average {average}/100, all {len(reviews)} ready")
@@ -215,7 +215,7 @@ def _article_review_item(articles_dir: Path, pattern: str, append_tags: bool) ->
         "article review",
         "warn",
         f"average {average}/100, no blockers, {ready}/{len(reviews)} ready",
-        "投稿前に導入、まとめ、タグ、画像などの仕上げを確認してください。",
+        "GUIのチェックタブでレビュー更新を開き、導入、まとめ、タグ、画像などの仕上げを確認してください。",
     )
 
 
@@ -288,15 +288,38 @@ def _backup_item(project_dir: Path) -> QuickstartItem:
             "初回設定後にGUIのバックアップ作成、または `auto-note backup --project-dir .` を実行してください。",
         )
     latest = backups[0]
+    try:
+        inspection = inspect_backup(latest)
+    except Exception as exc:
+        return QuickstartItem(
+            "backup",
+            "fail",
+            f"{latest.name}: restore status blocked, unreadable backup ({exc})",
+            "GUIの診断タブでバックアップ確認を開き、新しいバックアップを作成してください。",
+        )
+    if not inspection.ok:
+        blockers = backup_restore_blockers(inspection)
+        detail = "; ".join(blockers) or "verification failed"
+        return QuickstartItem(
+            "backup",
+            "fail",
+            f"{latest.name}: restore status {format_backup_restore_status(inspection)}, {detail}",
+            "GUIの診断タブでバックアップ確認を開き、新しいバックアップを作成してください。",
+        )
     age_days = max(0, (datetime.now() - datetime.fromtimestamp(latest.stat().st_mtime)).days)
+    restore_status = format_backup_restore_status(inspection)
     if age_days > 7:
         return QuickstartItem(
             "backup",
             "warn",
-            f"{latest.name} ({age_days} days old)",
+            f"{latest.name} (restore status {restore_status}, {age_days} days old)",
             "投稿前や更新前に新しいバックアップを作成してください。",
         )
-    return QuickstartItem("backup", "pass", latest.name)
+    return QuickstartItem(
+        "backup",
+        "pass",
+        f"{latest.name} (restore status {restore_status}, {len(inspection.restorable_files)} file(s) verified)",
+    )
 
 
 def _score(items: list[QuickstartItem]) -> int:
