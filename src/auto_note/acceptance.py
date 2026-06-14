@@ -60,12 +60,18 @@ def run_acceptance_check(
         smoke_helper=smoke_helper,
         include_sales_handoffs=include_sales_handoffs,
     )
-    self_test = run_self_test(
-        project_dir,
-        create=create,
-        gui_smoke=gui_smoke,
-        include_sales_handoffs=include_sales_handoffs,
-    )
+    # Reuse the self-test run_first_run_checklist already computed (identical args)
+    # to avoid a second privacy audit + release verification. Recompute only when
+    # create=True, where the first pass may have created files and a fresh run is
+    # the original behavior.
+    self_test = first_run.self_test
+    if self_test is None or create:
+        self_test = run_self_test(
+            project_dir,
+            create=create,
+            gui_smoke=gui_smoke,
+            include_sales_handoffs=include_sales_handoffs,
+        )
     troubleshoot = run_troubleshoot(project_dir, include_sales_handoffs=include_sales_handoffs)
     items = [
         _first_run_item(first_run),

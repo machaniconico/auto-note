@@ -43,6 +43,7 @@ class FirstRunReport:
     self_test_score: int
     quickstart_score: int
     items: list[FirstRunItem]
+    self_test: SelfTestReport | None = None
 
     @property
     def ok(self) -> bool:
@@ -89,6 +90,7 @@ def run_first_run_checklist(
         self_test_score=self_test.score,
         quickstart_score=quickstart.score,
         items=items,
+        self_test=self_test,
     )
 
 
