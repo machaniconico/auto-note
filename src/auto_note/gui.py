@@ -5832,6 +5832,17 @@ class AutoNoteApp(tk.Tk):
         self._set_text(self.schedule_text, text)
 
     def refresh_home(self) -> None:
+        # Coalesce bursts of refresh_home() calls into one idle-time pass. Deferral
+        # is safe: no caller uses the return value or reads home state synchronously
+        # afterwards, and both update_idletasks() (smoke_gui) and the mainloop flush
+        # the idle callback, so tests and real launches are unaffected.
+        if getattr(self, "_home_refresh_pending", False):
+            return
+        self._home_refresh_pending = True
+        self.after_idle(self._do_refresh_home)
+
+    def _do_refresh_home(self) -> None:
+        self._home_refresh_pending = False
         if not hasattr(self, "home_text"):
             return
         articles = []
