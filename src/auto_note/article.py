@@ -115,14 +115,34 @@ def write_markdown(path: str | Path, metadata: dict[str, Any], body: str) -> Non
     write_text_atomic(source, f"---\n{frontmatter}\n---\n\n{body.strip()}\n")
 
 
+def _detect_newline(path: Path) -> str:
+    """Return the dominant newline of an existing file ("\\r\\n" or "\\n").
+    Defaults to "\\n" for missing/unreadable files."""
+    try:
+        with open(path, "rb") as handle:
+            chunk = handle.read(8192)
+    except OSError:
+        return "\n"
+    return "\r\n" if b"\r\n" in chunk else "\n"
+
+
 def write_text_atomic(path: str | Path, text: str, *, encoding: str = "utf-8") -> None:
     source = Path(path)
     source.parent.mkdir(parents=True, exist_ok=True)
+    # Preserve the existing file's newline style instead of forcing os.linesep
+    # (default text mode rewrote LF files to CRLF on Windows and CRLF to LF on
+    # Linux, producing whole-file spurious diffs on every save). New files use
+    # LF, matching the in-memory representation. newline="" disables the
+    # platform translation so the chosen ending is written verbatim.
+    newline = _detect_newline(source) if source.exists() else "\n"
+    if newline != "\n":
+        text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", newline)
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
             "w",
             encoding=encoding,
+            newline="",
             dir=source.parent,
             prefix=f".{source.name}.",
             suffix=".tmp",

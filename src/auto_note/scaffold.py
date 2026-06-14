@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import hashlib
 import re
 import unicodedata
 
@@ -110,9 +111,22 @@ def list_article_templates() -> list[tuple[str, str]]:
 
 
 def slugify(value: str) -> str:
-    normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", normalized).strip("-").lower()
-    return slug or "note"
+    # Keep readable characters (Japanese kana/kanji, letters, digits) in the
+    # filename instead of stripping all non-ASCII — the old NFKD+ascii-ignore
+    # turned every Japanese-only title into the generic "note", so they all
+    # collided. Sanitize only whitespace and characters that are unsafe in
+    # filenames on Windows/macOS/Linux. Fall back to a stable short hash (not a
+    # shared "note") when nothing printable remains, so distinct titles never
+    # collide.
+    normalized = unicodedata.normalize("NFKC", value)
+    cleaned = re.sub(r'[\x00-\x1f\x7f<>:"/\\|?*]+', "-", normalized)
+    cleaned = re.sub(r"[\s.]+", "-", cleaned)
+    slug = re.sub(r"-{2,}", "-", cleaned).strip("-").lower()
+    if not slug:
+        if not value.strip():
+            return "note"
+        return f"note-{hashlib.sha1(value.encode('utf-8')).hexdigest()[:8]}"
+    return slug
 
 
 def _next_available_path(path: Path) -> Path:

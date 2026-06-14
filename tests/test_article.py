@@ -10097,5 +10097,51 @@ def _png_bytes(*, width: int, height: int) -> bytes:
     )
 
 
+class SlugAndNewlineTests(unittest.TestCase):
+    def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
+        from auto_note.scaffold import slugify
+
+        # Japanese-only titles keep their characters instead of all collapsing
+        # to the generic "note".
+        self.assertEqual(slugify("記事について"), "記事について")
+        self.assertNotEqual(slugify("記事について"), slugify("別のタイトル"))
+        # Filesystem-unsafe characters are sanitized.
+        self.assertNotIn("/", slugify("a/b:c"))
+        self.assertNotIn(":", slugify("a/b:c"))
+        # ASCII behavior is unchanged (lowercased, hyphenated).
+        self.assertEqual(slugify("Hello World"), "hello-world")
+        # Empty / symbol-only titles fall back to distinct, non-colliding slugs.
+        self.assertEqual(slugify(""), "note")
+        self.assertTrue(slugify("///").startswith("note-"))
+        self.assertNotEqual(slugify("///"), slugify("***"))
+
+    def test_create_article_japanese_title_distinct_filenames(self) -> None:
+        from auto_note.scaffold import create_article
+
+        with tempfile.TemporaryDirectory() as tmp:
+            articles_dir = Path(tmp) / "articles"
+            first = create_article("猫の飼い方", articles_dir=articles_dir, tags=[])
+            second = create_article("犬の飼い方", articles_dir=articles_dir, tags=[])
+            # Different Japanese titles produce different filenames (no -note-N
+            # collision) and the title is readable in the name.
+            self.assertNotEqual(first.name, second.name)
+            self.assertIn("猫の飼い方", first.name)
+
+    def test_write_text_atomic_preserves_crlf_and_defaults_lf(self) -> None:
+        from auto_note.article import write_text_atomic
+
+        with tempfile.TemporaryDirectory() as tmp:
+            # New file defaults to LF regardless of platform.
+            lf_path = Path(tmp) / "new.md"
+            write_text_atomic(lf_path, "line1\nline2\n")
+            self.assertEqual(lf_path.read_bytes(), b"line1\nline2\n")
+
+            # Existing CRLF file keeps CRLF on rewrite (no spurious full-file diff).
+            crlf_path = Path(tmp) / "win.md"
+            crlf_path.write_bytes(b"old1\r\nold2\r\n")
+            write_text_atomic(crlf_path, "new1\nnew2\n")
+            self.assertEqual(crlf_path.read_bytes(), b"new1\r\nnew2\r\n")
+
+
 if __name__ == "__main__":
     unittest.main()
