@@ -1083,7 +1083,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home recent reports copy path clipboard",
-            "self.clipboard_append(str(path.resolve()))",
+            "self._copy_to_clipboard(str(path.resolve()))",
         )
     )
     checks.append(
@@ -1287,6 +1287,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "README.md",
             "README home operation summary copy guidance",
             "要約コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "README.md",
+            "README home operation summary save guidance",
+            "要約保存",
         )
     )
     checks.append(
@@ -5390,7 +5397,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI home operation summary clipboard",
-            "clipboard_append(summary_text)",
+            "self._copy_to_clipboard(summary_text)",
         )
     )
     checks.append(
@@ -5831,7 +5838,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI diagnostic ZIP path clipboard",
-            "self.clipboard_append(str(latest.resolve()))",
+            "self._copy_to_clipboard(str(latest.resolve()))",
         )
     )
     checks.append(
@@ -6097,7 +6104,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send copy latest path clipboard",
-            "self.clipboard_append(str(latest.resolve()))",
+            "self._copy_to_clipboard(str(latest.resolve()))",
         )
     )
     checks.append(
@@ -6118,7 +6125,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send copy contact clipboard",
-            "self.clipboard_append(contact)",
+            "self._copy_to_clipboard(contact)",
         )
     )
     checks.append(
@@ -6139,7 +6146,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI support send copy message clipboard",
-            "self.clipboard_append(message)",
+            "self._copy_to_clipboard(message)",
         )
     )
     checks.append(
@@ -6811,7 +6818,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI buyer delivery ZIP path copy clipboard",
-            "self.clipboard_append(str(copied_path))",
+            "self._copy_to_clipboard(str(copied_path))",
         )
     )
     checks.append(
@@ -6839,7 +6846,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI buyer delivery sheet copy clipboard",
-            "self.clipboard_append(sheet_text + \"\\n\")",
+            "self._copy_to_clipboard(sheet_text + \"\\n\")",
         )
     )
     checks.append(
@@ -6881,7 +6888,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI seller delivery receipt copy clipboard",
-            'self.clipboard_append(receipt_text.rstrip() + "\\n")',
+            'self._copy_to_clipboard(receipt_text.rstrip() + "\\n")',
         )
     )
     checks.append(
@@ -6909,7 +6916,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI seller order note copy clipboard",
-            'self.clipboard_append(order_note.rstrip() + "\\n")',
+            'self._copy_to_clipboard(order_note.rstrip() + "\\n")',
         )
     )
     checks.append(
@@ -7042,7 +7049,7 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
         _text_contains_check(
             project_dir / "src" / "auto_note" / "gui.py",
             "GUI sales launch confirmation copy clipboard",
-            'self.clipboard_append(confirmation_text.rstrip() + "\\n")',
+            'self._copy_to_clipboard(confirmation_text.rstrip() + "\\n")',
         )
     )
     checks.append(
@@ -7764,6 +7771,13 @@ def run_quality_checks(project_dir: Path, *, include_articles: bool = True) -> l
             project_dir / "docs" / "PRODUCT_READINESS.md",
             "product readiness home operation summary copy guidance",
             "要約コピー",
+        )
+    )
+    checks.append(
+        _text_contains_check(
+            project_dir / "docs" / "PRODUCT_READINESS.md",
+            "product readiness home operation summary save guidance",
+            "要約保存",
         )
     )
     checks.append(

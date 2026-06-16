@@ -1216,6 +1216,9 @@ class AutoNoteApp(tk.Tk):
         self._commercial_readiness_thread: threading.Thread | None = None
         self._readiness_thread: threading.Thread | None = None
         self._quickstart_thread: threading.Thread | None = None
+        self._quickstart_result: tuple[object | None, str, Exception | None] | None = None
+        self._quickstart_result_lock = threading.Lock()
+        self._quickstart_poll_job: str | None = None
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -5523,6 +5526,14 @@ class AutoNoteApp(tk.Tk):
             if self._autosave_job:
                 self.after_cancel(self._autosave_job)
                 self._autosave_job = None
+            if self._quickstart_poll_job:
+                try:
+                    self.after_cancel(self._quickstart_poll_job)
+                except tk.TclError:
+                    pass
+                self._quickstart_poll_job = None
+            with self._quickstart_result_lock:
+                self._quickstart_result = None
             self._quickstart_thread = None
             self._readiness_thread = None
             self._commercial_readiness_thread = None
@@ -8458,8 +8469,11 @@ class AutoNoteApp(tk.Tk):
             target=self._run_quickstart_worker,
             daemon=True,
         )
+        with self._quickstart_result_lock:
+            self._quickstart_result = None
         self._quickstart_thread = thread
         thread.start()
+        self._schedule_quickstart_poll()
 
     def _run_quickstart_worker(self) -> None:
         report = None
@@ -8470,10 +8484,31 @@ class AutoNoteApp(tk.Tk):
             text = format_quickstart_report(report)
         except Exception as exc:  # surfaced to the user on the main thread
             error = exc
+        with self._quickstart_result_lock:
+            self._quickstart_result = (report, text, error)
+
+    def _schedule_quickstart_poll(self) -> None:
         try:
-            self.after(0, lambda: self._finish_quickstart(report, text, error))
-        except tk.TclError:
+            self._quickstart_poll_job = self.after(50, self._poll_quickstart_worker)
+        except (tk.TclError, RuntimeError):
             self._quickstart_thread = None
+            self._quickstart_poll_job = None
+
+    def _poll_quickstart_worker(self) -> None:
+        self._quickstart_poll_job = None
+        with self._quickstart_result_lock:
+            result = self._quickstart_result
+            if result is not None:
+                self._quickstart_result = None
+        if result is None:
+            running = self._quickstart_thread
+            if running is not None and running.is_alive():
+                self._schedule_quickstart_poll()
+                return
+            self._quickstart_thread = None
+            return
+        report, text, error = result
+        self._finish_quickstart(report, text, error)
 
     def _finish_quickstart(self, report, text: str, error: Exception | None) -> None:
         self._quickstart_thread = None
