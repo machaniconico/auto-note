@@ -1273,7 +1273,8 @@ class AutoNoteApp(tk.Tk):
         self._browser_post_poll_job: str | None = None
         self._browser_close_event: threading.Event | None = None
         self._browser_post_publish = False
-        self._browser_post_article: Article | None = None
+        self._browser_post_articles: list[Article] = []
+        self._browser_post_batch = False
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -3153,6 +3154,9 @@ class AutoNoteApp(tk.Tk):
         ttk.Button(
             box, text="ブラウザで公開", command=lambda: self.post_to_browser_action(publish=True)
         ).pack(fill=tk.X, pady=(0, 6))
+        ttk.Button(box, text="ブラウザで一括公開", command=self.batch_post_to_browser_action).pack(
+            fill=tk.X, pady=(0, 6)
+        )
         ttk.Button(box, text="投稿準備", command=self.publish_ready_selected_to_tab).pack(fill=tk.X, pady=(0, 6))
         ttk.Button(box, text="改善プラン", command=self.improvement_plan_selected_to_tab).pack(
             fill=tk.X, pady=(0, 6)
@@ -5748,18 +5752,69 @@ class AutoNoteApp(tk.Tk):
         browser = self._load_browser_or_warn()
         if browser is None:
             return
-        self._browser_close_event = threading.Event()
-        self._browser_post_publish = publish
-        self._browser_post_article = article
-        self.notify(
+        notice = (
             "ブラウザでnoteに公開します… 完了までお待ちください。"
             if publish
-            else "ブラウザを起動してnoteへ下書きを作成します… 確認・公開後にブラウザを閉じてください。",
-            level="info",
+            else "ブラウザを起動してnoteへ下書きを作成します… 確認・公開後にブラウザを閉じてください。"
         )
+        self._start_browser_post([article], publish=publish, batch=False, browser=browser, notice=notice)
+
+    def batch_post_to_browser_action(self) -> None:
+        running = self._browser_post_thread
+        if running is not None and running.is_alive():
+            self.notify("ブラウザ投稿は実行中です。完了まで待ってください。", level="warning")
+            return
+        try:
+            report = build_publish_queue(self.project_dir)
+        except (OSError, ArticleError) as exc:
+            self.notify("投稿キューを作成できませんでした", level="error")
+            messagebox.showerror("一括公開エラー", str(exc), parent=self)
+            return
+        sources = [entry.source for entry in report.entries if entry.readiness == "postable"]
+        articles: list[Article] = []
+        for source in sources:
+            try:
+                articles.append(load_article(source))
+            except ArticleError:
+                continue
+        if not articles:
+            self.notify("公開できる準備OKの記事がありません", level="warning")
+            messagebox.showinfo(
+                "一括公開",
+                "投稿キューに『準備OK（postable）』の記事がありません。\n"
+                "記事を仕上げて準備OKにしてから実行してください。",
+                parent=self,
+            )
+            return
+        if not messagebox.askyesno(
+            "ブラウザで一括公開",
+            f"準備OKの記事 {len(articles)} 件をnoteに順に自動公開します。\n\n"
+            "公開後は取り消せません。1件でも失敗したらそこで停止します。\n"
+            "よろしいですか？",
+            parent=self,
+        ):
+            self.notify("一括公開を中止しました", level="info")
+            return
+        browser = self._load_browser_or_warn()
+        if browser is None:
+            return
+        self._start_browser_post(
+            articles,
+            publish=True,
+            batch=True,
+            browser=browser,
+            notice=f"{len(articles)}件をnoteに順に公開します… 完了までお待ちください。",
+        )
+
+    def _start_browser_post(self, articles, *, publish, batch, browser, notice) -> None:
+        self._browser_close_event = threading.Event()
+        self._browser_post_publish = publish
+        self._browser_post_batch = batch
+        self._browser_post_articles = list(articles)
+        self.notify(notice, level="info")
         thread = threading.Thread(
             target=self._run_browser_post_worker,
-            args=(browser, article, publish),
+            args=(browser, list(articles), publish),
             daemon=True,
         )
         with self._browser_post_lock:
@@ -5768,26 +5823,36 @@ class AutoNoteApp(tk.Tk):
         thread.start()
         self._schedule_browser_post_poll()
 
-    def _run_browser_post_worker(self, browser, article: Article, publish: bool) -> None:
-        url: str | None = None
-        error: Exception | None = None
-        try:
-            options = browser.BrowserOptions(
-                profile_dir=Path.home() / ".auto-note" / "browser"
-            )
-            close_event = self._browser_close_event
-            coro = browser.fill_note_post(
-                article,
-                publish=publish,
-                append_tags=self.settings.append_tags_by_default,
-                options=options,
-                should_close=(close_event.is_set if close_event is not None else None),
-            )
-            url = self._run_async_browser_coro(coro)
-        except Exception as exc:  # surfaced to the user on the main thread
-            error = exc
+    def _run_browser_post_worker(self, browser, articles, publish: bool) -> None:
+        outcomes: list[tuple[Article, str | None, Exception | None]] = []
+        close_event = self._browser_close_event
+        should_close = close_event.is_set if close_event is not None else None
+        for article in articles:
+            try:
+                options = browser.BrowserOptions(
+                    profile_dir=Path.home() / ".auto-note" / "browser"
+                )
+                coro = browser.fill_note_post(
+                    article,
+                    publish=publish,
+                    append_tags=self.settings.append_tags_by_default,
+                    options=options,
+                    should_close=should_close,
+                )
+                url = self._run_async_browser_coro(coro)
+                if publish:
+                    # URL auto-capture: record status=published + the URL on disk
+                    # (file I/O only; no Tk access from the worker thread).
+                    mark_article_published(article.source, url=url or "")
+                outcomes.append((article, url, None))
+            except Exception as exc:  # surfaced to the user on the main thread
+                outcomes.append((article, None, exc))
+                if publish:
+                    break  # stop a batch at the first failure
+            if close_event is not None and close_event.is_set():
+                break
         with self._browser_post_lock:
-            self._browser_post_result = (url, error)
+            self._browser_post_result = outcomes
 
     @staticmethod
     def _run_async_browser_coro(coro):
@@ -5827,53 +5892,70 @@ class AutoNoteApp(tk.Tk):
                 return
             self._browser_post_thread = None
             return
-        url, error = result
-        self._finish_browser_post(url, error)
+        self._finish_browser_post(result)
 
-    def _finish_browser_post(self, url: str | None, error: Exception | None) -> None:
+    def _finish_browser_post(self, outcomes) -> None:
         self._browser_post_thread = None
-        publish = self._browser_post_publish
-        article = self._browser_post_article
-        if error is not None:
-            action_label = "公開" if publish else "下書き作成"
-            self.notify(f"ブラウザでの{action_label}に失敗しました", level="error")
-            if type(error).__name__ == "NoteAutomationError":
-                # Login required or note's editor layout changed.
-                hint = (
-                    "noteにログインしていない場合は『noteログイン』から先にログインしてください。\n"
-                    "画面構成の変更などで失敗する場合は『投稿ヘルパー』をご利用ください。"
-                )
-            else:
-                # Playwright/browser launch or event-loop failure, etc.
-                hint = (
-                    "ブラウザの起動に失敗しました。Chromium 未導入の場合は\n"
-                    "  python -m playwright install chromium\n"
-                    "を実行してください。うまくいかない場合は『投稿ヘルパー』をご利用ください。"
-                )
-            messagebox.showerror("ブラウザ投稿エラー", f"{error}\n\n{hint}", parent=self)
+        if not outcomes:
             return
-        if publish and article is not None:
-            # URL auto-capture: write status=published + the captured URL back to
-            # the article, mirroring the manual mark_published flow.
-            try:
-                mark_article_published(article.source, url=url or "")
-                self.refresh_articles()
-                self.refresh_schedule()
-                self.refresh_home()
-                self.refresh_review_panel()
-            except OSError as exc:
-                self.notify("公開しましたが記事への記録に失敗しました", level="warning")
-                messagebox.showwarning("記録エラー", str(exc), parent=self)
+        if not self._browser_post_publish:
+            # Single draft mode: the browser was kept open for manual review.
+            _article, _url, error = outcomes[0]
+            if error is not None:
+                self.notify("ブラウザでの下書き作成に失敗しました", level="error")
+                self._show_browser_post_error(error)
                 return
-            if url:
-                self.notify(f"noteに公開し、URLを記録しました: {url}", level="success")
-            else:
-                self.notify(
-                    "noteに公開しました。URLを取得できなかったので、公開URLは手動で記録してください。",
-                    level="warning",
-                )
+            self.notify("noteに下書きを作成しました。ブラウザで確認・公開してください。", level="success")
             return
-        self.notify("noteに下書きを作成しました。ブラウザで確認・公開してください。", level="success")
+        # Publish mode (single or batch). The on-disk write-back already happened
+        # in the worker; here we refresh the UI and summarise.
+        succeeded = [o for o in outcomes if o[2] is None]
+        failed = [o for o in outcomes if o[2] is not None]
+        if succeeded:
+            self.refresh_articles()
+            self.refresh_schedule()
+            self.refresh_home()
+            self.refresh_review_panel()
+        if not failed:
+            if not self._browser_post_batch and len(succeeded) == 1:
+                _article, url, _error = succeeded[0]
+                if url:
+                    self.notify(f"noteに公開し、URLを記録しました: {url}", level="success")
+                else:
+                    self.notify(
+                        "noteに公開しました。URLを取得できなかったので、公開URLは手動で記録してください。",
+                        level="warning",
+                    )
+            else:
+                self.notify(f"{len(succeeded)}件をnoteに公開しました", level="success")
+            return
+        failed_article, _url, error = failed[0]
+        self.notify(
+            f"{len(succeeded)}件公開後に失敗しました" if succeeded else "ブラウザでの公開に失敗しました",
+            level="error",
+        )
+        self._show_browser_post_error(error, failed_article=failed_article, succeeded=len(succeeded))
+
+    def _show_browser_post_error(self, error, *, failed_article=None, succeeded=0) -> None:
+        if type(error).__name__ == "NoteAutomationError":
+            # Login required or note's editor/publish layout changed.
+            hint = (
+                "noteにログインしていない場合は『noteログイン』から先にログインしてください。\n"
+                "画面構成の変更などで失敗する場合は『投稿ヘルパー』をご利用ください。"
+            )
+        else:
+            # Playwright/browser launch or event-loop failure, etc.
+            hint = (
+                "ブラウザの起動に失敗しました。Chromium 未導入の場合は\n"
+                "  python -m playwright install chromium\n"
+                "を実行してください。うまくいかない場合は『投稿ヘルパー』をご利用ください。"
+            )
+        prefix = ""
+        if failed_article is not None and succeeded:
+            prefix = (
+                f"{succeeded}件は公開済みです。\n「{failed_article.title}」で停止しました。\n\n"
+            )
+        messagebox.showerror("ブラウザ投稿エラー", f"{prefix}{error}\n\n{hint}", parent=self)
 
     def open_dashboard(self) -> None:
         try:
@@ -7991,6 +8073,7 @@ class AutoNoteApp(tk.Tk):
             ("投稿ヘルパー", "選択記事の投稿ヘルパーを開く", self.open_helper),
             ("ブラウザで下書き作成", "選択記事をnoteのエディタへ自動入力してブラウザを開く", self.post_to_browser_action),
             ("ブラウザで公開", "選択記事をnoteへ自動入力して公開し、公開URLを記事に記録する", lambda: self.post_to_browser_action(publish=True)),
+            ("ブラウザで一括公開", "準備OKの記事をnoteへ順に自動公開し、公開URLを記録する", self.batch_post_to_browser_action),
             ("投稿準備", "選択記事の投稿前チェックを表示", self.publish_ready_selected_to_tab),
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),

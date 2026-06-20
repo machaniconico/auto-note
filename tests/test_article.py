@@ -10458,6 +10458,59 @@ class BrowserPostActionTests(unittest.TestCase):
             finally:
                 app.destroy()
 
+    def test_batch_publish_marks_all_postable_articles(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from auto_note import gui
+        from auto_note.article import load_article
+
+        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+            return f"https://note.com/u/n/{article.source.stem}" if publish else None
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "articles").mkdir(parents=True, exist_ok=True)
+            p1 = create_article("一括記事1", articles_dir=project / "articles", tags=["note"])
+            p2 = create_article("一括記事2", articles_dir=project / "articles", tags=["note"])
+            app = self._make_app(project)
+            try:
+                self._drain(app, "_home_refresh_thread")
+
+                fake_report = types.SimpleNamespace(
+                    entries=[
+                        types.SimpleNamespace(source=p1, readiness="postable"),
+                        types.SimpleNamespace(source=p2, readiness="postable"),
+                    ]
+                )
+                orig_import = gui._import_browser
+                orig_queue = gui.build_publish_queue
+                orig_ask = gui.messagebox.askyesno
+                gui._import_browser = lambda: fake_browser
+                gui.build_publish_queue = lambda *a, **k: fake_report
+                gui.messagebox.askyesno = lambda *a, **k: True
+                self.addCleanup(setattr, gui, "_import_browser", orig_import)
+                self.addCleanup(setattr, gui, "build_publish_queue", orig_queue)
+                self.addCleanup(setattr, gui.messagebox, "askyesno", orig_ask)
+
+                app.batch_post_to_browser_action()
+                self.assertIsNotNone(app._browser_post_thread)
+                self._drain(app, "_browser_post_thread")
+                self.assertIsNone(app._browser_post_thread)
+
+                for path in (p1, p2):
+                    reloaded = load_article(path)
+                    self.assertEqual(reloaded.status, "published")
+                    self.assertEqual(reloaded.published_url, f"https://note.com/u/n/{path.stem}")
+            finally:
+                app.destroy()
+
 
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
