@@ -10511,6 +10511,53 @@ class BrowserPostActionTests(unittest.TestCase):
             finally:
                 app.destroy()
 
+    def test_dry_run_screenshots_without_publishing(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from auto_note import gui
+        from auto_note.article import load_article
+
+        captured = {}
+
+        async def fake_fill(article, *, publish, append_tags, options, should_close=None, screenshot_path=None):
+            captured["publish"] = publish
+            captured["screenshot_path"] = screenshot_path
+            if screenshot_path is not None:
+                Path(screenshot_path).write_bytes(b"PNGDATA")
+            return None
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project_with_article(tmp)
+            app = self._make_app(project)
+            try:
+                self._drain(app, "_home_refresh_thread")
+                orig = gui._import_browser
+                orig_open = gui.webbrowser.open
+                gui._import_browser = lambda: fake_browser
+                gui.webbrowser.open = lambda *a, **k: None
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                self.addCleanup(setattr, gui.webbrowser, "open", orig_open)
+
+                app.dry_run_to_browser_action()
+                self.assertIsNotNone(app._browser_post_thread)
+                self._drain(app, "_browser_post_thread")
+
+                self.assertEqual(captured.get("publish"), False)
+                self.assertIsNotNone(captured.get("screenshot_path"))
+                self.assertTrue(Path(captured["screenshot_path"]).exists())
+                # Dry-run must NOT change the article's status.
+                article_path = next((project / "articles").glob("*.md"))
+                self.assertNotEqual(load_article(article_path).status, "published")
+            finally:
+                app.destroy()
+
     def test_scheduled_auto_publish_publishes_due_article(self) -> None:
         try:
             import tkinter  # noqa: F401

@@ -1280,6 +1280,7 @@ class AutoNoteApp(tk.Tk):
         self._browser_post_articles: list[Article] = []
         self._browser_post_batch = False
         self._browser_post_silent = False
+        self._browser_post_screenshot_dir: Path | None = None
         self._scheduled_publish_job: str | None = None
         self._scheduled_publish_warned = False
         self._auto_publish_attempted: set[str] = set()
@@ -3173,6 +3174,9 @@ class AutoNoteApp(tk.Tk):
             box, text="ブラウザで公開", command=lambda: self.post_to_browser_action(publish=True)
         ).pack(fill=tk.X, pady=(0, 6))
         ttk.Button(box, text="ブラウザで一括公開", command=self.batch_post_to_browser_action).pack(
+            fill=tk.X, pady=(0, 6)
+        )
+        ttk.Button(box, text="ブラウザでドライラン", command=self.dry_run_to_browser_action).pack(
             fill=tk.X, pady=(0, 6)
         )
         ttk.Button(box, text="投稿準備", command=self.publish_ready_selected_to_tab).pack(fill=tk.X, pady=(0, 6))
@@ -5838,13 +5842,41 @@ class AutoNoteApp(tk.Tk):
             notice=f"{len(articles)}件をnoteに順に公開します… 完了までお待ちください。",
         )
 
+    def dry_run_to_browser_action(self) -> None:
+        article = self.selected_or_warn(auto_select=True)
+        if not article:
+            return
+        running = self._browser_post_thread
+        if running is not None and running.is_alive():
+            self.notify("ブラウザ投稿は実行中です。完了まで待ってください。", level="warning")
+            return
+        browser = self._load_browser_or_warn()
+        if browser is None:
+            return
+        screenshot_dir = self.project_dir / ".auto-note" / "reports"
+        try:
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.notify("スクリーンショット保存先を作成できませんでした", level="error")
+            messagebox.showerror("ドライランエラー", str(exc), parent=self)
+            return
+        self._start_browser_post(
+            [article],
+            publish=False,
+            batch=False,
+            browser=browser,
+            notice="ブラウザでドライランを実行します（公開しません）… 完了後にスクショを開きます。",
+            screenshot_dir=screenshot_dir,
+        )
+
     def _start_browser_post(
-        self, articles, *, publish, batch, browser, notice, silent_errors=False
+        self, articles, *, publish, batch, browser, notice, silent_errors=False, screenshot_dir=None
     ) -> None:
         self._browser_close_event = threading.Event()
         self._browser_post_publish = publish
         self._browser_post_batch = batch
         self._browser_post_silent = silent_errors
+        self._browser_post_screenshot_dir = screenshot_dir
         self._browser_post_articles = list(articles)
         self.notify(notice, level="info")
         thread = threading.Thread(
@@ -5862,24 +5894,33 @@ class AutoNoteApp(tk.Tk):
         outcomes: list[tuple[Article, str | None, Exception | None]] = []
         close_event = self._browser_close_event
         should_close = close_event.is_set if close_event is not None else None
+        screenshot_dir = self._browser_post_screenshot_dir
         for article in articles:
             try:
                 options = browser.BrowserOptions(
                     profile_dir=Path.home() / ".auto-note" / "browser"
                 )
+                extra = {}
+                screenshot_path = None
+                if screenshot_dir is not None:
+                    screenshot_path = screenshot_dir / f"{article.source.stem}-dryrun.png"
+                    extra["screenshot_path"] = screenshot_path
                 coro = browser.fill_note_post(
                     article,
                     publish=publish,
                     append_tags=self.settings.append_tags_by_default,
                     options=options,
                     should_close=should_close,
+                    **extra,
                 )
-                url = self._run_async_browser_coro(coro)
+                result_value = self._run_async_browser_coro(coro)
                 if publish:
                     # URL auto-capture: record status=published + the URL on disk
                     # (file I/O only; no Tk access from the worker thread).
-                    mark_article_published(article.source, url=url or "")
-                outcomes.append((article, url, None))
+                    mark_article_published(article.source, url=result_value or "")
+                outcomes.append(
+                    (article, screenshot_path if screenshot_dir is not None else result_value, None)
+                )
             except Exception as exc:  # surfaced to the user on the main thread
                 outcomes.append((article, None, exc))
                 if publish:
@@ -5929,9 +5970,32 @@ class AutoNoteApp(tk.Tk):
             return
         self._finish_browser_post(result)
 
+    def _finish_browser_dry_run(self, outcomes) -> None:
+        failed = [o for o in outcomes if o[2] is not None]
+        if failed:
+            self.notify("ドライランに失敗しました", level="error")
+            self._show_browser_post_error(failed[0][2])
+            return
+        shots = [o[1] for o in outcomes if o[1] is not None]
+        if not shots:
+            self.notify(
+                "ドライランは完了しましたが、スクリーンショットは保存されませんでした", level="warning"
+            )
+            return
+        self.notify(
+            f"ドライラン完了: スクリーンショット{len(shots)}件を保存しました", level="success"
+        )
+        try:
+            webbrowser.open(Path(shots[0]).resolve().as_uri())
+        except OSError:
+            pass
+
     def _finish_browser_post(self, outcomes) -> None:
         self._browser_post_thread = None
         if not outcomes:
+            return
+        if self._browser_post_screenshot_dir is not None:
+            self._finish_browser_dry_run(outcomes)
             return
         if not self._browser_post_publish:
             # Single draft mode: the browser was kept open for manual review.
@@ -8229,6 +8293,7 @@ class AutoNoteApp(tk.Tk):
             ("ブラウザで下書き作成", "選択記事をnoteのエディタへ自動入力してブラウザを開く", self.post_to_browser_action),
             ("ブラウザで公開", "選択記事をnoteへ自動入力して公開し、公開URLを記事に記録する", lambda: self.post_to_browser_action(publish=True)),
             ("ブラウザで一括公開", "準備OKの記事をnoteへ順に自動公開し、公開URLを記録する", self.batch_post_to_browser_action),
+            ("ブラウザでドライラン", "選択記事をnoteへ入力した画面のスクショだけ撮る（公開しない）", self.dry_run_to_browser_action),
             ("投稿準備", "選択記事の投稿前チェックを表示", self.publish_ready_selected_to_tab),
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),

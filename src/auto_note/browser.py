@@ -92,6 +92,7 @@ async def fill_note_post(
     publish: bool,
     append_tags: bool,
     options: BrowserOptions,
+    screenshot_path: Path | None = None,
     should_close=None,  # Callable[[], bool] | None
     on_event=None,  # Callable[[str], None] | None
 ) -> str | None:
@@ -118,6 +119,16 @@ async def fill_note_post(
             image_paths = local_image_paths(article)
             if image_paths:
                 await _upload_images(page, image_paths, on_event)
+
+            if screenshot_path is not None:
+                try:
+                    await page.screenshot(path=str(screenshot_path), full_page=True)
+                    if on_event is not None:
+                        on_event(f"ドライランのスクリーンショットを保存しました: {screenshot_path.name}")
+                except (PlaywrightError, PlaywrightTimeoutError, OSError) as exc:
+                    if on_event is not None:
+                        on_event(f"スクリーンショットの保存に失敗しました: {exc}")
+                return None
 
             if publish:
                 await _publish(page)
