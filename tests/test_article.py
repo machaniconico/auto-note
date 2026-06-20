@@ -10181,6 +10181,60 @@ class ThreadedButtonTests(unittest.TestCase):
                 app.destroy()
 
 
+class RefreshArticlesGuardTests(unittest.TestCase):
+    """The dirty-fingerprint guard in refresh_articles must skip the per-row
+    rebuild when the directory listing and filters are unchanged, yet keep
+    article_paths and the tree populated, and rebuild when an article changes."""
+
+    def _make_app(self, project):
+        import tkinter as tk
+        from auto_note.gui import AutoNoteApp
+
+        try:
+            app = AutoNoteApp(project)
+        except tk.TclError:
+            self.skipTest("no Tk display available")
+        app.withdraw()
+        app.update_idletasks()
+        return app
+
+    def test_guard_skips_unchanged_rebuild_and_rebuilds_on_change(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "articles").mkdir(parents=True, exist_ok=True)
+            create_article("ガード記事1", articles_dir=project / "articles", tags=["note"])
+            app = self._make_app(project)
+            try:
+                app.refresh_articles()
+                fingerprint = app._articles_fingerprint
+                paths = list(app.article_paths)
+                rows = app.article_tree.get_children()
+                self.assertIsNotNone(fingerprint)
+                self.assertEqual(len(paths), 1)
+                self.assertEqual(len(rows), 1)
+
+                # Unchanged: the guard skips the rebuild but must leave
+                # article_paths and the populated tree exactly as they were.
+                app.refresh_articles()
+                self.assertEqual(app._articles_fingerprint, fingerprint)
+                self.assertEqual(list(app.article_paths), paths)
+                self.assertEqual(app.article_tree.get_children(), rows)
+
+                # Adding an article changes the fingerprint and forces a rebuild.
+                create_article("ガード記事2", articles_dir=project / "articles", tags=["note"])
+                app.refresh_articles()
+                self.assertNotEqual(app._articles_fingerprint, fingerprint)
+                self.assertEqual(len(app.article_paths), 2)
+                self.assertEqual(len(app.article_tree.get_children()), 2)
+            finally:
+                app.destroy()
+
+
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
         from auto_note.scaffold import slugify

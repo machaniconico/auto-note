@@ -1198,6 +1198,7 @@ class AutoNoteApp(tk.Tk):
         self.display_safe_mode_reason = "requested" if self.display_safe_mode else ""
         self.display_safe_mode_warnings: list[str] = []
         self.article_paths: list[Path] = []
+        self._articles_fingerprint: tuple | None = None
         self.selected_article: Article | None = None
         self.idea_ids: list[int] = []
         self._notification_job: str | None = None
@@ -4799,13 +4800,36 @@ class AutoNoteApp(tk.Tk):
 
     def refresh_articles(self) -> None:
         self.articles_dir.mkdir(parents=True, exist_ok=True)
-        paths = sorted(
-            self.articles_dir.glob(self.settings.article_glob),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
-        selected_path = self.selected_article.source if self.selected_article else None
+        stats: dict[Path, "os.stat_result"] = {}
+        for path in self.articles_dir.glob(self.settings.article_glob):
+            try:
+                stats[path] = path.stat()
+            except OSError:
+                continue
+        paths = sorted(stats, key=lambda path: stats[path].st_mtime, reverse=True)
+        # Always keep the cheap synchronous contract: callers read
+        # self.article_paths immediately after refresh_articles().
         self.article_paths = paths
+
+        # Dirty-fingerprint guard: skip the expensive per-row load_article +
+        # tree teardown/rebuild when the directory listing, the active filters,
+        # and the tag setting are all unchanged since the last rebuild and the
+        # tree is already populated. The trailing on_select_article() side
+        # effect (which several callers depend on) is preserved on both paths.
+        status_filter = self.status_filter_var.get() if hasattr(self, "status_filter_var") else "all"
+        article_filter = self.article_filter_var.get() if hasattr(self, "article_filter_var") else ""
+        fingerprint: tuple = (
+            tuple((p.name, stats[p].st_mtime_ns, stats[p].st_size) for p in paths),
+            status_filter,
+            article_filter,
+            self.settings.append_tags_by_default,
+        )
+        if fingerprint == self._articles_fingerprint and self.article_tree.get_children():
+            self.on_select_article()
+            return
+        self._articles_fingerprint = fingerprint
+
+        selected_path = self.selected_article.source if self.selected_article else None
         self.article_tree.delete(*self.article_tree.get_children())
 
         selected_item = ""
