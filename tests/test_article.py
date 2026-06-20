@@ -10285,6 +10285,134 @@ class HomeRefreshThreadingTests(unittest.TestCase):
                 app.destroy()
 
 
+class BrowserPostActionTests(unittest.TestCase):
+    """The 'ブラウザで下書き作成' action dispatches the Playwright fill onto a worker
+    thread, degrades gracefully when Playwright is missing, and respects the
+    pre-post safety gate. The live browser drive itself is not exercised here
+    (Playwright is optional and note.com needs login); a fake browser module is
+    injected at the _import_browser seam."""
+
+    def _make_app(self, project):
+        import tkinter as tk
+        from auto_note.gui import AutoNoteApp
+
+        try:
+            app = AutoNoteApp(project)
+        except tk.TclError:
+            self.skipTest("no Tk display available")
+        app.withdraw()
+        app.update_idletasks()
+        return app
+
+    def _drain(self, app, attr, timeout=15):
+        import time
+
+        deadline = time.monotonic() + timeout
+        while getattr(app, attr) is not None and time.monotonic() < deadline:
+            app.update()
+            time.sleep(0.01)
+
+    def _project_with_article(self, tmp):
+        project = Path(tmp)
+        (project / "articles").mkdir(parents=True, exist_ok=True)
+        create_article("ブラウザ投稿記事", articles_dir=project / "articles", tags=["note"])
+        return project
+
+    def test_dispatches_worker_and_finishes(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from auto_note import gui
+
+        calls = {}
+
+        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+            calls["publish"] = publish
+            calls["title"] = article.title
+            return None
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self._make_app(self._project_with_article(tmp))
+            try:
+                self._drain(app, "_home_refresh_thread")
+                orig = gui._import_browser
+                gui._import_browser = lambda: fake_browser
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                app.confirm_helper_safety = lambda article: True
+
+                app.post_to_browser_action()
+                self.assertIsNotNone(app._browser_post_thread)
+                self._drain(app, "_browser_post_thread")
+                self.assertIsNone(app._browser_post_thread)
+                self.assertEqual(calls.get("publish"), False)
+                self.assertEqual(calls.get("title"), "ブラウザ投稿記事")
+            finally:
+                app.destroy()
+
+    def test_warns_when_playwright_missing(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        from auto_note import gui
+
+        def raise_missing():
+            raise ModuleNotFoundError("No module named 'playwright'", name="playwright")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self._make_app(self._project_with_article(tmp))
+            try:
+                self._drain(app, "_home_refresh_thread")
+                orig = gui._import_browser
+                orig_info = gui.messagebox.showinfo
+                gui._import_browser = raise_missing
+                gui.messagebox.showinfo = lambda *a, **k: None
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                self.addCleanup(setattr, gui.messagebox, "showinfo", orig_info)
+                app.confirm_helper_safety = lambda article: True
+
+                app.post_to_browser_action()
+                # No worker started; the user was told to install Playwright.
+                self.assertIsNone(app._browser_post_thread)
+            finally:
+                app.destroy()
+
+    def test_blocked_by_safety_gate(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from auto_note import gui
+
+        async def fake_fill(article, **kw):
+            raise AssertionError("fill_note_post must not run when the safety gate blocks")
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self._make_app(self._project_with_article(tmp))
+            try:
+                self._drain(app, "_home_refresh_thread")
+                orig = gui._import_browser
+                gui._import_browser = lambda: fake_browser
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                app.confirm_helper_safety = lambda article: False
+
+                app.post_to_browser_action()
+                self.assertIsNone(app._browser_post_thread)
+            finally:
+                app.destroy()
+
+
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
         from auto_note.scaffold import slugify

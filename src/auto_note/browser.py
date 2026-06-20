@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -82,6 +83,72 @@ async def post_article(
                 input()
 
         await context.close()
+
+
+async def fill_note_post(
+    article: Article,
+    *,
+    publish: bool,
+    append_tags: bool,
+    options: BrowserOptions,
+    should_close=None,  # Callable[[], bool] | None
+    on_event=None,  # Callable[[str], None] | None
+) -> str | None:
+    options.profile_dir.mkdir(parents=True, exist_ok=True)
+    async with async_playwright() as playwright:
+        context = await playwright.chromium.launch_persistent_context(
+            user_data_dir=str(options.profile_dir),
+            headless=options.headless,
+            slow_mo=options.slow_mo_ms,
+            **_browser_channel_kwargs(options),
+        )
+        guard_context_close = not publish
+        try:
+            page = context.pages[0] if context.pages else await context.new_page()
+            page.set_default_timeout(options.timeout_ms)
+
+            await page.goto(NOTE_NEW_TEXT_URL, wait_until="domcontentloaded")
+            await _ensure_logged_in(page)
+            await _fill_title(page, article.title)
+            await _fill_body(page, body_with_tags(article) if append_tags else article.body)
+            if on_event is not None:
+                on_event("下書きを入力しました")
+
+            if publish:
+                await _publish(page)
+                await _soft_wait_for_idle(page)
+                if on_event is not None:
+                    on_event("公開しました")
+
+                url = page.url
+                if (
+                    url.startswith("https://note.com/")
+                    and "/notes/new" not in url
+                    and "/login" not in url
+                ):
+                    return url
+                return None
+
+            if should_close is not None:
+                while True:
+                    if should_close is not None and should_close():
+                        break
+                    try:
+                        if not context.pages:
+                            break
+                    except Exception:
+                        break
+                    await asyncio.sleep(0.3)
+
+            return None
+        finally:
+            if guard_context_close:
+                try:
+                    await context.close()
+                except PlaywrightError:
+                    pass
+            else:
+                await context.close()
 
 
 async def _ensure_logged_in(page: Page) -> None:

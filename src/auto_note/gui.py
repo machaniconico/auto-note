@@ -862,6 +862,16 @@ class HomeBundle:
     calendar_text: str
 
 
+def _import_browser():
+    """Lazily import the optional Playwright-backed browser module. Kept as a
+    module-level seam so the GUI never hard-imports playwright at startup and
+    tests can monkeypatch it. Raises ModuleNotFoundError(name='playwright...')
+    when Playwright is not installed."""
+    from . import browser
+
+    return browser
+
+
 def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
     project_dir = _clean_path(project_dir)
     _enable_windows_dpi_awareness()
@@ -1257,6 +1267,11 @@ class AutoNoteApp(tk.Tk):
         self._home_refresh_lock = threading.Lock()
         self._home_refresh_poll_job: str | None = None
         self._home_refresh_rerun = False
+        self._browser_post_thread: threading.Thread | None = None
+        self._browser_post_result: tuple[str | None, Exception | None] | None = None
+        self._browser_post_lock = threading.Lock()
+        self._browser_post_poll_job: str | None = None
+        self._browser_close_event: threading.Event | None = None
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -3128,6 +3143,9 @@ class AutoNoteApp(tk.Tk):
         box = ttk.LabelFrame(parent, text="投稿")
         box.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         ttk.Button(box, text="投稿ヘルパー", style="Primary.TButton", command=self.open_helper).pack(
+            fill=tk.X, pady=(0, 6)
+        )
+        ttk.Button(box, text="ブラウザで下書き作成", command=self.post_to_browser_action).pack(
             fill=tk.X, pady=(0, 6)
         )
         ttk.Button(box, text="投稿準備", command=self.publish_ready_selected_to_tab).pack(fill=tk.X, pady=(0, 6))
@@ -5599,10 +5617,22 @@ class AutoNoteApp(tk.Tk):
                 except tk.TclError:
                     pass
                 self._home_refresh_poll_job = None
+            if self._browser_close_event is not None:
+                # Signal the browser-post worker to wind down its open browser.
+                self._browser_close_event.set()
+            if self._browser_post_poll_job:
+                try:
+                    self.after_cancel(self._browser_post_poll_job)
+                except tk.TclError:
+                    pass
+                self._browser_post_poll_job = None
             with self._quickstart_result_lock:
                 self._quickstart_result = None
             with self._home_refresh_lock:
                 self._home_refresh_result = None
+            with self._browser_post_lock:
+                self._browser_post_result = None
+            self._browser_post_thread = None
             self._home_refresh_thread = None
             self._quickstart_thread = None
             self._readiness_thread = None
@@ -5670,6 +5700,143 @@ class AutoNoteApp(tk.Tk):
         if not answer:
             self.notify("確認項目を見直してください", level="warning")
         return bool(answer)
+
+    def _load_browser_or_warn(self):
+        """Return the optional browser module, or None (with a clear message)
+        when Playwright is not installed. Mirrors the CLI's _load_browser."""
+        try:
+            return _import_browser()
+        except ModuleNotFoundError as exc:
+            if exc.name and exc.name.startswith("playwright"):
+                self.notify("Playwrightが未導入のためブラウザ投稿は使えません", level="error")
+                messagebox.showinfo(
+                    "ブラウザ投稿の準備",
+                    "ブラウザ自動投稿には Playwright が必要です。\n\n"
+                    "コマンドプロンプトで次を実行してください:\n"
+                    "  python -m pip install -e .\n"
+                    "  python -m playwright install chromium\n\n"
+                    "導入せずに投稿する場合は『投稿ヘルパー』をご利用ください。",
+                    parent=self,
+                )
+                return None
+            raise
+
+    def post_to_browser_action(self) -> None:
+        article = self.selected_or_warn(auto_select=True)
+        if not article:
+            return
+        running = self._browser_post_thread
+        if running is not None and running.is_alive():
+            self.notify("ブラウザ投稿は実行中です。完了まで待ってください。", level="warning")
+            return
+        if not self.confirm_helper_safety(article):
+            return
+        browser = self._load_browser_or_warn()
+        if browser is None:
+            return
+        self._browser_close_event = threading.Event()
+        self.notify(
+            "ブラウザを起動してnoteへ下書きを作成します… 確認・公開後にブラウザを閉じてください。",
+            level="info",
+        )
+        thread = threading.Thread(
+            target=self._run_browser_post_worker,
+            args=(browser, article),
+            daemon=True,
+        )
+        with self._browser_post_lock:
+            self._browser_post_result = None
+        self._browser_post_thread = thread
+        thread.start()
+        self._schedule_browser_post_poll()
+
+    def _run_browser_post_worker(self, browser, article: Article) -> None:
+        import asyncio
+
+        url: str | None = None
+        error: Exception | None = None
+        try:
+            options = browser.BrowserOptions(
+                profile_dir=Path.home() / ".auto-note" / "browser"
+            )
+            close_event = self._browser_close_event
+            coro = browser.fill_note_post(
+                article,
+                publish=False,
+                append_tags=self.settings.append_tags_by_default,
+                options=options,
+                should_close=(close_event.is_set if close_event is not None else None),
+            )
+            url = self._run_async_browser_coro(coro)
+        except Exception as exc:  # surfaced to the user on the main thread
+            error = exc
+        with self._browser_post_lock:
+            self._browser_post_result = (url, error)
+
+    @staticmethod
+    def _run_async_browser_coro(coro):
+        # We are on a worker thread, not the Tk main thread. Playwright drives a
+        # node subprocess; on Windows that needs the Proactor loop, and relying on
+        # asyncio.run()'s default off the main thread has historically been flaky.
+        # Build an explicit Proactor loop on Windows; elsewhere asyncio.run is fine.
+        import asyncio
+
+        if sys.platform == "win32":
+            loop = asyncio.ProactorEventLoop()
+            try:
+                asyncio.set_event_loop(loop)
+                return loop.run_until_complete(coro)
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+        return asyncio.run(coro)
+
+    def _schedule_browser_post_poll(self) -> None:
+        try:
+            self._browser_post_poll_job = self.after(100, self._poll_browser_post_worker)
+        except (tk.TclError, RuntimeError):
+            self._browser_post_thread = None
+            self._browser_post_poll_job = None
+
+    def _poll_browser_post_worker(self) -> None:
+        self._browser_post_poll_job = None
+        with self._browser_post_lock:
+            result = self._browser_post_result
+            if result is not None:
+                self._browser_post_result = None
+        if result is None:
+            running = self._browser_post_thread
+            if running is not None and running.is_alive():
+                self._schedule_browser_post_poll()
+                return
+            self._browser_post_thread = None
+            return
+        url, error = result
+        self._finish_browser_post(url, error)
+
+    def _finish_browser_post(self, url: str | None, error: Exception | None) -> None:
+        self._browser_post_thread = None
+        if error is not None:
+            self.notify("ブラウザでの下書き作成に失敗しました", level="error")
+            if type(error).__name__ == "NoteAutomationError":
+                # Login required or note's editor layout changed.
+                hint = (
+                    "noteにログインしていない場合は『noteログイン』から先にログインしてください。\n"
+                    "画面構成の変更などで失敗する場合は『投稿ヘルパー』をご利用ください。"
+                )
+            else:
+                # Playwright/browser launch or event-loop failure, etc.
+                hint = (
+                    "ブラウザの起動に失敗しました。Chromium 未導入の場合は\n"
+                    "  python -m playwright install chromium\n"
+                    "を実行してください。うまくいかない場合は『投稿ヘルパー』をご利用ください。"
+                )
+            messagebox.showerror("ブラウザ投稿エラー", f"{error}\n\n{hint}", parent=self)
+            return
+        if url:
+            self.notify(f"noteに公開しました: {url}", level="success")
+        else:
+            self.notify("noteに下書きを作成しました。ブラウザで確認・公開してください。", level="success")
 
     def open_dashboard(self) -> None:
         try:
@@ -7785,6 +7952,7 @@ class AutoNoteApp(tk.Tk):
             ("ログイン安全ガイド", "安全ではない可能性がある表示時の既定ブラウザ投稿手順", self.show_note_login_safety_action),
             ("noteログイン", "普段の既定ブラウザでnoteログインを開く", self.open_note_login_action),
             ("投稿ヘルパー", "選択記事の投稿ヘルパーを開く", self.open_helper),
+            ("ブラウザで下書き作成", "選択記事をnoteのエディタへ自動入力してブラウザを開く", self.post_to_browser_action),
             ("投稿準備", "選択記事の投稿前チェックを表示", self.publish_ready_selected_to_tab),
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),
