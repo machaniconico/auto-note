@@ -10709,6 +10709,44 @@ class LocalImagePathsTests(unittest.TestCase):
             self.assertEqual([p.name for p in paths], ["pic.png"])
 
 
+class AutoPublishGraceSettingTests(unittest.TestCase):
+    def test_setting_round_trips_and_clamps(self) -> None:
+        from dataclasses import replace
+        from auto_note.settings import DEFAULT_SETTINGS, load_settings, save_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            save_settings(project, replace(DEFAULT_SETTINGS, auto_publish_grace_minutes=10))
+            self.assertEqual(load_settings(project).auto_publish_grace_minutes, 10)
+            # Out-of-range values are clamped on load.
+            save_settings(project, replace(DEFAULT_SETTINGS, auto_publish_grace_minutes=999))
+            self.assertEqual(load_settings(project).auto_publish_grace_minutes, 120)
+
+    def test_app_derives_grace_seconds_from_setting(self) -> None:
+        try:
+            import tkinter as tk
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        from dataclasses import replace
+        from auto_note.gui import AutoNoteApp
+        from auto_note.settings import DEFAULT_SETTINGS, save_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "articles").mkdir(parents=True, exist_ok=True)
+            save_settings(project, replace(DEFAULT_SETTINGS, auto_publish_grace_minutes=2))
+            try:
+                app = AutoNoteApp(project)
+            except tk.TclError:
+                self.skipTest("no Tk display available")
+            app.withdraw()
+            app.update_idletasks()
+            try:
+                self.assertEqual(app._auto_publish_grace_seconds, 120)
+            finally:
+                app.destroy()
+
+
 class PublishedHistoryTests(unittest.TestCase):
     def test_lists_published_articles_with_totals(self) -> None:
         from auto_note.workflow import (

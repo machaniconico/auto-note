@@ -381,7 +381,6 @@ STATUS_COLORS = {
 }
 AUTOSAVE_INTERVAL_MS = 30_000
 SCHEDULED_PUBLISH_INTERVAL_MS = 60_000
-AUTO_PUBLISH_GRACE_SECONDS = 300
 
 
 def _normalise_ui_density(value: str) -> str:
@@ -1287,7 +1286,9 @@ class AutoNoteApp(tk.Tk):
         self._auto_publish_attempted: set[str] = set()
         self._auto_publish_pending: dict[str, datetime] = {}
         self._auto_publish_cancelled: set[str] = set()
-        self._auto_publish_grace_seconds = AUTO_PUBLISH_GRACE_SECONDS
+        self._auto_publish_grace_seconds = (
+            max(0, getattr(self.settings, "auto_publish_grace_minutes", 5)) * 60
+        )
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -3492,6 +3493,9 @@ class AutoNoteApp(tk.Tk):
         self.auto_publish_scheduled_var = tk.BooleanVar(
             value=getattr(self.settings, "auto_publish_scheduled", False)
         )
+        self.auto_publish_grace_var = tk.StringVar(
+            value=str(getattr(self.settings, "auto_publish_grace_minutes", 5))
+        )
         self.article_glob_var = tk.StringVar(value=self.settings.article_glob)
         self.ui_density_var = tk.StringVar(value=_ui_density_label(self.settings.ui_density))
         self.support_contact_var = tk.StringVar(value=self.settings.support_contact)
@@ -3568,13 +3572,17 @@ class AutoNoteApp(tk.Tk):
             text="予約時刻になったら自動でブラウザ公開する（要noteログイン・Playwright）",
             variable=self.auto_publish_scheduled_var,
         ).grid(row=13, column=1, sticky=tk.W, pady=8)
+        ttk.Label(form, text="予約自動公開の猶予（分）").grid(row=14, column=0, sticky=tk.W, pady=8)
+        ttk.Entry(form, textvariable=self.auto_publish_grace_var, width=8).grid(
+            row=14, column=1, sticky=tk.W, pady=8
+        )
         self.commercial_terms_reviewed_check = ttk.Checkbutton(
             form,
             text="利用条件/商用方針を販売前に確認済み",
             variable=self.commercial_terms_reviewed_var,
         )
         self.commercial_terms_reviewed_check.grid(
-            row=14, column=1, sticky=tk.W, pady=8
+            row=15, column=1, sticky=tk.W, pady=8
         )
         self.commercial_support_scope_check = ttk.Checkbutton(
             form,
@@ -3582,13 +3590,13 @@ class AutoNoteApp(tk.Tk):
             variable=self.commercial_support_scope_var,
         )
         self.commercial_support_scope_check.grid(
-            row=15,
+            row=16,
             column=1,
             sticky=tk.W,
             pady=8,
         )
         progress_panel = ttk.Frame(form, style="Surface.TFrame")
-        progress_panel.grid(row=16, column=1, sticky=tk.EW, pady=(2, 8))
+        progress_panel.grid(row=17, column=1, sticky=tk.EW, pady=(2, 8))
         ttk.Label(progress_panel, textvariable=self.commercial_progress_var, style="Surface.TLabel").pack(
             anchor=tk.W,
             fill=tk.X,
@@ -3600,7 +3608,7 @@ class AutoNoteApp(tk.Tk):
         )
         self._build_commercial_setup_checklist(progress_panel)
         setup_actions = ttk.Frame(form, style="Surface.TFrame")
-        setup_actions.grid(row=17, column=1, sticky=tk.EW, pady=8)
+        setup_actions.grid(row=18, column=1, sticky=tk.EW, pady=8)
         ttk.Button(setup_actions, text="セットアップウィザード", command=lambda: self.show_setup_wizard(force=True)).pack(
             side=tk.LEFT
         )
@@ -8089,6 +8097,7 @@ class AutoNoteApp(tk.Tk):
                 append_tags_by_default=append_tags_var.get(),
                 open_note_with_helper=open_note_var.get(),
                 auto_publish_scheduled=self.settings.auto_publish_scheduled,
+                auto_publish_grace_minutes=self.settings.auto_publish_grace_minutes,
                 article_glob=self.settings.article_glob,
                 onboarding_seen=self.settings.onboarding_seen,
                 support_contact=support_contact_var.get().strip(),
@@ -8442,6 +8451,10 @@ class AutoNoteApp(tk.Tk):
             self.auto_publish_scheduled_var.set(
                 getattr(self.settings, "auto_publish_scheduled", False)
             )
+        if hasattr(self, "auto_publish_grace_var"):
+            self.auto_publish_grace_var.set(
+                str(getattr(self.settings, "auto_publish_grace_minutes", 5))
+            )
         if hasattr(self, "article_glob_var"):
             self.article_glob_var.set(self.settings.article_glob)
         if hasattr(self, "ui_density_var"):
@@ -8688,6 +8701,7 @@ class AutoNoteApp(tk.Tk):
             append_tags_by_default=self.append_tags_var.get(),
             open_note_with_helper=self.open_note_var.get(),
             auto_publish_scheduled=self.auto_publish_scheduled_var.get(),
+            auto_publish_grace_minutes=_bounded_int_var(self.auto_publish_grace_var, 5, 0, 120),
             article_glob=self.article_glob_var.get().strip() or "*.md",
             ui_density=_ui_density_value(self.ui_density_var.get()),
             support_contact=self.support_contact_var.get().strip(),
@@ -8716,6 +8730,7 @@ class AutoNoteApp(tk.Tk):
             append_tags_by_default=self.append_tags_var.get(),
             open_note_with_helper=self.open_note_var.get(),
             auto_publish_scheduled=self.auto_publish_scheduled_var.get(),
+            auto_publish_grace_minutes=_bounded_int_var(self.auto_publish_grace_var, 5, 0, 120),
             article_glob=self.article_glob_var.get().strip() or "*.md",
             onboarding_seen=self.settings.onboarding_seen,
             support_contact=self.support_contact_var.get().strip(),
@@ -8736,6 +8751,7 @@ class AutoNoteApp(tk.Tk):
         self.display_safe_mode_warnings = []
         save_settings(self.project_dir, settings)
         self.settings = settings
+        self._auto_publish_grace_seconds = max(0, settings.auto_publish_grace_minutes) * 60
         self._configure_style()
         self._sync_header_display_state()
         self._refresh_manual_readability_widgets()

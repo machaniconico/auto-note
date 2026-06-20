@@ -30,6 +30,7 @@ class AppSettings:
     image_max_width: int
     image_quality: int
     auto_publish_scheduled: bool = False
+    auto_publish_grace_minutes: int = 5
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ DEFAULT_SETTINGS = AppSettings(
     image_max_width=1600,
     image_quality=85,
     auto_publish_scheduled=False,
+    auto_publish_grace_minutes=5,
 )
 
 UI_DENSITY_OPTIONS = ("standard", "comfortable", "large")
@@ -129,6 +131,9 @@ def _settings_from_mapping(raw: dict[str, Any]) -> AppSettings:
     merged["image_max_width"] = _clamp_int(merged.get("image_max_width"), default=1600, minimum=320, maximum=4000)
     merged["image_quality"] = _clamp_int(merged.get("image_quality"), default=85, minimum=30, maximum=100)
     merged["auto_publish_scheduled"] = bool(merged.get("auto_publish_scheduled"))
+    merged["auto_publish_grace_minutes"] = _clamp_int(
+        merged.get("auto_publish_grace_minutes"), default=5, minimum=0, maximum=120
+    )
     known = asdict(DEFAULT_SETTINGS)
     return AppSettings(**{key: merged[key] for key in known})
 
