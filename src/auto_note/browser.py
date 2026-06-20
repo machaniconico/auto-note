@@ -176,6 +176,16 @@ async def _fill_title(page: Page, title: str) -> None:
         page.locator("[contenteditable='true'][aria-label*='タイトル']").first,
         page.get_by_role("textbox", name=re.compile("タイトル|Title", re.I)).first,
     ]
+    for fallback in [
+        lambda: page.locator('[aria-label*="記事タイトル"]').first,
+        lambda: page.locator('[placeholder*="記事タイトル"]').first,
+        lambda: page.locator('[aria-label*="見出し"]').first,
+        lambda: page.get_by_role("textbox", name="タイトル", exact=False).first,
+    ]:
+        try:
+            locators.append(fallback())
+        except PlaywrightError:
+            pass
     locator = await _first_visible(locators, "title field")
     await _replace_text(locator, title)
 
@@ -198,6 +208,17 @@ async def _fill_body(page: Page, body: str) -> None:
     except PlaywrightError:
         pass
 
+    for fallback in [
+        lambda: page.locator('[data-placeholder*="本文を入力"]').first,
+        lambda: page.locator('[aria-label*="本文を入力"]').first,
+        lambda: page.locator('[aria-label*="記事を書く"]').first,
+        lambda: page.get_by_role("textbox", name="エディタ", exact=False).first,
+    ]:
+        try:
+            locators.append(fallback())
+        except PlaywrightError:
+            pass
+
     locator = await _first_visible(locators, "body editor")
     await _replace_text(locator, body)
 
@@ -219,25 +240,71 @@ async def _replace_text(locator: Locator, text: str) -> None:
 
 
 async def _publish(page: Page) -> None:
-    await _click_first_text(page, ["公開設定", "投稿", "公開"])
-    await page.wait_for_timeout(1_000)
-    await _click_first_text(page, ["投稿する", "公開する", "無料で公開", "公開"])
+    step_one_labels = [
+        "公開設定",
+        "公開に進む",
+        "公開へ進む",
+        "投稿",
+        "公開",
+        "次へ",
+        "設定して公開",
+        "Publish",
+        "Next",
+    ]
+    step_two_labels = [
+        "投稿する",
+        "公開する",
+        "無料で公開",
+        "有料で公開",
+        "この内容で公開",
+        "公開",
+        "投稿",
+        "Publish",
+        "Post",
+    ]
+
+    await _click_first_text(page, step_one_labels)
+    await page.wait_for_timeout(500)
+    try:
+        step_two_selector = ", ".join(
+            [f'button:has-text("{label}")' for label in step_two_labels]
+            + [f'[role=button]:has-text("{label}")' for label in step_two_labels]
+        )
+        await page.wait_for_selector(step_two_selector, state="visible", timeout=3_000)
+    except (PlaywrightError, PlaywrightTimeoutError):
+        pass
+    await _click_first_text(page, step_two_labels)
 
 
 async def _click_first_text(page: Page, labels: Iterable[str]) -> None:
-    candidates: list[Locator] = []
+    last_error: Exception | None = None
     for label in labels:
-        pattern = re.compile(re.escape(label))
-        candidates.extend(
-            [
-                page.get_by_role("button", name=pattern).first,
-                page.get_by_text(pattern).first,
-                page.locator(f"button:has-text('{label}')").first,
-            ]
-        )
+        strategies = [
+            lambda: page.get_by_role("button", name=label, exact=False).first,
+            lambda: page.get_by_role("link", name=label, exact=False).first,
+            lambda: page.locator(f'[aria-label*="{label}"]').first,
+            lambda: page.locator(f'[role=button]:has-text("{label}")').first,
+            lambda: page.get_by_text(label).first,
+            lambda: page.locator(f'button:has-text("{label}")').first,
+        ]
+        for strategy in strategies:
+            try:
+                locator = strategy()
+                if await locator.count() == 0:
+                    continue
+                await locator.wait_for(state="visible", timeout=3_000)
+                try:
+                    await locator.scroll_into_view_if_needed()
+                except (PlaywrightError, PlaywrightTimeoutError):
+                    pass
+                if not await locator.is_enabled():
+                    continue
+                await locator.click()
+                return
+            except (PlaywrightError, PlaywrightTimeoutError) as exc:
+                last_error = exc
 
-    locator = await _first_visible(candidates, "publish button")
-    await locator.click()
+    raise NoteAutomationError("publish button が見つかりませんでした。note の画面変更により調整が必要かもしれません。") from last_error
 
 
 async def _first_visible(locators: Iterable[Locator], label: str) -> Locator:
@@ -245,9 +312,20 @@ async def _first_visible(locators: Iterable[Locator], label: str) -> Locator:
     for locator in locators:
         try:
             await locator.wait_for(state="visible", timeout=3_000)
+            try:
+                await locator.scroll_into_view_if_needed()
+            except (PlaywrightError, PlaywrightTimeoutError):
+                pass
             if await locator.is_enabled():
                 return locator
-        except (PlaywrightError, PlaywrightTimeoutError) as exc:
+        except PlaywrightTimeoutError as exc:
+            last_error = exc
+            try:
+                if await locator.count() == 0:
+                    continue
+            except PlaywrightError as count_exc:
+                last_error = count_exc
+        except PlaywrightError as exc:
             last_error = exc
 
     raise NoteAutomationError(f"{label} が見つかりませんでした。note の画面変更により調整が必要かもしれません。") from last_error
