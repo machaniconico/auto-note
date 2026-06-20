@@ -1272,6 +1272,8 @@ class AutoNoteApp(tk.Tk):
         self._browser_post_lock = threading.Lock()
         self._browser_post_poll_job: str | None = None
         self._browser_close_event: threading.Event | None = None
+        self._browser_post_publish = False
+        self._browser_post_article: Article | None = None
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -3148,6 +3150,9 @@ class AutoNoteApp(tk.Tk):
         ttk.Button(box, text="ブラウザで下書き作成", command=self.post_to_browser_action).pack(
             fill=tk.X, pady=(0, 6)
         )
+        ttk.Button(
+            box, text="ブラウザで公開", command=lambda: self.post_to_browser_action(publish=True)
+        ).pack(fill=tk.X, pady=(0, 6))
         ttk.Button(box, text="投稿準備", command=self.publish_ready_selected_to_tab).pack(fill=tk.X, pady=(0, 6))
         ttk.Button(box, text="改善プラン", command=self.improvement_plan_selected_to_tab).pack(
             fill=tk.X, pady=(0, 6)
@@ -5721,7 +5726,7 @@ class AutoNoteApp(tk.Tk):
                 return None
             raise
 
-    def post_to_browser_action(self) -> None:
+    def post_to_browser_action(self, *, publish: bool = False) -> None:
         article = self.selected_or_warn(auto_select=True)
         if not article:
             return
@@ -5731,17 +5736,30 @@ class AutoNoteApp(tk.Tk):
             return
         if not self.confirm_helper_safety(article):
             return
+        if publish and not messagebox.askyesno(
+            "ブラウザで自動公開",
+            f"「{article.title}」をnoteに自動で公開します。\n\n"
+            "公開後は取り消せません。よろしいですか？\n"
+            "（下書きだけ作る場合は『ブラウザで下書き作成』を使ってください）",
+            parent=self,
+        ):
+            self.notify("自動公開を中止しました", level="info")
+            return
         browser = self._load_browser_or_warn()
         if browser is None:
             return
         self._browser_close_event = threading.Event()
+        self._browser_post_publish = publish
+        self._browser_post_article = article
         self.notify(
-            "ブラウザを起動してnoteへ下書きを作成します… 確認・公開後にブラウザを閉じてください。",
+            "ブラウザでnoteに公開します… 完了までお待ちください。"
+            if publish
+            else "ブラウザを起動してnoteへ下書きを作成します… 確認・公開後にブラウザを閉じてください。",
             level="info",
         )
         thread = threading.Thread(
             target=self._run_browser_post_worker,
-            args=(browser, article),
+            args=(browser, article, publish),
             daemon=True,
         )
         with self._browser_post_lock:
@@ -5750,9 +5768,7 @@ class AutoNoteApp(tk.Tk):
         thread.start()
         self._schedule_browser_post_poll()
 
-    def _run_browser_post_worker(self, browser, article: Article) -> None:
-        import asyncio
-
+    def _run_browser_post_worker(self, browser, article: Article, publish: bool) -> None:
         url: str | None = None
         error: Exception | None = None
         try:
@@ -5762,7 +5778,7 @@ class AutoNoteApp(tk.Tk):
             close_event = self._browser_close_event
             coro = browser.fill_note_post(
                 article,
-                publish=False,
+                publish=publish,
                 append_tags=self.settings.append_tags_by_default,
                 options=options,
                 should_close=(close_event.is_set if close_event is not None else None),
@@ -5816,8 +5832,11 @@ class AutoNoteApp(tk.Tk):
 
     def _finish_browser_post(self, url: str | None, error: Exception | None) -> None:
         self._browser_post_thread = None
+        publish = self._browser_post_publish
+        article = self._browser_post_article
         if error is not None:
-            self.notify("ブラウザでの下書き作成に失敗しました", level="error")
+            action_label = "公開" if publish else "下書き作成"
+            self.notify(f"ブラウザでの{action_label}に失敗しました", level="error")
             if type(error).__name__ == "NoteAutomationError":
                 # Login required or note's editor layout changed.
                 hint = (
@@ -5833,10 +5852,28 @@ class AutoNoteApp(tk.Tk):
                 )
             messagebox.showerror("ブラウザ投稿エラー", f"{error}\n\n{hint}", parent=self)
             return
-        if url:
-            self.notify(f"noteに公開しました: {url}", level="success")
-        else:
-            self.notify("noteに下書きを作成しました。ブラウザで確認・公開してください。", level="success")
+        if publish and article is not None:
+            # URL auto-capture: write status=published + the captured URL back to
+            # the article, mirroring the manual mark_published flow.
+            try:
+                mark_article_published(article.source, url=url or "")
+                self.refresh_articles()
+                self.refresh_schedule()
+                self.refresh_home()
+                self.refresh_review_panel()
+            except OSError as exc:
+                self.notify("公開しましたが記事への記録に失敗しました", level="warning")
+                messagebox.showwarning("記録エラー", str(exc), parent=self)
+                return
+            if url:
+                self.notify(f"noteに公開し、URLを記録しました: {url}", level="success")
+            else:
+                self.notify(
+                    "noteに公開しました。URLを取得できなかったので、公開URLは手動で記録してください。",
+                    level="warning",
+                )
+            return
+        self.notify("noteに下書きを作成しました。ブラウザで確認・公開してください。", level="success")
 
     def open_dashboard(self) -> None:
         try:
@@ -7953,6 +7990,7 @@ class AutoNoteApp(tk.Tk):
             ("noteログイン", "普段の既定ブラウザでnoteログインを開く", self.open_note_login_action),
             ("投稿ヘルパー", "選択記事の投稿ヘルパーを開く", self.open_helper),
             ("ブラウザで下書き作成", "選択記事をnoteのエディタへ自動入力してブラウザを開く", self.post_to_browser_action),
+            ("ブラウザで公開", "選択記事をnoteへ自動入力して公開し、公開URLを記事に記録する", lambda: self.post_to_browser_action(publish=True)),
             ("投稿準備", "選択記事の投稿前チェックを表示", self.publish_ready_selected_to_tab),
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),

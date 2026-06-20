@@ -10412,6 +10412,52 @@ class BrowserPostActionTests(unittest.TestCase):
             finally:
                 app.destroy()
 
+    def test_publish_mode_records_published_url(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from auto_note import gui
+        from auto_note.article import load_article
+
+        published_url = "https://note.com/testuser/n/abc123"
+        calls = {}
+
+        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+            calls["publish"] = publish
+            return published_url if publish else None
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project_with_article(tmp)
+            app = self._make_app(project)
+            try:
+                self._drain(app, "_home_refresh_thread")
+                orig = gui._import_browser
+                orig_ask = gui.messagebox.askyesno
+                gui._import_browser = lambda: fake_browser
+                gui.messagebox.askyesno = lambda *a, **k: True  # auto-confirm publish
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                self.addCleanup(setattr, gui.messagebox, "askyesno", orig_ask)
+                app.confirm_helper_safety = lambda article: True
+
+                app.post_to_browser_action(publish=True)
+                self.assertIsNotNone(app._browser_post_thread)
+                self._drain(app, "_browser_post_thread")
+                self.assertIsNone(app._browser_post_thread)
+                self.assertEqual(calls.get("publish"), True)
+
+                article_path = next((project / "articles").glob("*.md"))
+                reloaded = load_article(article_path)
+                self.assertEqual(reloaded.status, "published")
+                self.assertEqual(reloaded.published_url, published_url)
+            finally:
+                app.destroy()
+
 
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
