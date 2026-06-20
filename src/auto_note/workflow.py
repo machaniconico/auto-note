@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+import csv
 import hashlib
+import io
 import json
 import shutil
 import tempfile
@@ -151,6 +153,28 @@ def format_published_history(
         lines.append(f"- {date} {article.title}")
         lines.append(f"    {url}")
     return "\n".join(lines)
+
+
+def export_published_history_csv(
+    project_dir: Path, *, pattern: str = "*.md", now: datetime | None = None
+) -> Path:
+    """Write the published history to .auto-note/reports/published-history-*.csv
+    (UTF-8 with BOM so Excel on Windows reads Japanese correctly). Returns the
+    written path."""
+    articles = published_articles(project_dir, pattern=pattern)
+    reference = now or datetime.now()
+    reports_dir = project_dir / ".auto-note" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    path = reports_dir / f"published-history-{reference.strftime('%Y%m%d-%H%M%S')}.csv"
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(["公開日時", "タイトル", "URL", "ファイル"])
+    for article in articles:
+        writer.writerow(
+            [article.published_at or "", article.title, article.published_url or "", article.source.name]
+        )
+    write_text_atomic(path, "\ufeff" + buffer.getvalue())
+    return path
 
 
 def format_plan(path: Path, *, pattern: str = "*.md") -> str:

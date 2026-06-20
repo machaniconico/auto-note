@@ -10741,6 +10741,29 @@ class PublishedHistoryTests(unittest.TestCase):
                 format_published_history(project2),
             )
 
+    def test_export_published_history_csv(self) -> None:
+        import csv
+        import io
+        from datetime import datetime
+        from auto_note.workflow import export_published_history_csv, mark_article_published
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            adir = project / "articles"
+            adir.mkdir(parents=True, exist_ok=True)
+            a = create_article("公開記事", articles_dir=adir, tags=["note"])
+            mark_article_published(a, url="https://note.com/u/n/a")
+
+            now = datetime(2026, 6, 20, 15, 30, 0)
+            path = export_published_history_csv(project, now=now)
+            self.assertEqual(path.name, "published-history-20260620-153000.csv")
+
+            raw = path.read_bytes()
+            self.assertTrue(raw.startswith(b"\xef\xbb\xbf"))  # UTF-8 BOM for Excel
+            rows = list(csv.reader(io.StringIO(raw.decode("utf-8-sig"))))
+            self.assertEqual(rows[0], ["公開日時", "タイトル", "URL", "ファイル"])
+            self.assertTrue(any(row[2] == "https://note.com/u/n/a" for row in rows[1:]))
+
 
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:

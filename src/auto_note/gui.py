@@ -214,6 +214,7 @@ from .workflow import (
     export_calendar,
     format_calendar,
     format_calendar_export,
+    export_published_history_csv,
     format_ideas,
     format_plan,
     format_published_history,
@@ -2719,6 +2720,7 @@ class AutoNoteApp(tk.Tk):
             ("ログイン安全ガイド", self.show_note_login_safety_action),
             ("投稿キュー", self.publish_queue_to_tab),
             ("公開実績", self.show_published_history_action),
+            ("公開実績CSV", self.export_published_history_action),
             ("予約公開を中止", self.cancel_scheduled_auto_publish),
             ("運用サマリー", self.run_overview_to_tab),
             ("予定ICS出力", self.export_calendar_action),
@@ -6175,6 +6177,19 @@ class AutoNoteApp(tk.Tk):
         self.notebook.select(self.diagnostics_tab)
         self.notify("公開実績を表示しました", level="info")
 
+    def export_published_history_action(self) -> None:
+        try:
+            path = export_published_history_csv(self.project_dir, pattern=self.settings.article_glob)
+        except OSError as exc:
+            self.notify("公開実績CSVの保存に失敗しました", level="error")
+            messagebox.showerror("エクスポートエラー", str(exc), parent=self)
+            return
+        self.notify(f"公開実績CSVを保存しました: {path.name}", level="success")
+        try:
+            webbrowser.open(path.parent.resolve().as_uri())
+        except OSError:
+            pass
+
     def open_dashboard(self) -> None:
         try:
             path = open_manual_dashboard(
@@ -8298,6 +8313,7 @@ class AutoNoteApp(tk.Tk):
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),
             ("公開実績", "公開済み記事の一覧（公開日・URL・件数）を表示", self.show_published_history_action),
+            ("公開実績CSV", "公開済み記事の一覧をCSV（Excel対応）で書き出す", self.export_published_history_action),
             ("予約公開を中止", "猶予中の予約自動公開をすべて中止する", self.cancel_scheduled_auto_publish),
             ("運用サマリー", "今日見るべき投稿、予定、古い下書きを表示", self.run_overview_to_tab),
             ("予定ICS出力", "公開予定をGoogle/Outlook向け.icsに保存", self.export_calendar_action),
