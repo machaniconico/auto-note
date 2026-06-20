@@ -11,6 +11,7 @@ from playwright.async_api import Locator, Page, TimeoutError as PlaywrightTimeou
 from playwright.async_api import async_playwright
 
 from .article import Article, body_with_tags
+from .images import local_image_paths
 
 
 NOTE_HOME_URL = "https://note.com/"
@@ -113,6 +114,10 @@ async def fill_note_post(
             await _fill_body(page, body_with_tags(article) if append_tags else article.body)
             if on_event is not None:
                 on_event("下書きを入力しました")
+
+            image_paths = local_image_paths(article)
+            if image_paths:
+                await _upload_images(page, image_paths, on_event)
 
             if publish:
                 await _publish(page)
@@ -221,6 +226,48 @@ async def _fill_body(page: Page, body: str) -> None:
 
     locator = await _first_visible(locators, "body editor")
     await _replace_text(locator, body)
+
+
+async def _upload_images(page: Page, image_paths, on_event=None) -> None:
+    button_names = ["画像", "画像を追加", "画像を挿入", "Image"]
+
+    for path in image_paths:
+        try:
+            file_input = page.locator('input[type="file"]').first
+            if await file_input.count() > 0:
+                await file_input.set_input_files(str(path))
+            else:
+                clicked_button = False
+                for name in button_names:
+                    try:
+                        button = page.get_by_role("button", name=name, exact=False).first
+                        if await button.count() == 0:
+                            continue
+                        await button.click()
+                        clicked_button = True
+                        break
+                    except (PlaywrightError, PlaywrightTimeoutError):
+                        pass
+
+                if not clicked_button:
+                    button = page.locator('[aria-label*="画像"]').first
+                    if await button.count() > 0:
+                        await button.click()
+
+                file_input = page.locator('input[type="file"]').first
+                if await file_input.count() == 0:
+                    raise NoteAutomationError("画像アップロード用のファイル入力が見つかりませんでした。")
+                await file_input.set_input_files(str(path))
+
+            await page.wait_for_timeout(1500)
+            if on_event is not None:
+                on_event(f"画像をアップロードしました: {path.name}")
+        except (PlaywrightError, PlaywrightTimeoutError, OSError) as exc:
+            if on_event is not None:
+                on_event(f"画像アップロードをスキップしました: {path.name} ({exc})")
+        except Exception as exc:
+            if on_event is not None:
+                on_event(f"画像アップロードをスキップしました: {path.name} ({exc})")
 
 
 async def _replace_text(locator: Locator, text: str) -> None:

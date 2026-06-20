@@ -10583,6 +10583,38 @@ class DueScheduledArticlesTests(unittest.TestCase):
             self.assertEqual([p.resolve() for p in due_after], [past.resolve()])
 
 
+class LocalImagePathsTests(unittest.TestCase):
+    def test_returns_existing_local_images_only(self) -> None:
+        from auto_note.article import load_article
+        from auto_note.images import local_image_paths
+
+        png = bytes.fromhex(
+            "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+            "0000000d49444154789c6360000002000154a24f3f0000000049454e44ae426082"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            adir = Path(tmp) / "articles"
+            adir.mkdir(parents=True, exist_ok=True)
+            (adir / "pic.png").write_bytes(png)
+            article_md = (
+                "---\n"
+                "title: 画像記事\n"
+                "tags:\n"
+                "  - note\n"
+                "---\n"
+                "本文\n\n"
+                "![local](pic.png)\n"
+                "![remote](https://example.com/remote.png)\n"
+                "![missing](missing.png)\n"
+            )
+            article_path = adir / "img.md"
+            article_path.write_text(article_md, encoding="utf-8")
+
+            article = load_article(article_path)
+            paths = local_image_paths(article)
+            self.assertEqual([p.name for p in paths], ["pic.png"])
+
+
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
         from auto_note.scaffold import slugify

@@ -91,6 +91,23 @@ def collect_article_images(article: Article) -> list[ImageReference]:
     return refs
 
 
+def local_image_paths(article: Article) -> list[Path]:
+    """Resolved paths of the article's local (non-remote) image files that exist
+    on disk — the set the browser automation uploads to note. De-duplicated,
+    order preserved (cover first, then body order)."""
+    paths: list[Path] = []
+    seen: set[str] = set()
+    for ref in collect_article_images(article):
+        if ref.remote or not ref.exists or ref.path is None:
+            continue
+        key = str(ref.path.resolve())
+        if key in seen:
+            continue
+        seen.add(key)
+        paths.append(ref.path)
+    return paths
+
+
 def inspect_images_path(path: Path, *, pattern: str = "*.md") -> list[ImageReference]:
     refs: list[ImageReference] = []
     files = _collect_markdown_files(path, pattern)
