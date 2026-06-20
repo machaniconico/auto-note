@@ -10615,6 +10615,39 @@ class LocalImagePathsTests(unittest.TestCase):
             self.assertEqual([p.name for p in paths], ["pic.png"])
 
 
+class PublishedHistoryTests(unittest.TestCase):
+    def test_lists_published_articles_with_totals(self) -> None:
+        from auto_note.workflow import (
+            format_published_history,
+            mark_article_published,
+            published_articles,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            adir = project / "articles"
+            adir.mkdir(parents=True, exist_ok=True)
+            a = create_article("公開A", articles_dir=adir, tags=["note"])
+            b = create_article("公開B", articles_dir=adir, tags=["note"])
+            create_article("下書き", articles_dir=adir, tags=["note"])
+            mark_article_published(a, url="https://note.com/u/n/a")
+            mark_article_published(b, url="https://note.com/u/n/b")
+
+            self.assertEqual(len(published_articles(project)), 2)
+            report = format_published_history(project)
+            self.assertIn("全2件", report)
+            self.assertIn("https://note.com/u/n/a", report)
+            self.assertIn("https://note.com/u/n/b", report)
+
+        with tempfile.TemporaryDirectory() as tmp2:
+            project2 = Path(tmp2)
+            (project2 / "articles").mkdir(parents=True, exist_ok=True)
+            self.assertIn(
+                "まだ公開済みの記事はありません",
+                format_published_history(project2),
+            )
+
+
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
         from auto_note.scaffold import slugify

@@ -122,6 +122,37 @@ def due_scheduled_articles(
     return [source for _at, source in sorted(due, key=lambda item: item[0])]
 
 
+def published_articles(project_dir: Path, *, pattern: str = "*.md") -> list[Article]:
+    """All published articles, newest published_at first (blank dates sort last)."""
+    articles_dir = project_dir / "articles"
+    published = [a for a in _collect_articles(articles_dir, pattern) if a.status == "published"]
+    return sorted(
+        published,
+        key=lambda article: (article.published_at or "", article.source.name),
+        reverse=True,
+    )
+
+
+def format_published_history(
+    project_dir: Path, *, pattern: str = "*.md", now: datetime | None = None
+) -> str:
+    """Readable 公開実績 report: totals plus a newest-first list of published
+    articles with their date and URL."""
+    articles = published_articles(project_dir, pattern=pattern)
+    if not articles:
+        return "まだ公開済みの記事はありません。"
+    reference = now or datetime.now()
+    month_prefix = reference.strftime("%Y-%m")
+    this_month = sum(1 for article in articles if (article.published_at or "").startswith(month_prefix))
+    lines = [f"公開実績: 全{len(articles)}件 / 今月{this_month}件", ""]
+    for article in articles:
+        date = article.published_at or "(日時不明)"
+        url = article.published_url or "(URL未記録)"
+        lines.append(f"- {date} {article.title}")
+        lines.append(f"    {url}")
+    return "\n".join(lines)
+
+
 def format_plan(path: Path, *, pattern: str = "*.md") -> str:
     articles = _collect_articles(path, pattern)
     grouped: dict[str, list[Article]] = {status: [] for status in ("draft", "ready", "scheduled", "published")}

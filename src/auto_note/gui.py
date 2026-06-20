@@ -216,6 +216,7 @@ from .workflow import (
     format_calendar_export,
     format_ideas,
     format_plan,
+    format_published_history,
     list_calendar_exports,
     load_ideas,
     mark_article_published,
@@ -2712,6 +2713,7 @@ class AutoNoteApp(tk.Tk):
             ("投稿ヘルパーを開く", self.open_helper, "Primary.TButton"),
             ("ログイン安全ガイド", self.show_note_login_safety_action),
             ("投稿キュー", self.publish_queue_to_tab),
+            ("公開実績", self.show_published_history_action),
             ("運用サマリー", self.run_overview_to_tab),
             ("予定ICS出力", self.export_calendar_action),
             ("初回チェック", self.run_first_run_to_tab),
@@ -6052,6 +6054,14 @@ class AutoNoteApp(tk.Tk):
             silent_errors=True,
         )
 
+    def show_published_history_action(self) -> None:
+        self._set_text(
+            self.diagnostics_text,
+            format_published_history(self.project_dir, pattern=self.settings.article_glob),
+        )
+        self.notebook.select(self.diagnostics_tab)
+        self.notify("公開実績を表示しました", level="info")
+
     def open_dashboard(self) -> None:
         try:
             path = open_manual_dashboard(
@@ -8173,6 +8183,7 @@ class AutoNoteApp(tk.Tk):
             ("投稿準備", "選択記事の投稿前チェックを表示", self.publish_ready_selected_to_tab),
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),
+            ("公開実績", "公開済み記事の一覧（公開日・URL・件数）を表示", self.show_published_history_action),
             ("運用サマリー", "今日見るべき投稿、予定、古い下書きを表示", self.run_overview_to_tab),
             ("予定ICS出力", "公開予定をGoogle/Outlook向け.icsに保存", self.export_calendar_action),
             ("本文コピー", "選択記事の本文をコピー", lambda: self.copy_selected("body")),
