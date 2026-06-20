@@ -10709,6 +10709,37 @@ class LocalImagePathsTests(unittest.TestCase):
             self.assertEqual([p.name for p in paths], ["pic.png"])
 
 
+class DuplicateArticleTests(unittest.TestCase):
+    def test_duplicate_creates_fresh_draft(self) -> None:
+        from auto_note.article import load_article
+        from auto_note.workflow import (
+            duplicate_article,
+            mark_article_published,
+            set_article_schedule,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adir = Path(tmp) / "articles"
+            adir.mkdir(parents=True, exist_ok=True)
+            src = create_article("元記事", articles_dir=adir, tags=["note", "仕事"])
+            set_article_schedule(src, "2020-01-01 09:00")
+            mark_article_published(src, url="https://note.com/u/n/x")
+            original = load_article(src)
+
+            dup = duplicate_article(src, articles_dir=adir)
+            self.assertNotEqual(dup.resolve(), src.resolve())
+            self.assertTrue(dup.exists())
+
+            copy = load_article(dup)
+            self.assertEqual(copy.status, "draft")
+            self.assertEqual(copy.scheduled, "")
+            self.assertEqual(copy.published_url, "")
+            self.assertEqual(copy.published_at, "")
+            self.assertIn("のコピー", copy.title)
+            self.assertEqual(copy.body, original.body)
+            self.assertEqual(copy.tags, original.tags)
+
+
 class AutoPublishGraceSettingTests(unittest.TestCase):
     def test_setting_round_trips_and_clamps(self) -> None:
         from dataclasses import replace

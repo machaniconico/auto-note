@@ -13,7 +13,7 @@ import tempfile
 
 from .article import Article, ArticleError, load_article, read_markdown, write_markdown, write_text_atomic
 from .paths import unique_path
-from .scaffold import create_article
+from .scaffold import create_article, slugify
 
 
 STATUSES = {"draft", "ready", "scheduled", "published"}
@@ -122,6 +122,23 @@ def due_scheduled_articles(
         if scheduled_at <= reference:
             due.append((scheduled_at, article.source))
     return [source for _at, source in sorted(due, key=lambda item: item[0])]
+
+
+def duplicate_article(source: Path, *, articles_dir: Path | None = None) -> Path:
+    """Create a fresh draft copy of an article: same body and tags, title with a
+    'のコピー' suffix, status reset to draft, and schedule/publish metadata
+    cleared. Returns the new file path (collision-safe)."""
+    metadata, body = read_markdown(source)
+    metadata = dict(metadata)
+    base_title = str(metadata.get("title") or source.stem)
+    metadata["title"] = f"{base_title}のコピー"
+    metadata["status"] = "draft"
+    for key in ("scheduled", "published_at", "published_url", "publish"):
+        metadata.pop(key, None)
+    target_dir = articles_dir or source.parent
+    target = unique_path(target_dir / f"{slugify(metadata['title'])}.md")
+    write_markdown(target, metadata, body)
+    return target
 
 
 def published_articles(project_dir: Path, *, pattern: str = "*.md") -> list[Article]:

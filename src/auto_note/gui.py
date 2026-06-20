@@ -211,6 +211,7 @@ from .workflow import (
     add_idea,
     clear_article_schedule,
     due_scheduled_articles,
+    duplicate_article,
     export_calendar,
     format_calendar,
     format_calendar_export,
@@ -3048,6 +3049,9 @@ class AutoNoteApp(tk.Tk):
             side=tk.LEFT, padx=6
         )
         ttk.Button(table_buttons, text="本文コピー", command=lambda: self.copy_selected("body")).pack(
+            side=tk.LEFT, padx=6
+        )
+        ttk.Button(table_buttons, text="複製", command=self.duplicate_selected_article_action).pack(
             side=tk.LEFT, padx=6
         )
         ttk.Button(table_buttons, text="投稿キュー", command=self.publish_queue_to_tab).pack(side=tk.LEFT, padx=6)
@@ -6198,6 +6202,20 @@ class AutoNoteApp(tk.Tk):
         except OSError:
             pass
 
+    def duplicate_selected_article_action(self) -> None:
+        article = self.selected_or_warn()
+        if not article:
+            return
+        try:
+            path = duplicate_article(article.source, articles_dir=self.articles_dir)
+        except (OSError, ArticleError) as exc:
+            self.notify("記事の複製に失敗しました", level="error")
+            messagebox.showerror("複製エラー", str(exc), parent=self)
+            return
+        self.refresh_articles()
+        self.select_article_path(path)
+        self.notify(f"記事を複製しました: {path.name}", level="success")
+
     def open_dashboard(self) -> None:
         try:
             path = open_manual_dashboard(
@@ -8313,6 +8331,7 @@ class AutoNoteApp(tk.Tk):
             ("作業進行: サポート", "ホームのサポート工程を開く", lambda: self.open_home_progress_stage("support")),
             ("ログイン安全ガイド", "安全ではない可能性がある表示時の既定ブラウザ投稿手順", self.show_note_login_safety_action),
             ("noteログイン", "普段の既定ブラウザでnoteログインを開く", self.open_note_login_action),
+            ("記事を複製", "選択記事を下書きとして複製する", self.duplicate_selected_article_action),
             ("投稿ヘルパー", "選択記事の投稿ヘルパーを開く", self.open_helper),
             ("ブラウザで下書き作成", "選択記事をnoteのエディタへ自動入力してブラウザを開く", self.post_to_browser_action),
             ("ブラウザで公開", "選択記事をnoteへ自動入力して公開し、公開URLを記事に記録する", lambda: self.post_to_browser_action(publish=True)),
