@@ -5932,10 +5932,13 @@ class AutoNoteApp(tk.Tk):
         )
         self._refresh_home_first_run_summary(first_run_report)
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
-        self._refresh_home_gui_log_status()
-        self._refresh_home_snapshot_strip(readiness, action_plan, first_run_report)
-        self._refresh_home_operation_panel(readiness, action_plan)
-        self._refresh_home_reports()
+        # Compute gui_log_status once; pass to the three helpers that each used to
+        # re-read the log file independently.
+        gui_log_status = _home_gui_log_status(gui_error_log_path(self.project_dir))
+        self._refresh_home_gui_log_status(gui_log_status=gui_log_status)
+        self._refresh_home_snapshot_strip(readiness, action_plan, first_run_report, gui_log_status=gui_log_status)
+        self._refresh_home_operation_panel(readiness, action_plan, gui_log_status=gui_log_status)
+        self._refresh_home_reports(cached_lists=getattr(self, "_home_cached_lists", None))
 
         lines = [
             "次にやること",
@@ -6034,7 +6037,7 @@ class AutoNoteApp(tk.Tk):
         if rail is not None:
             rail.configure(bg=_home_state_accent_color(state))
 
-    def _refresh_home_snapshot_strip(self, readiness, action_plan, first_run_report: FirstRunReport) -> None:
+    def _refresh_home_snapshot_strip(self, readiness, action_plan, first_run_report: FirstRunReport, *, gui_log_status=None) -> None:
         if not hasattr(self, "home_snapshot_vars"):
             return
         next_step = action_plan.steps[0] if action_plan.steps else None
@@ -6050,9 +6053,10 @@ class AutoNoteApp(tk.Tk):
             buyer_send_summary=self.home_buyer_send_var.get() if hasattr(self, "home_buyer_send_var") else "",
         )
         next_state = _home_snapshot_next_state(getattr(next_step, "severity", "") if next_step else "")
+        _gui_log_state, _ = gui_log_status if gui_log_status is not None else _home_gui_log_status(gui_error_log_path(self.project_dir))
         startup_state = _home_snapshot_worst_state(
             _home_progress_state_from_status(first_run_report.status),
-            _home_gui_log_status(gui_error_log_path(self.project_dir))[0],
+            _gui_log_state,
         )
         sales_state = "ok" if "READY TO VERIFY" in values["sales"] else "warn"
         if "ZIP検証NG" in values["sales"] or "NG" in values["sales"]:
@@ -6078,7 +6082,7 @@ class AutoNoteApp(tk.Tk):
         if rail is not None:
             rail.configure(bg=_home_state_accent_color(state))
 
-    def _refresh_home_operation_panel(self, readiness, action_plan) -> None:
+    def _refresh_home_operation_panel(self, readiness, action_plan, *, gui_log_status=None) -> None:
         if not hasattr(self, "home_operation_vars"):
             return
         next_step = action_plan.steps[0] if action_plan.steps else None
@@ -6088,7 +6092,7 @@ class AutoNoteApp(tk.Tk):
             self.home_buyer_send_var.get() if hasattr(self, "home_buyer_send_var") else "",
             self.home_buyer_send_next_var.get() if hasattr(self, "home_buyer_send_next_var") else "",
         )
-        gui_state, gui_text = _home_gui_log_status(gui_error_log_path(self.project_dir))
+        gui_state, gui_text = gui_log_status if gui_log_status is not None else _home_gui_log_status(gui_error_log_path(self.project_dir))
         safety_state, safety_title, safety_detail = _home_operation_safety(gui_state, gui_text)
         mode_state = _home_snapshot_worst_state(
             priority_state,
@@ -6232,14 +6236,14 @@ class AutoNoteApp(tk.Tk):
         self.notebook.select(tab)
         self.notify(message, level="info")
 
-    def _refresh_home_reports(self) -> None:
+    def _refresh_home_reports(self, *, cached_lists=None) -> None:
         if not hasattr(self, "home_reports_tree"):
             return
         self._home_report_paths = {}
         for child in self.home_reports_tree.get_children():
             self.home_reports_tree.delete(child)
 
-        items = self._latest_home_report_items()
+        items = self._latest_home_report_items(cached_lists=cached_lists)
         if not items:
             self.home_reports_var.set(
                 "まだ保存レポートがありません。診断レポート、問い合わせ一式、復旧セット、販売前一括チェックを実行するとここに並びます。"
@@ -6281,28 +6285,29 @@ class AutoNoteApp(tk.Tk):
         status = _home_report_status(label, path)
         self.home_reports_var.set(_home_report_summary("選択", label, path, status))
 
-    def _refresh_home_gui_log_status(self) -> None:
+    def _refresh_home_gui_log_status(self, *, gui_log_status=None) -> None:
         if not hasattr(self, "home_gui_log_var"):
             return
-        state, text = _home_gui_log_status(gui_error_log_path(self.project_dir))
+        state, text = gui_log_status if gui_log_status is not None else _home_gui_log_status(gui_error_log_path(self.project_dir))
         pill_text, bg, fg = _home_sales_indicator_style(state)
         self.home_gui_log_status_pill.configure(text=pill_text, bg=bg, fg=fg)
         self.home_gui_log_var.set(text)
 
-    def _latest_home_report_items(self) -> list[tuple[str, Path]]:
+    def _latest_home_report_items(self, *, cached_lists=None) -> list[tuple[str, Path]]:
+        c = cached_lists or {}
         groups = [
             ("問い合わせZIP", list_support_bundles(self.project_dir)),
             ("復旧レポート", list_recovery_kit_reports(self.project_dir)),
             ("診断ZIP", list_diagnostic_reports(self.project_dir)),
-            ("配布ZIP", list_releases(self.project_dir)),
-            ("掲載画像", list_sales_screenshot_packs(self.project_dir)),
-            ("掲載キット", list_sales_listing_packages(self.project_dir)),
-            ("購入者ZIP", list_buyer_delivery_packages(self.project_dir)),
-            ("購入者送付文", list_buyer_delivery_messages(self.project_dir)),
-            ("送付記録", list_seller_delivery_receipts(self.project_dir)),
+            ("配布ZIP", c.get("releases") if c.get("releases") is not None else list_releases(self.project_dir)),
+            ("掲載画像", c.get("screenshot_packs") if c.get("screenshot_packs") is not None else list_sales_screenshot_packs(self.project_dir)),
+            ("掲載キット", c.get("listing_packages") if c.get("listing_packages") is not None else list_sales_listing_packages(self.project_dir)),
+            ("購入者ZIP", c.get("buyer_packages") if c.get("buyer_packages") is not None else list_buyer_delivery_packages(self.project_dir)),
+            ("購入者送付文", c.get("buyer_messages") if c.get("buyer_messages") is not None else list_buyer_delivery_messages(self.project_dir)),
+            ("送付記録", c.get("seller_receipts") if c.get("seller_receipts") is not None else list_seller_delivery_receipts(self.project_dir)),
             ("販売直前", list_sales_launch_checklists(self.project_dir)),
             ("販売確認", list_sales_launch_confirmations(self.project_dir)),
-            ("一括チェック", _list_release_check_reports(self.project_dir)),
+            ("一括チェック", c.get("release_checks") if c.get("release_checks") is not None else _list_release_check_reports(self.project_dir)),
             ("運用要約", _list_home_operation_reports(self.project_dir)),
             ("投稿キュー", list_publish_queue_reports(self.project_dir)),
             ("E2E確認", list_workflow_smoke_reports(self.project_dir)),
@@ -6639,6 +6644,18 @@ class AutoNoteApp(tk.Tk):
             buyer_message_matches_package=buyer_message_matches_package,
             buyer_receipt_matches_delivery=buyer_receipt_matches_delivery,
         )
+        # Cache the lists already computed above so _refresh_home_reports can pass
+        # them into _latest_home_report_items, avoiding duplicate filesystem scans.
+        # Cleared/reset each call — no cross-refresh staleness.
+        self._home_cached_lists = {
+            "releases": releases,
+            "screenshot_packs": screenshot_packs,
+            "listing_packages": listing_packages,
+            "buyer_packages": buyer_packages,
+            "buyer_messages": buyer_messages,
+            "seller_receipts": seller_receipts,
+            "release_checks": release_checks,
+        }
         if self._home_sales_next_step is None:
             self.home_sales_next_var.set("次: 販売ナビで詳細検証します。")
             return
@@ -7486,10 +7503,14 @@ class AutoNoteApp(tk.Tk):
         listbox.pack(fill=tk.BOTH, expand=True)
 
         visible: list[tuple[str, str, object]] = []
+        _last_query: list[str | None] = [None]  # sentinel: first refresh always populates
 
         def refresh() -> None:
-            visible.clear()
             query = query_var.get().strip().lower()
+            if query == _last_query[0]:
+                return
+            _last_query[0] = query
+            visible.clear()
             listbox.delete(0, tk.END)
             for label, hint, action in actions:
                 if not _command_palette_matches(label, hint, query):

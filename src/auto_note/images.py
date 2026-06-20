@@ -59,12 +59,35 @@ class OptimizedImage:
     changed: bool
 
 
+_COLLECT_IMAGES_CACHE: dict[tuple[str, int, int], list[ImageReference]] = {}
+
+
+def clear_collect_images_cache() -> None:
+    _COLLECT_IMAGES_CACHE.clear()
+
+
 def collect_article_images(article: Article) -> list[ImageReference]:
-    refs: list[ImageReference] = []
+    try:
+        stat = article.source.stat()
+    except OSError:
+        refs: list[ImageReference] = []
+        if article.cover:
+            refs.append(_reference(article.source, "cover", article.cover))
+        for value in _body_images(article.body):
+            refs.append(_reference(article.source, "body", value))
+        return refs
+    key = (str(article.source.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _COLLECT_IMAGES_CACHE.get(key)
+    if cached is not None:
+        return cached
+    refs = []
     if article.cover:
         refs.append(_reference(article.source, "cover", article.cover))
     for value in _body_images(article.body):
         refs.append(_reference(article.source, "body", value))
+    for stale in [k for k in _COLLECT_IMAGES_CACHE if k[0] == key[0] and k != key]:
+        _COLLECT_IMAGES_CACHE.pop(stale, None)
+    _COLLECT_IMAGES_CACHE[key] = refs
     return refs
 
 

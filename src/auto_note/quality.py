@@ -15,6 +15,28 @@ from .settings import load_settings
 
 VALID_STATUSES = {"draft", "ready", "scheduled", "published"}
 
+_TEXT_CACHE: dict[tuple[str, int, int], str] = {}
+
+
+def clear_text_cache() -> None:
+    _TEXT_CACHE.clear()
+
+
+def _cached_read_text(path: Path) -> str:
+    """Read a file's text at most once per (path, mtime, size). Mirrors
+    inspect.inspect_file_cached: cuts the repeated reads of the same
+    unchanged file (gui.py/README/PRODUCT_READINESS) during run_quality_checks."""
+    stat = path.stat()  # caller guarantees path.exists() before calling
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _TEXT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for stale in [k for k in _TEXT_CACHE if k[0] == key[0] and k != key]:
+        _TEXT_CACHE.pop(stale, None)
+    _TEXT_CACHE[key] = text
+    return text
+
 
 @dataclass(frozen=True)
 class QualityCheck:
@@ -8305,7 +8327,7 @@ def _text_contains_check(path: Path, name: str, needle: str) -> QualityCheck:
     if not path.exists():
         return QualityCheck(name, "fail", f"file not found: {path}")
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = _cached_read_text(path)
     except OSError as exc:
         return QualityCheck(name, "fail", str(exc))
     if needle not in text:
@@ -8317,7 +8339,7 @@ def _text_not_contains_check(path: Path, name: str, needle: str) -> QualityCheck
     if not path.exists():
         return QualityCheck(name, "fail", f"file not found: {path}")
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = _cached_read_text(path)
     except OSError as exc:
         return QualityCheck(name, "fail", str(exc))
     if needle in text:
