@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ctypes
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 import hashlib
 import json
@@ -845,6 +845,23 @@ def launch_gui(project_dir: Path, *, safe_display: bool = False) -> int:
     return 0
 
 
+@dataclass
+class HomeBundle:
+    """Project-derived results for a home refresh, computed off the Tk thread by
+    _compute_home_bundle and applied to widgets on the main thread by
+    _apply_home_bundle. Contains NO Tk objects so it is safe to build on a
+    worker thread."""
+
+    articles: list
+    counts: dict
+    readiness: object
+    quickstart: object
+    action_plan: object
+    first_run_report: object
+    gui_log_status: tuple
+    calendar_text: str
+
+
 def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
     project_dir = _clean_path(project_dir)
     _enable_windows_dpi_awareness()
@@ -852,6 +869,21 @@ def smoke_gui(project_dir: Path, *, safe_display: bool = False) -> str:
     try:
         app = AutoNoteApp(project_dir, ui_density_override="large" if safe_display else None)
         app.withdraw()
+        app.update_idletasks()
+        # The home refresh now computes on a worker thread (see _do_refresh_home).
+        # Drain it deterministically so the home widgets are populated before this
+        # smoke check reads them — same event-pump mechanism the threaded-button
+        # tests rely on. update_idletasks() alone does not run the after(50) poller
+        # or the worker, so pump full update() until the worker has applied.
+        import time as _time
+
+        _home_deadline = _time.monotonic() + 15
+        while (
+            getattr(app, "_home_refresh_thread", None) is not None
+            and _time.monotonic() < _home_deadline
+        ):
+            app.update()
+            _time.sleep(0.01)
         app.update_idletasks()
         app._load_check_tab_once()
         app._load_diagnostics_tab_once()
@@ -1220,6 +1252,11 @@ class AutoNoteApp(tk.Tk):
         self._quickstart_result: tuple[object | None, str, Exception | None] | None = None
         self._quickstart_result_lock = threading.Lock()
         self._quickstart_poll_job: str | None = None
+        self._home_refresh_thread: threading.Thread | None = None
+        self._home_refresh_result: tuple[HomeBundle | None, Exception | None] | None = None
+        self._home_refresh_lock = threading.Lock()
+        self._home_refresh_poll_job: str | None = None
+        self._home_refresh_rerun = False
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -5556,8 +5593,17 @@ class AutoNoteApp(tk.Tk):
                 except tk.TclError:
                     pass
                 self._quickstart_poll_job = None
+            if self._home_refresh_poll_job:
+                try:
+                    self.after_cancel(self._home_refresh_poll_job)
+                except tk.TclError:
+                    pass
+                self._home_refresh_poll_job = None
             with self._quickstart_result_lock:
                 self._quickstart_result = None
+            with self._home_refresh_lock:
+                self._home_refresh_result = None
+            self._home_refresh_thread = None
             self._quickstart_thread = None
             self._readiness_thread = None
             self._commercial_readiness_thread = None
@@ -5913,9 +5959,42 @@ class AutoNoteApp(tk.Tk):
         self.after_idle(self._do_refresh_home)
 
     def _do_refresh_home(self) -> None:
+        # Dispatcher: the heavy project computation (run_readiness/run_quickstart/
+        # run_first_run_checklist/article scan) runs on a worker thread so it no
+        # longer freezes the Tk main thread for several seconds. Widget mutation
+        # happens in _apply_home_bundle on the main thread, marshaled by the
+        # poller — mirrors the established quickstart worker+poll pattern.
         self._home_refresh_pending = False
         if not hasattr(self, "home_text"):
             return
+        running = self._home_refresh_thread
+        if running is not None and running.is_alive():
+            # A refresh is already computing. Remember to run once more after it
+            # applies so the freshest state wins, then let the worker finish.
+            self._home_refresh_rerun = True
+            return
+        self._home_refresh_rerun = False
+        thread = threading.Thread(target=self._run_home_refresh_worker, daemon=True)
+        with self._home_refresh_lock:
+            self._home_refresh_result = None
+        self._home_refresh_thread = thread
+        thread.start()
+        self._schedule_home_refresh_poll()
+
+    def _run_home_refresh_worker(self) -> None:
+        bundle: HomeBundle | None = None
+        error: Exception | None = None
+        try:
+            bundle = self._compute_home_bundle()
+        except Exception as exc:  # surfaced to the user on the main thread
+            error = exc
+        with self._home_refresh_lock:
+            self._home_refresh_result = (bundle, error)
+
+    def _compute_home_bundle(self) -> HomeBundle:
+        # Runs on a worker thread: reads only plain instance attributes
+        # (project_dir/articles_dir/settings) and module-level functions. MUST
+        # NOT touch any Tk widget or StringVar.
         articles = []
         for path in sorted(self.articles_dir.glob(self.settings.article_glob)):
             try:
@@ -5928,6 +6007,68 @@ class AutoNoteApp(tk.Tk):
         readiness = run_readiness(self.project_dir)
         quickstart = run_quickstart(self.project_dir)
         action_plan = build_action_plan(self.project_dir, readiness=readiness, quickstart=quickstart)
+        # Reuse the readiness/quickstart reports already computed above instead of
+        # letting run_first_run_checklist -> run_self_test recompute them again.
+        first_run_report = run_first_run_checklist(
+            self.project_dir, readiness=readiness, quickstart=quickstart
+        )
+        gui_log_status = _home_gui_log_status(gui_error_log_path(self.project_dir))
+        calendar_text = format_calendar(
+            self.articles_dir, pattern=self.settings.article_glob, days=14
+        )
+        return HomeBundle(
+            articles=articles,
+            counts=counts,
+            readiness=readiness,
+            quickstart=quickstart,
+            action_plan=action_plan,
+            first_run_report=first_run_report,
+            gui_log_status=gui_log_status,
+            calendar_text=calendar_text,
+        )
+
+    def _schedule_home_refresh_poll(self) -> None:
+        try:
+            self._home_refresh_poll_job = self.after(50, self._poll_home_refresh_worker)
+        except (tk.TclError, RuntimeError):
+            self._home_refresh_thread = None
+            self._home_refresh_poll_job = None
+
+    def _poll_home_refresh_worker(self) -> None:
+        self._home_refresh_poll_job = None
+        with self._home_refresh_lock:
+            result = self._home_refresh_result
+            if result is not None:
+                self._home_refresh_result = None
+        if result is None:
+            running = self._home_refresh_thread
+            if running is not None and running.is_alive():
+                self._schedule_home_refresh_poll()
+                return
+            self._home_refresh_thread = None
+            return
+        bundle, error = result
+        self._home_refresh_thread = None
+        if error is None and bundle is not None:
+            self._apply_home_bundle(bundle)
+        if self._home_refresh_rerun:
+            self._home_refresh_rerun = False
+            self.refresh_home()
+
+    def _apply_home_bundle(self, bundle: HomeBundle) -> None:
+        # Runs on the Tk main thread: every widget / StringVar mutation lives
+        # here. Helper order is preserved from the old synchronous refresh so
+        # cross-widget reads (e.g. home_sales_status_var) still see values set
+        # earlier in the same apply pass.
+        if not hasattr(self, "home_text"):
+            return
+        articles = bundle.articles
+        counts = bundle.counts
+        readiness = bundle.readiness
+        quickstart = bundle.quickstart
+        action_plan = bundle.action_plan
+        first_run_report = bundle.first_run_report
+        gui_log_status = bundle.gui_log_status
         self.kpi_vars["準備度"].set(f"{readiness.score}%")
         self.kpi_vars["記事"].set(str(len(articles)))
         self.kpi_vars["下書き"].set(str(counts["draft"]))
@@ -5947,18 +6088,8 @@ class AutoNoteApp(tk.Tk):
                 self.home_primary_button_var.set(_home_primary_button_label(self._home_primary_step))
         self._render_home_action_plan(action_plan)
         self._refresh_home_sales_summary()
-        # Reuse the readiness/quickstart reports already computed above instead of
-        # letting run_first_run_checklist -> run_self_test recompute them a second
-        # time on the Tk thread (~47% of this refresh's wall time). The reuse
-        # params have existed since ad0a663; this wires them into the GUI call.
-        first_run_report = run_first_run_checklist(
-            self.project_dir, readiness=readiness, quickstart=quickstart
-        )
         self._refresh_home_first_run_summary(first_run_report)
         self._refresh_home_progress_lane(readiness, quickstart, action_plan, articles, counts)
-        # Compute gui_log_status once; pass to the three helpers that each used to
-        # re-read the log file independently.
-        gui_log_status = _home_gui_log_status(gui_error_log_path(self.project_dir))
         self._refresh_home_gui_log_status(gui_log_status=gui_log_status)
         self._refresh_home_snapshot_strip(readiness, action_plan, first_run_report, gui_log_status=gui_log_status)
         self._refresh_home_operation_panel(readiness, action_plan, gui_log_status=gui_log_status)
@@ -5980,7 +6111,7 @@ class AutoNoteApp(tk.Tk):
             "3. 投稿ヘルパーでnoteへ貼り付ける",
             "4. 公開後URLを保存する",
             "",
-            format_calendar(self.articles_dir, pattern=self.settings.article_glob, days=14),
+            bundle.calendar_text,
         ]
         self._set_text(self.home_text, "\n".join(lines))
 

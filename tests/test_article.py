@@ -10235,6 +10235,56 @@ class RefreshArticlesGuardTests(unittest.TestCase):
                 app.destroy()
 
 
+class HomeRefreshThreadingTests(unittest.TestCase):
+    """The home refresh computes off the Tk main thread and marshals its result
+    back through the event loop, leaving the home text populated."""
+
+    def _make_app(self, project):
+        import tkinter as tk
+        from auto_note.gui import AutoNoteApp
+
+        try:
+            app = AutoNoteApp(project)
+        except tk.TclError:
+            self.skipTest("no Tk display available")
+        app.withdraw()
+        app.update_idletasks()
+        return app
+
+    def _drain_home(self, app) -> None:
+        import time
+
+        deadline = time.monotonic() + 15
+        while app._home_refresh_thread is not None and time.monotonic() < deadline:
+            app.update()
+            time.sleep(0.01)
+
+    def test_refresh_home_runs_off_thread_and_populates(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "articles").mkdir(parents=True, exist_ok=True)
+            create_article("ホーム記事", articles_dir=project / "articles", tags=["note"])
+            app = self._make_app(project)
+            try:
+                # Let any startup refresh already in flight settle first.
+                self._drain_home(app)
+
+                app.refresh_home()        # schedules after_idle(_do_refresh_home)
+                app.update_idletasks()    # dispatcher runs -> worker started, not yet applied
+                self.assertIsNotNone(app._home_refresh_thread)
+
+                self._drain_home(app)     # poller applies the bundle on the main thread
+                self.assertIsNone(app._home_refresh_thread)
+                self.assertIn("現在の準備度", app.home_text.get("1.0", "end"))
+            finally:
+                app.destroy()
+
+
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:
         from auto_note.scaffold import slugify
