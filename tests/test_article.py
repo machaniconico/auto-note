@@ -10328,7 +10328,7 @@ class BrowserPostActionTests(unittest.TestCase):
 
         calls = {}
 
-        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+        async def fake_fill(article, *, publish, **kwargs):
             calls["publish"] = publish
             calls["title"] = article.title
             return None
@@ -10424,7 +10424,7 @@ class BrowserPostActionTests(unittest.TestCase):
         published_url = "https://note.com/testuser/n/abc123"
         calls = {}
 
-        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+        async def fake_fill(article, *, publish, **kwargs):
             calls["publish"] = publish
             return published_url if publish else None
 
@@ -10467,7 +10467,7 @@ class BrowserPostActionTests(unittest.TestCase):
         from auto_note import gui
         from auto_note.article import load_article
 
-        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+        async def fake_fill(article, *, publish, **kwargs):
             return f"https://note.com/u/n/{article.source.stem}" if publish else None
 
         fake_browser = types.SimpleNamespace(
@@ -10511,6 +10511,41 @@ class BrowserPostActionTests(unittest.TestCase):
             finally:
                 app.destroy()
 
+    def test_browser_post_surfaces_progress_events(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from auto_note import gui
+
+        async def fake_fill(article, *, publish, **kwargs):
+            on_event = kwargs.get("on_event")
+            if on_event is not None:
+                on_event("画像をアップロードしました: x.png")
+            return "https://note.com/u/n/x" if publish else None
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self._make_app(self._project_with_article(tmp))
+            try:
+                self._drain(app, "_home_refresh_thread")
+                orig = gui._import_browser
+                gui._import_browser = lambda: fake_browser
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                app.confirm_helper_safety = lambda article: True
+                recorded = []
+                app.notify = lambda message, **kwargs: recorded.append(message)
+
+                app.post_to_browser_action(publish=True)
+                self._drain(app, "_browser_post_thread")
+                self.assertTrue(any("画像をアップロードしました" in m for m in recorded))
+            finally:
+                app.destroy()
+
     def test_dry_run_screenshots_without_publishing(self) -> None:
         try:
             import tkinter  # noqa: F401
@@ -10522,7 +10557,8 @@ class BrowserPostActionTests(unittest.TestCase):
 
         captured = {}
 
-        async def fake_fill(article, *, publish, append_tags, options, should_close=None, screenshot_path=None):
+        async def fake_fill(article, *, publish, **kwargs):
+            screenshot_path = kwargs.get("screenshot_path")
             captured["publish"] = publish
             captured["screenshot_path"] = screenshot_path
             if screenshot_path is not None:
@@ -10569,7 +10605,7 @@ class BrowserPostActionTests(unittest.TestCase):
         from auto_note.article import load_article
         from auto_note.workflow import set_article_schedule
 
-        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+        async def fake_fill(article, *, publish, **kwargs):
             return "https://note.com/u/n/scheduled" if publish else None
 
         fake_browser = types.SimpleNamespace(

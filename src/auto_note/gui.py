@@ -1281,6 +1281,7 @@ class AutoNoteApp(tk.Tk):
         self._browser_post_articles: list[Article] = []
         self._browser_post_batch = False
         self._browser_post_silent = False
+        self._browser_post_events: list[str] = []
         self._browser_post_screenshot_dir: Path | None = None
         self._scheduled_publish_job: str | None = None
         self._scheduled_publish_warned = False
@@ -5900,6 +5901,7 @@ class AutoNoteApp(tk.Tk):
         )
         with self._browser_post_lock:
             self._browser_post_result = None
+            self._browser_post_events = []
         self._browser_post_thread = thread
         thread.start()
         self._schedule_browser_post_poll()
@@ -5925,6 +5927,7 @@ class AutoNoteApp(tk.Tk):
                     append_tags=self.settings.append_tags_by_default,
                     options=options,
                     should_close=should_close,
+                    on_event=self._record_browser_event,
                     **extra,
                 )
                 result_value = self._run_async_browser_coro(coro)
@@ -5962,6 +5965,11 @@ class AutoNoteApp(tk.Tk):
                 loop.close()
         return asyncio.run(coro)
 
+    def _record_browser_event(self, message: str) -> None:
+        # Called from the worker thread; buffer progress for the main-thread poller.
+        with self._browser_post_lock:
+            self._browser_post_events.append(message)
+
     def _schedule_browser_post_poll(self) -> None:
         try:
             self._browser_post_poll_job = self.after(100, self._poll_browser_post_worker)
@@ -5972,9 +5980,13 @@ class AutoNoteApp(tk.Tk):
     def _poll_browser_post_worker(self) -> None:
         self._browser_post_poll_job = None
         with self._browser_post_lock:
+            events = self._browser_post_events
+            self._browser_post_events = []
             result = self._browser_post_result
             if result is not None:
                 self._browser_post_result = None
+        for message in events:
+            self.notify(message, level="info", transient=True)
         if result is None:
             running = self._browser_post_thread
             if running is not None and running.is_alive():
