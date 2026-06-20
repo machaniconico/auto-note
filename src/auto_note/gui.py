@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ctypes
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import json
 import math
@@ -380,6 +380,7 @@ STATUS_COLORS = {
 }
 AUTOSAVE_INTERVAL_MS = 30_000
 SCHEDULED_PUBLISH_INTERVAL_MS = 60_000
+AUTO_PUBLISH_GRACE_SECONDS = 300
 
 
 def _normalise_ui_density(value: str) -> str:
@@ -1282,6 +1283,9 @@ class AutoNoteApp(tk.Tk):
         self._scheduled_publish_job: str | None = None
         self._scheduled_publish_warned = False
         self._auto_publish_attempted: set[str] = set()
+        self._auto_publish_pending: dict[str, datetime] = {}
+        self._auto_publish_cancelled: set[str] = set()
+        self._auto_publish_grace_seconds = AUTO_PUBLISH_GRACE_SECONDS
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -2714,6 +2718,7 @@ class AutoNoteApp(tk.Tk):
             ("ログイン安全ガイド", self.show_note_login_safety_action),
             ("投稿キュー", self.publish_queue_to_tab),
             ("公開実績", self.show_published_history_action),
+            ("予約公開を中止", self.cancel_scheduled_auto_publish),
             ("運用サマリー", self.run_overview_to_tab),
             ("予定ICS出力", self.export_calendar_action),
             ("初回チェック", self.run_first_run_to_tab),
@@ -6014,6 +6019,22 @@ class AutoNoteApp(tk.Tk):
             except (tk.TclError, RuntimeError):
                 self._scheduled_publish_job = None
 
+    def _safe_article_title(self, source: Path) -> str:
+        try:
+            return load_article(source).title or source.stem
+        except ArticleError:
+            return source.stem
+
+    def cancel_scheduled_auto_publish(self) -> None:
+        if not self._auto_publish_pending:
+            self.notify("猶予中の予約自動公開はありません", level="info")
+            return
+        count = len(self._auto_publish_pending)
+        # Cancelled this session: do not re-enter the grace window for them.
+        self._auto_publish_cancelled.update(self._auto_publish_pending)
+        self._auto_publish_pending.clear()
+        self.notify(f"{count}件の予約自動公開を中止しました", level="success")
+
     def _maybe_auto_publish_scheduled(self) -> None:
         running = self._browser_post_thread
         if running is not None and running.is_alive():
@@ -6022,11 +6043,35 @@ class AutoNoteApp(tk.Tk):
             due = due_scheduled_articles(self.project_dir, pattern=self.settings.article_glob)
         except (OSError, ArticleError):
             return
-        # Attempt each due article at most once per session so a persistent
-        # failure (e.g. not logged in) does not relaunch the browser every cycle.
-        pending = [src for src in due if str(src.resolve()) not in self._auto_publish_attempted]
-        if not pending:
+        now = datetime.now()
+        grace = timedelta(seconds=self._auto_publish_grace_seconds)
+        due_keys = {str(src.resolve()) for src in due}
+        # Forget pending entries that are no longer due (unscheduled / published).
+        for key in [k for k in self._auto_publish_pending if k not in due_keys]:
+            self._auto_publish_pending.pop(key, None)
+
+        ready: list[Path] = []
+        for source in due:
+            key = str(source.resolve())
+            if key in self._auto_publish_attempted or key in self._auto_publish_cancelled:
+                continue
+            if key not in self._auto_publish_pending:
+                # First sighting: announce a grace window instead of publishing
+                # now, so the user can still cancel.
+                self._auto_publish_pending[key] = now + grace
+                minutes = round(self._auto_publish_grace_seconds / 60)
+                if minutes >= 1:
+                    self.notify(
+                        f"「{self._safe_article_title(source)}」を約{minutes}分後に自動公開します。"
+                        "中止は『予約公開を中止』から。",
+                        level="info",
+                    )
+                continue
+            if self._auto_publish_pending[key] <= now:
+                ready.append(source)
+        if not ready:
             return
+
         browser = self._load_browser_silent()
         if browser is None:
             if not self._scheduled_publish_warned:
@@ -6037,8 +6082,12 @@ class AutoNoteApp(tk.Tk):
                 )
             return
         articles: list[Article] = []
-        for source in pending:
-            self._auto_publish_attempted.add(str(source.resolve()))
+        for source in ready:
+            key = str(source.resolve())
+            # Attempt each at most once per session so a persistent failure
+            # (e.g. not logged in) does not relaunch the browser every cycle.
+            self._auto_publish_attempted.add(key)
+            self._auto_publish_pending.pop(key, None)
             try:
                 articles.append(load_article(source))
             except ArticleError:
@@ -8184,6 +8233,7 @@ class AutoNoteApp(tk.Tk):
             ("改善プラン", "選択記事の修正順と仕上げ項目を表示", self.improvement_plan_selected_to_tab),
             ("投稿キュー", "全記事を投稿できる順に並べて表示", self.publish_queue_to_tab),
             ("公開実績", "公開済み記事の一覧（公開日・URL・件数）を表示", self.show_published_history_action),
+            ("予約公開を中止", "猶予中の予約自動公開をすべて中止する", self.cancel_scheduled_auto_publish),
             ("運用サマリー", "今日見るべき投稿、予定、古い下書きを表示", self.run_overview_to_tab),
             ("予定ICS出力", "公開予定をGoogle/Outlook向け.icsに保存", self.export_calendar_action),
             ("本文コピー", "選択記事の本文をコピー", lambda: self.copy_selected("body")),

@@ -10542,6 +10542,12 @@ class BrowserPostActionTests(unittest.TestCase):
                 gui._import_browser = lambda: fake_browser
                 self.addCleanup(setattr, gui, "_import_browser", orig)
 
+                app._auto_publish_grace_seconds = 0
+                # First poll only announces a grace window — no publish yet.
+                app._maybe_auto_publish_scheduled()
+                self.assertIsNone(app._browser_post_thread)
+                self.assertEqual(len(app._auto_publish_pending), 1)
+                # Second poll: the (zero) grace has elapsed, so it publishes.
                 app._maybe_auto_publish_scheduled()
                 self.assertIsNotNone(app._browser_post_thread)
                 self._drain(app, "_browser_post_thread")
@@ -10549,6 +10555,47 @@ class BrowserPostActionTests(unittest.TestCase):
                 self.assertEqual(reloaded.status, "published")
                 self.assertEqual(reloaded.published_url, "https://note.com/u/n/scheduled")
                 self.assertIn(str(path.resolve()), app._auto_publish_attempted)
+            finally:
+                app.destroy()
+
+    def test_cancel_scheduled_auto_publish_prevents_publish(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from dataclasses import replace
+        from auto_note import gui
+        from auto_note.workflow import set_article_schedule
+
+        async def fake_fill(article, **kwargs):
+            raise AssertionError("a cancelled scheduled publish must not run")
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "articles").mkdir(parents=True, exist_ok=True)
+            path = create_article("予約記事", articles_dir=project / "articles", tags=["note"])
+            set_article_schedule(path, "2020-01-01 09:00")
+            app = self._make_app(project)
+            try:
+                self._drain(app, "_home_refresh_thread")
+                app.settings = replace(app.settings, auto_publish_scheduled=True)
+                orig = gui._import_browser
+                gui._import_browser = lambda: fake_browser
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+                app._auto_publish_grace_seconds = 0
+
+                app._maybe_auto_publish_scheduled()  # enters grace window
+                self.assertEqual(len(app._auto_publish_pending), 1)
+                app.cancel_scheduled_auto_publish()
+                self.assertEqual(len(app._auto_publish_pending), 0)
+                # After cancel, even past grace it must not publish.
+                app._maybe_auto_publish_scheduled()
+                self.assertIsNone(app._browser_post_thread)
             finally:
                 app.destroy()
 
