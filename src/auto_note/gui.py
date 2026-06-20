@@ -210,6 +210,7 @@ from .troubleshoot import format_troubleshoot_report, run_troubleshoot
 from .workflow import (
     add_idea,
     clear_article_schedule,
+    due_scheduled_articles,
     export_calendar,
     format_calendar,
     format_calendar_export,
@@ -377,6 +378,7 @@ STATUS_COLORS = {
     "published": ("#d8f1e9", "#0c6353"),
 }
 AUTOSAVE_INTERVAL_MS = 30_000
+SCHEDULED_PUBLISH_INTERVAL_MS = 60_000
 
 
 def _normalise_ui_density(value: str) -> str:
@@ -1275,6 +1277,10 @@ class AutoNoteApp(tk.Tk):
         self._browser_post_publish = False
         self._browser_post_articles: list[Article] = []
         self._browser_post_batch = False
+        self._browser_post_silent = False
+        self._scheduled_publish_job: str | None = None
+        self._scheduled_publish_warned = False
+        self._auto_publish_attempted: set[str] = set()
         self._check_all_loaded = False
         self._diagnostics_loaded = False
         self.editor_dirty = False
@@ -1308,6 +1314,11 @@ class AutoNoteApp(tk.Tk):
             )
         self.after(350, self.show_onboarding_if_needed)
         self.schedule_autosave()
+        # Opt-in scheduled auto-publish poller. after(ms) timers are not run by
+        # smoke_gui's update_idletasks(), so this never fires under tests.
+        self._scheduled_publish_job = self.after(
+            SCHEDULED_PUBLISH_INTERVAL_MS, self._check_scheduled_publish
+        )
 
     def _initial_refresh(self) -> None:
         # Runs once on the first idle tick after construction (see __init__).
@@ -3465,6 +3476,9 @@ class AutoNoteApp(tk.Tk):
         self.default_status_var = tk.StringVar(value=self.settings.default_status)
         self.append_tags_var = tk.BooleanVar(value=self.settings.append_tags_by_default)
         self.open_note_var = tk.BooleanVar(value=self.settings.open_note_with_helper)
+        self.auto_publish_scheduled_var = tk.BooleanVar(
+            value=getattr(self.settings, "auto_publish_scheduled", False)
+        )
         self.article_glob_var = tk.StringVar(value=self.settings.article_glob)
         self.ui_density_var = tk.StringVar(value=_ui_density_label(self.settings.ui_density))
         self.support_contact_var = tk.StringVar(value=self.settings.support_contact)
@@ -3536,13 +3550,18 @@ class AutoNoteApp(tk.Tk):
         ttk.Checkbutton(form, text="投稿ヘルパー起動時にnote投稿画面も開く", variable=self.open_note_var).grid(
             row=12, column=1, sticky=tk.W, pady=8
         )
+        ttk.Checkbutton(
+            form,
+            text="予約時刻になったら自動でブラウザ公開する（要noteログイン・Playwright）",
+            variable=self.auto_publish_scheduled_var,
+        ).grid(row=13, column=1, sticky=tk.W, pady=8)
         self.commercial_terms_reviewed_check = ttk.Checkbutton(
             form,
             text="利用条件/商用方針を販売前に確認済み",
             variable=self.commercial_terms_reviewed_var,
         )
         self.commercial_terms_reviewed_check.grid(
-            row=13, column=1, sticky=tk.W, pady=8
+            row=14, column=1, sticky=tk.W, pady=8
         )
         self.commercial_support_scope_check = ttk.Checkbutton(
             form,
@@ -3550,13 +3569,13 @@ class AutoNoteApp(tk.Tk):
             variable=self.commercial_support_scope_var,
         )
         self.commercial_support_scope_check.grid(
-            row=14,
+            row=15,
             column=1,
             sticky=tk.W,
             pady=8,
         )
         progress_panel = ttk.Frame(form, style="Surface.TFrame")
-        progress_panel.grid(row=15, column=1, sticky=tk.EW, pady=(2, 8))
+        progress_panel.grid(row=16, column=1, sticky=tk.EW, pady=(2, 8))
         ttk.Label(progress_panel, textvariable=self.commercial_progress_var, style="Surface.TLabel").pack(
             anchor=tk.W,
             fill=tk.X,
@@ -3568,7 +3587,7 @@ class AutoNoteApp(tk.Tk):
         )
         self._build_commercial_setup_checklist(progress_panel)
         setup_actions = ttk.Frame(form, style="Surface.TFrame")
-        setup_actions.grid(row=16, column=1, sticky=tk.EW, pady=8)
+        setup_actions.grid(row=17, column=1, sticky=tk.EW, pady=8)
         ttk.Button(setup_actions, text="セットアップウィザード", command=lambda: self.show_setup_wizard(force=True)).pack(
             side=tk.LEFT
         )
@@ -5635,6 +5654,12 @@ class AutoNoteApp(tk.Tk):
                 except tk.TclError:
                     pass
                 self._browser_post_poll_job = None
+            if self._scheduled_publish_job:
+                try:
+                    self.after_cancel(self._scheduled_publish_job)
+                except tk.TclError:
+                    pass
+                self._scheduled_publish_job = None
             with self._quickstart_result_lock:
                 self._quickstart_result = None
             with self._home_refresh_lock:
@@ -5806,10 +5831,13 @@ class AutoNoteApp(tk.Tk):
             notice=f"{len(articles)}件をnoteに順に公開します… 完了までお待ちください。",
         )
 
-    def _start_browser_post(self, articles, *, publish, batch, browser, notice) -> None:
+    def _start_browser_post(
+        self, articles, *, publish, batch, browser, notice, silent_errors=False
+    ) -> None:
         self._browser_close_event = threading.Event()
         self._browser_post_publish = publish
         self._browser_post_batch = batch
+        self._browser_post_silent = silent_errors
         self._browser_post_articles = list(articles)
         self.notify(notice, level="info")
         thread = threading.Thread(
@@ -5950,12 +5978,79 @@ class AutoNoteApp(tk.Tk):
                 "  python -m playwright install chromium\n"
                 "を実行してください。うまくいかない場合は『投稿ヘルパー』をご利用ください。"
             )
+        if self._browser_post_silent:
+            # Unattended (scheduled) run: never pop a modal — just notify.
+            self.notify("予約自動公開に失敗しました。noteログインを確認してください。", level="error")
+            return
         prefix = ""
         if failed_article is not None and succeeded:
             prefix = (
                 f"{succeeded}件は公開済みです。\n「{failed_article.title}」で停止しました。\n\n"
             )
         messagebox.showerror("ブラウザ投稿エラー", f"{prefix}{error}\n\n{hint}", parent=self)
+
+    def _load_browser_silent(self):
+        """Return the browser module, or None when Playwright is missing. Unlike
+        _load_browser_or_warn this never pops a dialog — for the unattended
+        scheduled-publish timer."""
+        try:
+            return _import_browser()
+        except ModuleNotFoundError as exc:
+            if exc.name and exc.name.startswith("playwright"):
+                return None
+            raise
+
+    def _check_scheduled_publish(self) -> None:
+        try:
+            if getattr(self.settings, "auto_publish_scheduled", False):
+                self._maybe_auto_publish_scheduled()
+        finally:
+            try:
+                self._scheduled_publish_job = self.after(
+                    SCHEDULED_PUBLISH_INTERVAL_MS, self._check_scheduled_publish
+                )
+            except (tk.TclError, RuntimeError):
+                self._scheduled_publish_job = None
+
+    def _maybe_auto_publish_scheduled(self) -> None:
+        running = self._browser_post_thread
+        if running is not None and running.is_alive():
+            return
+        try:
+            due = due_scheduled_articles(self.project_dir, pattern=self.settings.article_glob)
+        except (OSError, ArticleError):
+            return
+        # Attempt each due article at most once per session so a persistent
+        # failure (e.g. not logged in) does not relaunch the browser every cycle.
+        pending = [src for src in due if str(src.resolve()) not in self._auto_publish_attempted]
+        if not pending:
+            return
+        browser = self._load_browser_silent()
+        if browser is None:
+            if not self._scheduled_publish_warned:
+                self._scheduled_publish_warned = True
+                self.notify(
+                    "予約自動公開はPlaywright未導入のため実行できません。設定で無効化するか導入してください。",
+                    level="warning",
+                )
+            return
+        articles: list[Article] = []
+        for source in pending:
+            self._auto_publish_attempted.add(str(source.resolve()))
+            try:
+                articles.append(load_article(source))
+            except ArticleError:
+                continue
+        if not articles:
+            return
+        self._start_browser_post(
+            articles,
+            publish=True,
+            batch=True,
+            browser=browser,
+            notice=f"予約時刻の記事 {len(articles)}件を自動公開します…",
+            silent_errors=True,
+        )
 
     def open_dashboard(self) -> None:
         try:
@@ -7855,6 +7950,7 @@ class AutoNoteApp(tk.Tk):
                 default_status=default_status_var.get(),
                 append_tags_by_default=append_tags_var.get(),
                 open_note_with_helper=open_note_var.get(),
+                auto_publish_scheduled=self.settings.auto_publish_scheduled,
                 article_glob=self.settings.article_glob,
                 onboarding_seen=self.settings.onboarding_seen,
                 support_contact=support_contact_var.get().strip(),
@@ -8200,6 +8296,10 @@ class AutoNoteApp(tk.Tk):
             self.append_tags_var.set(self.settings.append_tags_by_default)
         if hasattr(self, "open_note_var"):
             self.open_note_var.set(self.settings.open_note_with_helper)
+        if hasattr(self, "auto_publish_scheduled_var"):
+            self.auto_publish_scheduled_var.set(
+                getattr(self.settings, "auto_publish_scheduled", False)
+            )
         if hasattr(self, "article_glob_var"):
             self.article_glob_var.set(self.settings.article_glob)
         if hasattr(self, "ui_density_var"):
@@ -8445,6 +8545,7 @@ class AutoNoteApp(tk.Tk):
             default_status=self.default_status_var.get(),
             append_tags_by_default=self.append_tags_var.get(),
             open_note_with_helper=self.open_note_var.get(),
+            auto_publish_scheduled=self.auto_publish_scheduled_var.get(),
             article_glob=self.article_glob_var.get().strip() or "*.md",
             ui_density=_ui_density_value(self.ui_density_var.get()),
             support_contact=self.support_contact_var.get().strip(),
@@ -8472,6 +8573,7 @@ class AutoNoteApp(tk.Tk):
             default_status=self.default_status_var.get(),
             append_tags_by_default=self.append_tags_var.get(),
             open_note_with_helper=self.open_note_var.get(),
+            auto_publish_scheduled=self.auto_publish_scheduled_var.get(),
             article_glob=self.article_glob_var.get().strip() or "*.md",
             onboarding_seen=self.settings.onboarding_seen,
             support_contact=self.support_contact_var.get().strip(),

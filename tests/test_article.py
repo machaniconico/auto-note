@@ -10511,6 +10511,77 @@ class BrowserPostActionTests(unittest.TestCase):
             finally:
                 app.destroy()
 
+    def test_scheduled_auto_publish_publishes_due_article(self) -> None:
+        try:
+            import tkinter  # noqa: F401
+        except Exception:
+            self.skipTest("tkinter unavailable")
+        import types
+        from dataclasses import replace
+        from auto_note import gui
+        from auto_note.article import load_article
+        from auto_note.workflow import set_article_schedule
+
+        async def fake_fill(article, *, publish, append_tags, options, should_close=None):
+            return "https://note.com/u/n/scheduled" if publish else None
+
+        fake_browser = types.SimpleNamespace(
+            BrowserOptions=lambda **kw: types.SimpleNamespace(**kw),
+            fill_note_post=fake_fill,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "articles").mkdir(parents=True, exist_ok=True)
+            path = create_article("予約記事", articles_dir=project / "articles", tags=["note"])
+            set_article_schedule(path, "2020-01-01 09:00")
+            app = self._make_app(project)
+            try:
+                self._drain(app, "_home_refresh_thread")
+                app.settings = replace(app.settings, auto_publish_scheduled=True)
+                orig = gui._import_browser
+                gui._import_browser = lambda: fake_browser
+                self.addCleanup(setattr, gui, "_import_browser", orig)
+
+                app._maybe_auto_publish_scheduled()
+                self.assertIsNotNone(app._browser_post_thread)
+                self._drain(app, "_browser_post_thread")
+                reloaded = load_article(path)
+                self.assertEqual(reloaded.status, "published")
+                self.assertEqual(reloaded.published_url, "https://note.com/u/n/scheduled")
+                self.assertIn(str(path.resolve()), app._auto_publish_attempted)
+            finally:
+                app.destroy()
+
+
+class DueScheduledArticlesTests(unittest.TestCase):
+    def test_returns_only_past_due_scheduled_articles(self) -> None:
+        from datetime import datetime
+        from auto_note.workflow import (
+            due_scheduled_articles,
+            mark_article_published,
+            set_article_schedule,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            adir = project / "articles"
+            adir.mkdir(parents=True, exist_ok=True)
+            past = create_article("過去予約", articles_dir=adir, tags=["note"])
+            future = create_article("未来予約", articles_dir=adir, tags=["note"])
+            create_article("ただの下書き", articles_dir=adir, tags=["note"])
+            set_article_schedule(past, "2020-01-01 09:00")
+            set_article_schedule(future, "2090-01-01 09:00")
+
+            now = datetime(2026, 6, 20, 12, 0)
+            due = due_scheduled_articles(project, now=now)
+            self.assertEqual([p.resolve() for p in due], [past.resolve()])
+
+            # A published article whose scheduled time is in the past is NOT due.
+            set_article_schedule(future, "2019-01-01 09:00")
+            mark_article_published(future)
+            due_after = due_scheduled_articles(project, now=now)
+            self.assertEqual([p.resolve() for p in due_after], [past.resolve()])
+
 
 class SlugAndNewlineTests(unittest.TestCase):
     def test_slugify_preserves_japanese_and_avoids_note_collision(self) -> None:

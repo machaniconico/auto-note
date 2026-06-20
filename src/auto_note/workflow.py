@@ -99,6 +99,29 @@ def update_article_metadata(
     write_markdown(path, metadata, body)
 
 
+def due_scheduled_articles(
+    project_dir: Path, *, pattern: str = "*.md", now: datetime | None = None
+) -> list[Path]:
+    """Return the source paths of articles that are due to be published: status
+    == 'scheduled' and the parsed scheduled time is at or before `now` (default
+    datetime.now()), ordered oldest-scheduled first. Used by the GUI's opt-in
+    scheduled auto-publish. Comparison is naive local time, matching how
+    schedules are entered and how _scheduled_articles compares."""
+    reference = now or datetime.now()
+    articles_dir = project_dir / "articles"
+    due: list[tuple[datetime, Path]] = []
+    for article in _collect_articles(articles_dir, pattern):
+        if article.status != "scheduled" or not article.scheduled:
+            continue
+        try:
+            scheduled_at = _parse_schedule(article.scheduled)
+        except ArticleError:
+            continue
+        if scheduled_at <= reference:
+            due.append((scheduled_at, article.source))
+    return [source for _at, source in sorted(due, key=lambda item: item[0])]
+
+
 def format_plan(path: Path, *, pattern: str = "*.md") -> str:
     articles = _collect_articles(path, pattern)
     grouped: dict[str, list[Article]] = {status: [] for status in ("draft", "ready", "scheduled", "published")}
