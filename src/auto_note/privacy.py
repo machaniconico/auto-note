@@ -13,6 +13,20 @@ from .settings import load_settings
 from .support import list_support_bundles, list_support_requests, verify_support_bundle
 
 
+# Cache zip-archive scan results keyed by (path, mtime_ns, size, sensitive
+# fingerprint). run_privacy_audit is invoked many times per UI refresh (15x
+# during one GUI startup), and each invocation re-opened and re-walked every
+# delivery/release zip from scratch (1252 _scan_zip calls over ~340 archives).
+# Keying on (mtime_ns, size) makes the cache self-invalidating when an archive
+# changes; the sensitive fingerprint invalidates it when the detection set
+# changes. Mirrors quality._TEXT_CACHE / inspect.inspect_file_cached.
+_ZIP_SCAN_CACHE: dict[tuple[str, int, int, int], list[str]] = {}
+
+
+def clear_privacy_scan_cache() -> None:
+    _ZIP_SCAN_CACHE.clear()
+
+
 @dataclass(frozen=True)
 class PrivacyAuditItem:
     name: str
@@ -994,9 +1008,22 @@ def _leak_summary(leaks: list[str]) -> list[str]:
     return summary
 
 
+def _sensitive_fingerprint(sensitive: list[SensitiveValue]) -> int:
+    return hash(tuple((value.label, value.value) for value in sensitive))
+
+
 def _scan_zip_file(path: Path, sensitive: list[SensitiveValue]) -> list[str]:
+    stat = path.stat()  # raises OSError for a missing/unreadable zip (caller catches)
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size, _sensitive_fingerprint(sensitive))
+    cached = _ZIP_SCAN_CACHE.get(key)
+    if cached is not None:
+        return list(cached)
     with zipfile.ZipFile(path) as archive:
-        return _scan_zip(archive, sensitive)
+        leaks = _scan_zip(archive, sensitive)
+    for stale in [k for k in _ZIP_SCAN_CACHE if k[0] == key[0] and k != key]:
+        _ZIP_SCAN_CACHE.pop(stale, None)
+    _ZIP_SCAN_CACHE[key] = leaks
+    return list(leaks)
 
 
 def _scan_zip(archive: zipfile.ZipFile, sensitive: list[SensitiveValue], *, prefix: str = "") -> list[str]:

@@ -140,7 +140,36 @@ def list_buyer_delivery_packages(project_dir: Path) -> list[Path]:
     )
 
 
+_SALES_HANDOFF_VERIFY_CACHE: dict[tuple[str, int, int], list[str]] = {}
+
+
+def clear_sales_handoff_verify_cache() -> None:
+    _SALES_HANDOFF_VERIFY_CACHE.clear()
+
+
 def verify_sales_handoff(handoff_path: Path) -> list[str]:
+    # A sales handoff zip embeds a release zip, so each verify re-extracts and
+    # re-checks the nested package. run_privacy_audit fans out to this 369x
+    # during one GUI startup over the same ~24 handoff files. Cache by
+    # (path, mtime_ns, size) — self-invalidating on change — mirroring
+    # verify_buyer_delivery_package / verify_release_package.
+    handoff_path = Path(handoff_path)
+    try:
+        stat = handoff_path.stat()
+    except OSError:
+        return _verify_sales_handoff_uncached(handoff_path)
+    key = (str(handoff_path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _SALES_HANDOFF_VERIFY_CACHE.get(key)
+    if cached is not None:
+        return list(cached)
+    result = _verify_sales_handoff_uncached(handoff_path)
+    for stale in [k for k in _SALES_HANDOFF_VERIFY_CACHE if k[0] == key[0] and k != key]:
+        _SALES_HANDOFF_VERIFY_CACHE.pop(stale, None)
+    _SALES_HANDOFF_VERIFY_CACHE[key] = result
+    return list(result)
+
+
+def _verify_sales_handoff_uncached(handoff_path: Path) -> list[str]:
     errors: list[str] = []
     if not handoff_path.exists():
         return [f"sales handoff not found: {handoff_path}"]
